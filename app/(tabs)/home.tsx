@@ -1,9 +1,11 @@
 import { router } from "expo-router";
 import { MaterialIcons } from "@expo/vector-icons";
-import { Bell, Heart, MapPin, Search, SlidersHorizontal, Star, Users } from "lucide-react-native";
+import { Bell, ChevronDown, Heart, MapPin, Navigation, Search, SlidersHorizontal, Star, Users, X } from "lucide-react-native";
 import React, { useState } from "react";
 import {
+  FlatList,
   Image,
+  Modal,
   ScrollView,
   StyleSheet,
   Text,
@@ -15,29 +17,186 @@ import { useSafeAreaInsets } from "react-native-safe-area-context";
 import Colors from "@/constants/colors";
 import { AVATAR_IMAGES, CATEGORIES, VENUES } from "@/mocks/venues";
 
+const CITIES = [
+  { id: "1", name: "Ahmedabad", state: "Gujarat" },
+  { id: "2", name: "Mumbai", state: "Maharashtra" },
+  { id: "3", name: "Delhi", state: "Delhi" },
+  { id: "4", name: "Bengaluru", state: "Karnataka" },
+  { id: "5", name: "Chennai", state: "Tamil Nadu" },
+  { id: "6", name: "Hyderabad", state: "Telangana" },
+  { id: "7", name: "Pune", state: "Maharashtra" },
+  { id: "8", name: "Jaipur", state: "Rajasthan" },
+  { id: "9", name: "Kolkata", state: "West Bengal" },
+  { id: "10", name: "Surat", state: "Gujarat" },
+  { id: "11", name: "Lucknow", state: "Uttar Pradesh" },
+  { id: "12", name: "Chandigarh", state: "Punjab" },
+  { id: "13", name: "Kochi", state: "Kerala" },
+  { id: "14", name: "Bhopal", state: "Madhya Pradesh" },
+  { id: "15", name: "Indore", state: "Madhya Pradesh" },
+  { id: "16", name: "Nagpur", state: "Maharashtra" },
+  { id: "17", name: "Coimbatore", state: "Tamil Nadu" },
+  { id: "18", name: "Vadodara", state: "Gujarat" },
+  { id: "19", name: "Vizag", state: "Andhra Pradesh" },
+  { id: "20", name: "Agra", state: "Uttar Pradesh" },
+];
+
+const POPULAR_CITIES = ["Mumbai", "Delhi", "Bengaluru", "Jaipur"];
+
 export default function HomeScreen() {
   const insets = useSafeAreaInsets();
   const [selectedCategory, setSelectedCategory] = useState<string>("1");
+  const [locationModalVisible, setLocationModalVisible] = useState(false);
+  const [selectedLocation, setSelectedLocation] = useState("Ahmedabad, Gujarat");
+  const [locationSearch, setLocationSearch] = useState("");
 
   const featuredVenues = VENUES.slice(0, 3);
   const popularVenues = VENUES.slice(2, 5);
   const nearbyVenues = VENUES.slice(3);
 
+  const filteredCities = locationSearch.trim()
+    ? CITIES.filter(
+      (c) =>
+        c.name.toLowerCase().includes(locationSearch.toLowerCase()) ||
+        c.state.toLowerCase().includes(locationSearch.toLowerCase())
+    )
+    : CITIES;
+
+  const handleSelectCity = (city: { name: string; state: string }) => {
+    setSelectedLocation(`${city.name}, ${city.state}`);
+    setLocationSearch("");
+    setLocationModalVisible(false);
+  };
+
   return (
     <View style={[styles.container, { paddingTop: insets.top }]}>
       <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={styles.scrollContent}>
         <View style={styles.header}>
-          <View>
+          <TouchableOpacity onPress={() => setLocationModalVisible(true)} activeOpacity={0.7}>
             <Text style={styles.locationLabel}>Location</Text>
             <View style={styles.locationRow}>
               <MapPin size={16} color={Colors.primary} />
-              <Text style={styles.locationText}>Ahmedabad, Gujarat</Text>
+              <Text style={styles.locationText}>{selectedLocation}</Text>
+              <ChevronDown size={16} color={Colors.primary} style={{ marginLeft: 2 }} />
             </View>
-          </View>
+          </TouchableOpacity>
           <TouchableOpacity style={styles.notificationButton}>
             <Bell size={22} color={Colors.text} />
           </TouchableOpacity>
         </View>
+
+        {/* Location Picker Modal */}
+        <Modal
+          visible={locationModalVisible}
+          animationType="slide"
+          transparent
+          onRequestClose={() => setLocationModalVisible(false)}
+        >
+          <View style={styles.modalOverlay}>
+            <View style={styles.modalContainer}>
+              {/* Modal Header */}
+              <View style={styles.modalHeader}>
+                <Text style={styles.modalTitle}>Select Location</Text>
+                <TouchableOpacity
+                  onPress={() => {
+                    setLocationSearch("");
+                    setLocationModalVisible(false);
+                  }}
+                  style={styles.modalCloseBtn}
+                >
+                  <X size={20} color={Colors.text} />
+                </TouchableOpacity>
+              </View>
+
+              {/* Search Input */}
+              <View style={styles.modalSearchContainer}>
+                <Search size={18} color={Colors.textSecondary} />
+                <TextInput
+                  style={styles.modalSearchInput}
+                  placeholder="Search city or state..."
+                  placeholderTextColor={Colors.textTertiary}
+                  value={locationSearch}
+                  onChangeText={setLocationSearch}
+                />
+                {locationSearch.length > 0 && (
+                  <TouchableOpacity onPress={() => setLocationSearch("")}>
+                    <X size={16} color={Colors.textSecondary} />
+                  </TouchableOpacity>
+                )}
+              </View>
+
+              {/* Use Current Location */}
+              <TouchableOpacity
+                style={styles.currentLocationRow}
+                onPress={() => {
+                  setSelectedLocation("Current Location");
+                  setLocationSearch("");
+                  setLocationModalVisible(false);
+                }}
+              >
+                <View style={styles.currentLocationIcon}>
+                  <Navigation size={16} color={Colors.primary} />
+                </View>
+                <View>
+                  <Text style={styles.currentLocationText}>Use Current Location</Text>
+                  <Text style={styles.currentLocationSub}>GPS will detect your city</Text>
+                </View>
+              </TouchableOpacity>
+
+              {/* Popular Cities */}
+              {!locationSearch && (
+                <>
+                  <Text style={styles.sectionLabel}>Popular Cities</Text>
+                  <View style={styles.popularCitiesRow}>
+                    {POPULAR_CITIES.map((city) => (
+                      <TouchableOpacity
+                        key={city}
+                        style={styles.popularCityChip}
+                        onPress={() => {
+                          const found = CITIES.find((c) => c.name === city);
+                          if (found) handleSelectCity(found);
+                        }}
+                      >
+                        <Text style={styles.popularCityChipText}>{city}</Text>
+                      </TouchableOpacity>
+                    ))}
+                  </View>
+                </>
+              )}
+
+              {/* City List */}
+              <Text style={styles.sectionLabel}>
+                {locationSearch ? "Search Results" : "All Cities"}
+              </Text>
+              <FlatList
+                data={filteredCities}
+                keyExtractor={(item) => item.id}
+                keyboardShouldPersistTaps="handled"
+                showsVerticalScrollIndicator={false}
+                ListEmptyComponent={
+                  <Text style={styles.emptyText}>No cities found for "{locationSearch}"</Text>
+                }
+                renderItem={({ item }) => (
+                  <TouchableOpacity
+                    style={styles.cityRow}
+                    onPress={() => handleSelectCity(item)}
+                    activeOpacity={0.7}
+                  >
+                    <View style={styles.cityIconWrap}>
+                      <MapPin size={16} color={Colors.primary} />
+                    </View>
+                    <View style={styles.cityRowInfo}>
+                      <Text style={styles.cityName}>{item.name}</Text>
+                      <Text style={styles.cityState}>{item.state}</Text>
+                    </View>
+                    {selectedLocation.startsWith(item.name) && (
+                      <View style={styles.selectedDot} />
+                    )}
+                  </TouchableOpacity>
+                )}
+              />
+            </View>
+          </View>
+        </Modal>
 
         <View style={styles.searchRow}>
           <View style={styles.searchContainer}>
@@ -222,6 +381,7 @@ const styles = StyleSheet.create({
     fontSize: 15,
     fontWeight: "600" as const,
     color: Colors.text,
+    maxWidth: 180,
   },
   notificationButton: {
     width: 44,
@@ -231,6 +391,153 @@ const styles = StyleSheet.create({
     borderColor: Colors.border,
     alignItems: "center",
     justifyContent: "center",
+  },
+  // --- Modal styles ---
+  modalOverlay: {
+    flex: 1,
+    backgroundColor: "rgba(0,0,0,0.45)",
+    justifyContent: "flex-end",
+  },
+  modalContainer: {
+    backgroundColor: Colors.white,
+    borderTopLeftRadius: 24,
+    borderTopRightRadius: 24,
+    paddingHorizontal: 20,
+    paddingTop: 20,
+    paddingBottom: 32,
+    maxHeight: "85%",
+  },
+  modalHeader: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "space-between",
+    marginBottom: 16,
+  },
+  modalTitle: {
+    fontSize: 18,
+    fontWeight: "700" as const,
+    color: Colors.text,
+  },
+  modalCloseBtn: {
+    width: 36,
+    height: 36,
+    borderRadius: 18,
+    backgroundColor: Colors.surface,
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  modalSearchContainer: {
+    flexDirection: "row",
+    alignItems: "center",
+    backgroundColor: Colors.surface,
+    borderRadius: 14,
+    paddingHorizontal: 14,
+    paddingVertical: 12,
+    gap: 10,
+    marginBottom: 16,
+    borderWidth: 1,
+    borderColor: Colors.border,
+  },
+  modalSearchInput: {
+    flex: 1,
+    fontSize: 14,
+    color: Colors.text,
+  },
+  currentLocationRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 12,
+    paddingVertical: 14,
+    borderBottomWidth: 1,
+    borderBottomColor: Colors.border,
+    marginBottom: 4,
+  },
+  currentLocationIcon: {
+    width: 40,
+    height: 40,
+    borderRadius: 20,
+    backgroundColor: Colors.primaryLight,
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  currentLocationText: {
+    fontSize: 14,
+    fontWeight: "600" as const,
+    color: Colors.primary,
+  },
+  currentLocationSub: {
+    fontSize: 12,
+    color: Colors.textSecondary,
+    marginTop: 2,
+  },
+  sectionLabel: {
+    fontSize: 13,
+    fontWeight: "600" as const,
+    color: Colors.textSecondary,
+    marginTop: 16,
+    marginBottom: 10,
+    textTransform: "uppercase",
+    letterSpacing: 0.5,
+  },
+  popularCitiesRow: {
+    flexDirection: "row",
+    flexWrap: "wrap",
+    gap: 10,
+    marginBottom: 4,
+  },
+  popularCityChip: {
+    paddingHorizontal: 16,
+    paddingVertical: 8,
+    borderRadius: 20,
+    borderWidth: 1.5,
+    borderColor: Colors.primary,
+    backgroundColor: Colors.primaryLight,
+  },
+  popularCityChipText: {
+    fontSize: 13,
+    fontWeight: "600" as const,
+    color: Colors.primary,
+  },
+  cityRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 12,
+    paddingVertical: 13,
+    borderBottomWidth: 1,
+    borderBottomColor: Colors.border,
+  },
+  cityIconWrap: {
+    width: 38,
+    height: 38,
+    borderRadius: 19,
+    backgroundColor: Colors.surface,
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  cityRowInfo: {
+    flex: 1,
+  },
+  cityName: {
+    fontSize: 15,
+    fontWeight: "600" as const,
+    color: Colors.text,
+  },
+  cityState: {
+    fontSize: 12,
+    color: Colors.textSecondary,
+    marginTop: 2,
+  },
+  selectedDot: {
+    width: 10,
+    height: 10,
+    borderRadius: 5,
+    backgroundColor: Colors.primary,
+  },
+  emptyText: {
+    textAlign: "center",
+    color: Colors.textSecondary,
+    fontSize: 14,
+    marginTop: 24,
   },
   searchRow: {
     flexDirection: "row",

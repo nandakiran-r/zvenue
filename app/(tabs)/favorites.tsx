@@ -1,5 +1,5 @@
 import { router } from "expo-router";
-import { Heart, MapPin } from "lucide-react-native";
+import { Heart, MapPin, Star, Users } from "lucide-react-native";
 import React from "react";
 import {
   Image,
@@ -11,32 +11,38 @@ import {
 } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import Colors from "@/constants/colors";
-import { EVENTS } from "@/mocks/events";
+import { VENUES } from "@/mocks/venues";
 
 export default function FavoritesScreen() {
   const insets = useSafeAreaInsets();
-  const favoriteEvents = EVENTS.slice(0, 4);
+  const favoriteVenues = VENUES.slice(0, 4);
 
   return (
     <View style={[styles.container, { paddingTop: insets.top }]}>
-      <Text style={styles.headerTitle}>My Favorites</Text>
+      <Text style={styles.headerTitle}>Saved Venues</Text>
 
       <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={styles.scrollContent}>
-        {favoriteEvents.map((event) => (
+        {favoriteVenues.map((venue) => (
           <TouchableOpacity
-            key={event.id}
-            style={styles.eventCard}
-            onPress={() => router.push({ pathname: "/event-detail", params: { id: event.id } })}
+            key={venue.id}
+            style={styles.venueCard}
+            onPress={() => router.push({ pathname: "/venue-detail", params: { id: venue.id } })}
             activeOpacity={0.7}
           >
-            <Image source={{ uri: event.image }} style={styles.eventImage} />
-            <View style={styles.eventInfo}>
-              <Text style={styles.eventTitle} numberOfLines={2}>{event.title}</Text>
+            <Image source={{ uri: venue.image }} style={styles.venueImage} />
+            <View style={styles.venueInfo}>
+              <Text style={styles.venueTitle} numberOfLines={2}>{venue.name}</Text>
               <View style={styles.locationRow}>
                 <MapPin size={12} color={Colors.textSecondary} />
-                <Text style={styles.eventLocation}>{event.location}</Text>
+                <Text style={styles.venueLocation}>{venue.city}</Text>
               </View>
-              <Text style={styles.eventDate}>{event.date}</Text>
+              <View style={styles.metaRow}>
+                <Star size={12} color="#FFB800" fill="#FFB800" />
+                <Text style={styles.ratingText}>{venue.rating}</Text>
+                <Users size={12} color={Colors.textSecondary} />
+                <Text style={styles.capacityText}>Up to {venue.capacity}</Text>
+              </View>
+              <Text style={styles.priceText}>{venue.pricePerDay}/day</Text>
             </View>
             <TouchableOpacity style={styles.heartButton}>
               <Heart size={20} color={Colors.primary} fill={Colors.primary} />
@@ -44,11 +50,11 @@ export default function FavoritesScreen() {
           </TouchableOpacity>
         ))}
 
-        {favoriteEvents.length === 0 && (
+        {favoriteVenues.length === 0 && (
           <View style={styles.emptyState}>
             <Heart size={48} color={Colors.textTertiary} />
-            <Text style={styles.emptyText}>No favorites yet</Text>
-            <Text style={styles.emptySubtext}>Start adding events to your favorites</Text>
+            <Text style={styles.emptyText}>No saved venues yet</Text>
+            <Text style={styles.emptySubtext}>Start adding venues to your favorites</Text>
           </View>
         )}
       </ScrollView>
@@ -73,7 +79,7 @@ const styles = StyleSheet.create({
     paddingHorizontal: 20,
     paddingBottom: 24,
   },
-  eventCard: {
+  venueCard: {
     flexDirection: "row",
     alignItems: "center",
     marginBottom: 16,
@@ -82,15 +88,15 @@ const styles = StyleSheet.create({
     borderRadius: 14,
     padding: 12,
   },
-  eventImage: {
-    width: 70,
-    height: 70,
+  venueImage: {
+    width: 80,
+    height: 80,
     borderRadius: 12,
   },
-  eventInfo: {
+  venueInfo: {
     flex: 1,
   },
-  eventTitle: {
+  venueTitle: {
     fontSize: 14,
     fontWeight: "600" as const,
     color: Colors.text,
@@ -100,15 +106,32 @@ const styles = StyleSheet.create({
     flexDirection: "row",
     alignItems: "center",
     gap: 4,
-    marginBottom: 2,
+    marginBottom: 4,
   },
-  eventLocation: {
+  venueLocation: {
     fontSize: 12,
     color: Colors.textSecondary,
   },
-  eventDate: {
-    fontSize: 11,
-    color: Colors.textTertiary,
+  metaRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 6,
+    marginBottom: 4,
+  },
+  ratingText: {
+    fontSize: 12,
+    color: Colors.text,
+    fontWeight: "600" as const,
+    marginRight: 4,
+  },
+  capacityText: {
+    fontSize: 12,
+    color: Colors.textSecondary,
+  },
+  priceText: {
+    fontSize: 13,
+    color: Colors.primary,
+    fontWeight: "700" as const,
   },
   heartButton: {
     padding: 8,

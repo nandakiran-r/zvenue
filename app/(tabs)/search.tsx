@@ -1,5 +1,5 @@
 import { router } from "expo-router";
-import { Heart, MapPin, Search as SearchIcon, SlidersHorizontal } from "lucide-react-native";
+import { Heart, MapPin, Search as SearchIcon, SlidersHorizontal, Star, Users } from "lucide-react-native";
 import React, { useState } from "react";
 import {
   Image,
@@ -12,7 +12,7 @@ import {
 } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import Colors from "@/constants/colors";
-import { EVENTS } from "@/mocks/events";
+import { VENUES } from "@/mocks/venues";
 
 export default function SearchScreen() {
   const insets = useSafeAreaInsets();
@@ -25,11 +25,13 @@ export default function SearchScreen() {
     );
   };
 
-  const filteredEvents = searchText
-    ? EVENTS.filter((e) =>
-        e.title.toLowerCase().includes(searchText.toLowerCase())
-      )
-    : EVENTS;
+  const filteredVenues = searchText
+    ? VENUES.filter((v) =>
+      v.name.toLowerCase().includes(searchText.toLowerCase()) ||
+      v.city.toLowerCase().includes(searchText.toLowerCase()) ||
+      v.category.toLowerCase().includes(searchText.toLowerCase())
+    )
+    : VENUES;
 
   return (
     <View style={[styles.container, { paddingTop: insets.top }]}>
@@ -38,7 +40,7 @@ export default function SearchScreen() {
           <SearchIcon size={18} color={Colors.textSecondary} />
           <TextInput
             style={styles.searchInput}
-            placeholder="Search"
+            placeholder="Search venues, city or type..."
             placeholderTextColor={Colors.textTertiary}
             value={searchText}
             onChangeText={setSearchText}
@@ -52,30 +54,40 @@ export default function SearchScreen() {
 
       <TouchableOpacity style={styles.locationBanner} activeOpacity={0.7}>
         <MapPin size={16} color={Colors.primary} />
-        <Text style={styles.locationText}>My Current Location</Text>
+        <Text style={styles.locationText}>Search Near My Location</Text>
       </TouchableOpacity>
 
       <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={styles.scrollContent}>
-        {filteredEvents.map((event) => (
+        {filteredVenues.map((venue) => (
           <TouchableOpacity
-            key={event.id}
-            style={styles.eventCard}
-            onPress={() => router.push({ pathname: "/event-detail", params: { id: event.id } })}
+            key={venue.id}
+            style={styles.venueCard}
+            onPress={() => router.push({ pathname: "/venue-detail", params: { id: venue.id } })}
             activeOpacity={0.7}
           >
-            <Image source={{ uri: event.image }} style={styles.eventImage} />
-            <View style={styles.eventInfo}>
-              <Text style={styles.eventTitle} numberOfLines={2}>{event.title}</Text>
-              <Text style={styles.eventDate}>{event.date}</Text>
+            <Image source={{ uri: venue.image }} style={styles.venueImage} />
+            <View style={styles.venueInfo}>
+              <Text style={styles.venueTitle} numberOfLines={2}>{venue.name}</Text>
+              <View style={styles.metaRow}>
+                <MapPin size={11} color={Colors.textSecondary} />
+                <Text style={styles.venueCity}>{venue.city}</Text>
+                <Users size={11} color={Colors.textSecondary} />
+                <Text style={styles.venueCapacity}>Up to {venue.capacity}</Text>
+              </View>
+              <View style={styles.ratingRow}>
+                <Star size={12} color="#FFB800" fill="#FFB800" />
+                <Text style={styles.ratingText}>{venue.rating}</Text>
+                <Text style={styles.priceText}>{venue.pricePerDay}/day</Text>
+              </View>
             </View>
             <TouchableOpacity
-              onPress={() => toggleFav(event.id)}
+              onPress={() => toggleFav(venue.id)}
               style={styles.heartButton}
             >
               <Heart
                 size={20}
-                color={favorites.includes(event.id) ? Colors.primary : Colors.textTertiary}
-                fill={favorites.includes(event.id) ? Colors.primary : "none"}
+                color={favorites.includes(venue.id) ? Colors.primary : Colors.textTertiary}
+                fill={favorites.includes(venue.id) ? Colors.primary : "none"}
               />
             </TouchableOpacity>
           </TouchableOpacity>
@@ -141,29 +153,59 @@ const styles = StyleSheet.create({
     paddingHorizontal: 20,
     paddingBottom: 24,
   },
-  eventCard: {
+  venueCard: {
     flexDirection: "row",
     alignItems: "center",
     marginBottom: 16,
     gap: 14,
+    backgroundColor: Colors.surface,
+    borderRadius: 14,
+    padding: 10,
   },
-  eventImage: {
-    width: 70,
-    height: 70,
+  venueImage: {
+    width: 80,
+    height: 80,
     borderRadius: 12,
   },
-  eventInfo: {
+  venueInfo: {
     flex: 1,
   },
-  eventTitle: {
-    fontSize: 15,
+  venueTitle: {
+    fontSize: 14,
     fontWeight: "600" as const,
     color: Colors.text,
-    marginBottom: 4,
+    marginBottom: 6,
   },
-  eventDate: {
+  metaRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 4,
+    marginBottom: 6,
+  },
+  venueCity: {
     fontSize: 12,
     color: Colors.textSecondary,
+    marginRight: 8,
+  },
+  venueCapacity: {
+    fontSize: 12,
+    color: Colors.textSecondary,
+  },
+  ratingRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 4,
+  },
+  ratingText: {
+    fontSize: 12,
+    color: Colors.text,
+    fontWeight: "600" as const,
+    flex: 1,
+  },
+  priceText: {
+    fontSize: 12,
+    color: Colors.primary,
+    fontWeight: "700" as const,
   },
   heartButton: {
     padding: 8,

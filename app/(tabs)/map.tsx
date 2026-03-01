@@ -12,11 +12,11 @@ import {
 } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import Colors from "@/constants/colors";
-import { EVENTS } from "@/mocks/events";
+import { VENUES } from "@/mocks/venues";
 
 export default function MapScreen() {
   const insets = useSafeAreaInsets();
-  const event = EVENTS[3];
+  const venue = VENUES[3];
 
   return (
     <View style={[styles.container, { paddingTop: insets.top }]}>
@@ -50,14 +50,14 @@ export default function MapScreen() {
 
       <TouchableOpacity
         style={styles.eventCard}
-        onPress={() => router.push({ pathname: "/event-detail", params: { id: event.id } })}
+        onPress={() => router.push({ pathname: "/venue-detail", params: { id: venue.id } })}
         activeOpacity={0.7}
       >
-        <Image source={{ uri: event.image }} style={styles.eventImage} />
+        <Image source={{ uri: venue.image }} style={styles.eventImage} />
         <View style={styles.eventInfo}>
-          <Text style={styles.eventTitle} numberOfLines={1}>{event.title}</Text>
-          <Text style={styles.eventMeta}>Party • 1 km away</Text>
-          <Text style={styles.eventPrice}>{event.price}</Text>
+          <Text style={styles.eventTitle} numberOfLines={1}>{venue.name}</Text>
+          <Text style={styles.eventMeta}>{venue.category} • 1 km away</Text>
+          <Text style={styles.eventPrice}>{venue.pricePerDay}/day</Text>
         </View>
       </TouchableOpacity>
     </View>

@@ -24,10 +24,10 @@ function RootLayoutNav() {
       <Stack.Screen name="select-favourite" />
       <Stack.Screen name="(tabs)" />
       <Stack.Screen name="edit-profile" />
-      <Stack.Screen name="event-detail" />
-      <Stack.Screen name="order-detail" />
-      <Stack.Screen name="ticket-booked" options={{ presentation: "transparentModal", animation: "fade" }} />
-      <Stack.Screen name="view-ticket" />
+      <Stack.Screen name="venue-detail" />
+      <Stack.Screen name="booking-detail" />
+      <Stack.Screen name="booking-confirmed" options={{ presentation: "transparentModal", animation: "fade" }} />
+      <Stack.Screen name="view-booking" />
     </Stack>
   );
 }

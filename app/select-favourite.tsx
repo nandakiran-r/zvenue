@@ -12,7 +12,7 @@ import {
 } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import Colors from "@/constants/colors";
-import { FAVOURITE_CATEGORIES } from "@/mocks/events";
+import { FAVOURITE_CATEGORIES } from "@/mocks/venues";
 
 export default function SelectFavouriteScreen() {
   const [selected, setSelected] = useState<string[]>(["3"]);
@@ -36,8 +36,8 @@ export default function SelectFavouriteScreen() {
         <View style={[styles.progressBar, styles.progressActive]} />
       </View>
 
-      <Text style={styles.title}>Choose your favorite event</Text>
-      <Text style={styles.subtitle}>Get personalized event recommendation.</Text>
+      <Text style={styles.title}>What kind of events{"\n"}will you host?</Text>
+      <Text style={styles.subtitle}>We'll recommend the best venues for you.</Text>
 
       <ScrollView
         style={styles.scrollView}

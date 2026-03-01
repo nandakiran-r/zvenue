@@ -11,7 +11,7 @@ import {
 } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import Colors from "@/constants/colors";
-import { PROFILE_IMAGES } from "@/mocks/events";
+import { PROFILE_IMAGES } from "@/mocks/venues";
 
 const MENU_ITEMS = [
   { icon: User, label: "Edit Profile", route: "/edit-profile" },

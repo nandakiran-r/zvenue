@@ -1,6 +1,6 @@
 import { router } from "expo-router";
 import { MaterialIcons } from "@expo/vector-icons";
-import { Bell, Heart, MapPin, Search, SlidersHorizontal } from "lucide-react-native";
+import { Bell, Heart, MapPin, Search, SlidersHorizontal, Star, Users } from "lucide-react-native";
 import React, { useState } from "react";
 import {
   Image,
@@ -13,15 +13,15 @@ import {
 } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import Colors from "@/constants/colors";
-import { AVATAR_IMAGES, CATEGORIES, EVENTS } from "@/mocks/events";
+import { AVATAR_IMAGES, CATEGORIES, VENUES } from "@/mocks/venues";
 
 export default function HomeScreen() {
   const insets = useSafeAreaInsets();
   const [selectedCategory, setSelectedCategory] = useState<string>("1");
 
-  const upcomingEvents = EVENTS.slice(0, 3);
-  const popularEvents = EVENTS.slice(2, 5);
-  const recommendations = EVENTS.slice(3);
+  const featuredVenues = VENUES.slice(0, 3);
+  const popularVenues = VENUES.slice(2, 5);
+  const nearbyVenues = VENUES.slice(3);
 
   return (
     <View style={[styles.container, { paddingTop: insets.top }]}>
@@ -44,7 +44,7 @@ export default function HomeScreen() {
             <Search size={18} color={Colors.textSecondary} />
             <TextInput
               style={styles.searchInput}
-              placeholder="Search"
+              placeholder="Search venues"
               placeholderTextColor={Colors.textTertiary}
             />
           </View>
@@ -81,77 +81,81 @@ export default function HomeScreen() {
         </ScrollView>
 
         <View style={styles.sectionHeader}>
-          <Text style={styles.sectionTitle}>Upcoming Events</Text>
+          <Text style={styles.sectionTitle}>Featured Venues</Text>
           <TouchableOpacity>
             <Text style={styles.seeAll}>See All</Text>
           </TouchableOpacity>
         </View>
 
-        {upcomingEvents.map((event) => (
+        {featuredVenues.map((venue) => (
           <TouchableOpacity
-            key={event.id}
-            style={styles.upcomingCard}
-            onPress={() => router.push({ pathname: "/event-detail", params: { id: event.id } })}
+            key={venue.id}
+            style={styles.featuredCard}
+            onPress={() => router.push({ pathname: "/venue-detail", params: { id: venue.id } })}
             activeOpacity={0.7}
           >
-            <Image source={{ uri: event.image }} style={styles.upcomingImage} />
-            <View style={styles.upcomingInfo}>
-              <Text style={styles.upcomingTitle} numberOfLines={2}>{event.title}</Text>
-              <View style={styles.upcomingLocationRow}>
+            <Image source={{ uri: venue.image }} style={styles.featuredImage} />
+            <View style={styles.featuredInfo}>
+              <Text style={styles.featuredTitle} numberOfLines={2}>{venue.name}</Text>
+              <View style={styles.featuredLocationRow}>
                 <MapPin size={12} color={Colors.textSecondary} />
-                <Text style={styles.upcomingLocation}>{event.location}</Text>
+                <Text style={styles.featuredLocation}>{venue.city}</Text>
               </View>
-              <TouchableOpacity style={styles.joinButton}>
-                <Text style={styles.joinText}>Join</Text>
-              </TouchableOpacity>
+              <View style={styles.featuredFooter}>
+                <View style={styles.ratingRow}>
+                  <Star size={12} color="#FFB800" fill="#FFB800" />
+                  <Text style={styles.ratingText}>{venue.rating}</Text>
+                </View>
+                <TouchableOpacity
+                  style={styles.bookButton}
+                  onPress={() => router.push({ pathname: "/venue-detail", params: { id: venue.id } })}
+                >
+                  <Text style={styles.bookText}>Book</Text>
+                </TouchableOpacity>
+              </View>
             </View>
           </TouchableOpacity>
         ))}
 
         <View style={styles.sectionHeader}>
-          <Text style={styles.sectionTitle}>Popular Now</Text>
+          <Text style={styles.sectionTitle}>Popular Halls</Text>
           <TouchableOpacity>
             <Text style={styles.seeAll}>See All</Text>
           </TouchableOpacity>
         </View>
 
         <ScrollView horizontal showsHorizontalScrollIndicator={false} style={styles.popularScroll}>
-          {popularEvents.map((event) => (
+          {popularVenues.map((venue) => (
             <TouchableOpacity
-              key={event.id}
+              key={venue.id}
               style={styles.popularCard}
-              onPress={() => router.push({ pathname: "/event-detail", params: { id: event.id } })}
+              onPress={() => router.push({ pathname: "/venue-detail", params: { id: venue.id } })}
               activeOpacity={0.8}
             >
-              <Image source={{ uri: event.image }} style={styles.popularImage} />
+              <Image source={{ uri: venue.image }} style={styles.popularImage} />
               <View style={styles.popularOverlay}>
                 <View style={styles.popularBadge}>
-                  <Text style={styles.popularBadgeText}>{event.category}</Text>
+                  <Text style={styles.popularBadgeText}>{venue.category}</Text>
                 </View>
                 <TouchableOpacity style={styles.popularHeart}>
                   <Heart size={18} color={Colors.primary} fill={Colors.primary} />
                 </TouchableOpacity>
                 <View style={styles.popularBottom}>
-                  <Text style={styles.popularAuthor}>Altanito Salami</Text>
+                  <View style={styles.capacityBadge}>
+                    <Users size={11} color={Colors.white} />
+                    <Text style={styles.capacityText}>Up to {venue.capacity}</Text>
+                  </View>
                 </View>
               </View>
               <View style={styles.popularDetails}>
-                <Text style={styles.popularTitle} numberOfLines={1}>{event.title}</Text>
-                <Text style={styles.popularDate}>{event.date}</Text>
+                <Text style={styles.popularTitle} numberOfLines={1}>{venue.name}</Text>
+                <Text style={styles.popularCity}>{venue.city}</Text>
                 <View style={styles.popularFooter}>
-                  <View style={styles.avatarStack}>
-                    {AVATAR_IMAGES.slice(0, 3).map((img, i) => (
-                      <Image
-                        key={i}
-                        source={{ uri: img }}
-                        style={[styles.avatar, { marginLeft: i > 0 ? -10 : 0 }]}
-                      />
-                    ))}
-                    <View style={[styles.avatar, styles.avatarMore, { marginLeft: -10 }]}>
-                      <Text style={styles.avatarMoreText}>+{event.attendees}</Text>
-                    </View>
+                  <View style={styles.ratingRow}>
+                    <Star size={12} color="#FFB800" fill="#FFB800" />
+                    <Text style={styles.ratingText}>{venue.rating} ({venue.reviewCount})</Text>
                   </View>
-                  <Text style={styles.popularPrice}>{event.price}</Text>
+                  <Text style={styles.popularPrice}>{venue.pricePerDay}</Text>
                 </View>
               </View>
             </TouchableOpacity>
@@ -159,28 +163,28 @@ export default function HomeScreen() {
         </ScrollView>
 
         <View style={styles.sectionHeader}>
-          <Text style={styles.sectionTitle}>Recommendations for you</Text>
+          <Text style={styles.sectionTitle}>Nearby Venues</Text>
           <TouchableOpacity>
             <Text style={styles.seeAll}>See All</Text>
           </TouchableOpacity>
         </View>
 
-        {recommendations.map((event) => (
+        {nearbyVenues.map((venue) => (
           <TouchableOpacity
-            key={event.id}
-            style={styles.recommendCard}
-            onPress={() => router.push({ pathname: "/event-detail", params: { id: event.id } })}
+            key={venue.id}
+            style={styles.nearbyCard}
+            onPress={() => router.push({ pathname: "/venue-detail", params: { id: venue.id } })}
             activeOpacity={0.7}
           >
-            <Image source={{ uri: event.image }} style={styles.recommendImage} />
-            <View style={styles.recommendInfo}>
-              <Text style={styles.recommendTitle} numberOfLines={2}>{event.title}</Text>
-              <View style={styles.recommendLocationRow}>
+            <Image source={{ uri: venue.image }} style={styles.nearbyImage} />
+            <View style={styles.nearbyInfo}>
+              <Text style={styles.nearbyTitle} numberOfLines={2}>{venue.name}</Text>
+              <View style={styles.nearbyLocationRow}>
                 <MapPin size={12} color={Colors.textSecondary} />
-                <Text style={styles.recommendLocation}>{event.location}</Text>
+                <Text style={styles.nearbyLocation}>{venue.city}</Text>
               </View>
             </View>
-            <Text style={styles.recommendPrice}>{event.price}</Text>
+            <Text style={styles.nearbyPrice}>{venue.pricePerDay}</Text>
           </TouchableOpacity>
         ))}
       </ScrollView>
@@ -275,9 +279,6 @@ const styles = StyleSheet.create({
   categoryChipActive: {
     backgroundColor: Colors.primary,
   },
-  categoryIcon: {
-    // icon styles handled via MaterialIcons props
-  },
   categoryText: {
     fontSize: 13,
     fontWeight: "500" as const,
@@ -304,7 +305,7 @@ const styles = StyleSheet.create({
     color: Colors.primary,
     fontWeight: "600" as const,
   },
-  upcomingCard: {
+  featuredCard: {
     flexDirection: "row",
     marginHorizontal: 20,
     marginBottom: 14,
@@ -312,40 +313,58 @@ const styles = StyleSheet.create({
     borderRadius: 14,
     overflow: "hidden",
     gap: 12,
+    borderWidth: 1,
+    borderColor: Colors.border,
+    padding: 10,
   },
-  upcomingImage: {
-    width: 80,
-    height: 80,
+  featuredImage: {
+    width: 90,
+    height: 90,
     borderRadius: 12,
   },
-  upcomingInfo: {
+  featuredInfo: {
     flex: 1,
-    justifyContent: "center",
+    justifyContent: "space-between",
   },
-  upcomingTitle: {
+  featuredTitle: {
     fontSize: 14,
     fontWeight: "600" as const,
     color: Colors.text,
     marginBottom: 4,
   },
-  upcomingLocationRow: {
+  featuredLocationRow: {
     flexDirection: "row",
     alignItems: "center",
     gap: 4,
     marginBottom: 6,
   },
-  upcomingLocation: {
+  featuredLocation: {
     fontSize: 12,
     color: Colors.textSecondary,
   },
-  joinButton: {
+  featuredFooter: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "space-between",
+  },
+  ratingRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 4,
+  },
+  ratingText: {
+    fontSize: 12,
+    color: Colors.text,
+    fontWeight: "600" as const,
+  },
+  bookButton: {
     alignSelf: "flex-start",
     backgroundColor: Colors.primary,
     borderRadius: 8,
     paddingHorizontal: 20,
     paddingVertical: 6,
   },
-  joinText: {
+  bookText: {
     fontSize: 12,
     color: Colors.white,
     fontWeight: "600" as const,
@@ -403,8 +422,17 @@ const styles = StyleSheet.create({
     bottom: 12,
     left: 12,
   },
-  popularAuthor: {
-    fontSize: 12,
+  capacityBadge: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 4,
+    backgroundColor: "rgba(0,0,0,0.55)",
+    borderRadius: 8,
+    paddingHorizontal: 8,
+    paddingVertical: 4,
+  },
+  capacityText: {
+    fontSize: 11,
     color: Colors.white,
     fontWeight: "600" as const,
   },
@@ -415,76 +443,55 @@ const styles = StyleSheet.create({
     fontSize: 14,
     fontWeight: "600" as const,
     color: Colors.text,
-    marginBottom: 4,
+    marginBottom: 2,
   },
-  popularDate: {
+  popularCity: {
     fontSize: 12,
     color: Colors.textSecondary,
-    marginBottom: 10,
+    marginBottom: 8,
   },
   popularFooter: {
     flexDirection: "row",
     justifyContent: "space-between",
     alignItems: "center",
   },
-  avatarStack: {
-    flexDirection: "row",
-    alignItems: "center",
-  },
-  avatar: {
-    width: 26,
-    height: 26,
-    borderRadius: 13,
-    borderWidth: 2,
-    borderColor: Colors.white,
-  },
-  avatarMore: {
-    backgroundColor: Colors.primary,
-    alignItems: "center",
-    justifyContent: "center",
-  },
-  avatarMoreText: {
-    fontSize: 9,
-    color: Colors.white,
-    fontWeight: "700" as const,
-  },
   popularPrice: {
-    fontSize: 14,
+    fontSize: 13,
     fontWeight: "700" as const,
     color: Colors.primary,
   },
-  recommendCard: {
+  nearbyCard: {
     flexDirection: "row",
     marginHorizontal: 20,
     marginBottom: 14,
     alignItems: "center",
     gap: 12,
   },
-  recommendImage: {
+  nearbyImage: {
     width: 70,
     height: 70,
     borderRadius: 12,
   },
-  recommendInfo: {
+  nearbyInfo: {
     flex: 1,
   },
-  recommendTitle: {
+  nearbyTitle: {
     fontSize: 14,
     fontWeight: "600" as const,
     color: Colors.text,
     marginBottom: 4,
   },
-  recommendLocationRow: {
+  nearbyLocationRow: {
     flexDirection: "row",
     alignItems: "center",
     gap: 4,
   },
-  recommendLocation: {
+  nearbyLocation: {
     fontSize: 12,
     color: Colors.textSecondary,
   },
-  recommendPrice: {
-    fontSize: 14,
+  nearbyPrice: {
+    fontSize: 13,
     fontWeight: "700" as const,
     color: Colors.primary,
   },

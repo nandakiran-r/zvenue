@@ -12,27 +12,27 @@ import {
 } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import Colors from "@/constants/colors";
-import { ONBOARDING_IMAGES } from "@/mocks/events";
+import { ONBOARDING_IMAGES } from "@/mocks/venues";
 
 const { width } = Dimensions.get("window");
 
 const SLIDES = [
   {
     id: "1",
-    title: "Find your favourite\nevents here",
-    subtitle: "Lorem ipsum dolor sit amet, consectetur adipiscing elit.",
+    title: "Find the perfect\nvenue for your event",
+    subtitle: "Discover wedding halls, party venues, and banquet spaces near you.",
     images: ONBOARDING_IMAGES[0],
   },
   {
     id: "2",
-    title: "Find your nearby\nevent here",
-    subtitle: "Lorem ipsum dolor sit amet, consectetur adipiscing elit.",
+    title: "Explore halls\nnear your location",
+    subtitle: "Browse hundreds of verified venues with photos, amenities and pricing.",
     images: ONBOARDING_IMAGES[1],
   },
   {
     id: "3",
-    title: "Update your upcoming\nevent here",
-    subtitle: "Lorem ipsum dolor sit amet, consectetur adipiscing elit.",
+    title: "Book your dream\nvenue in minutes",
+    subtitle: "Instant booking confirmation, no hassle. Your event, your way.",
     images: ONBOARDING_IMAGES[2],
   },
 ];

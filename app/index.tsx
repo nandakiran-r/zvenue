@@ -1,6 +1,6 @@
 import { router } from "expo-router";
 import React, { useEffect, useRef } from "react";
-import { Animated, StyleSheet, View } from "react-native";
+import { Animated, Image, StyleSheet, View } from "react-native";
 import Colors from "@/constants/colors";
 
 export default function SplashScreen() {
@@ -35,11 +35,11 @@ export default function SplashScreen() {
           { transform: [{ scale: scaleAnim }], opacity: opacityAnim },
         ]}
       >
-        <View style={styles.logoCircle}>
-          <View style={styles.logoInner} />
-          <View style={styles.logoSlice} />
-        </View>
-        <Animated.Text style={styles.brandText}>CITY EVENT</Animated.Text>
+        <Image
+          source={require("../assets/images/favicon.png")}
+          style={styles.logoImage}
+        />
+        <Animated.Text style={styles.brandText}>ZVENUE</Animated.Text>
       </Animated.View>
     </View>
   );
@@ -55,31 +55,10 @@ const styles = StyleSheet.create({
   logoContainer: {
     alignItems: "center",
   },
-  logoCircle: {
+  logoImage: {
     width: 100,
     height: 100,
-    borderRadius: 50,
-    backgroundColor: Colors.primary,
-    overflow: "hidden",
-    position: "relative",
-  },
-  logoInner: {
-    position: "absolute",
-    top: 10,
-    left: 10,
-    width: 50,
-    height: 50,
-    borderRadius: 25,
-    backgroundColor: "rgba(255,255,255,0.3)",
-  },
-  logoSlice: {
-    position: "absolute",
-    top: 0,
-    right: 0,
-    width: 50,
-    height: 100,
-    backgroundColor: "rgba(255,100,150,0.5)",
-    transform: [{ rotate: "-15deg" }],
+    borderRadius: 22,
   },
   brandText: {
     fontSize: 22,

@@ -3,6 +3,7 @@ import { safeBack } from "@/constants/navigation";
 import { ChevronLeft, Eye, EyeOff, Lock, Mail, User } from "lucide-react-native";
 import React, { useState } from "react";
 import {
+  Image,
   KeyboardAvoidingView,
   Platform,
   ScrollView,
@@ -38,11 +39,11 @@ export default function SignupScreen() {
           </TouchableOpacity>
 
           <View style={styles.logoContainer}>
-            <View style={styles.logoCircle}>
-              <View style={styles.logoInner} />
-              <View style={styles.logoSlice} />
-            </View>
-            <Text style={styles.brandText}>CITY EVENT</Text>
+            <Image
+              source={require("../assets/images/favicon.png")}
+              style={styles.logoImage}
+            />
+            <Text style={styles.brandText}>ZVENUE</Text>
           </View>
 
           <Text style={styles.title}>Create an Account</Text>
@@ -154,31 +155,10 @@ const styles = StyleSheet.create({
     alignItems: "center",
     marginBottom: 20,
   },
-  logoCircle: {
+  logoImage: {
     width: 70,
     height: 70,
-    borderRadius: 35,
-    backgroundColor: Colors.primary,
-    overflow: "hidden",
-    position: "relative",
-  },
-  logoInner: {
-    position: "absolute",
-    top: 8,
-    left: 8,
-    width: 35,
-    height: 35,
-    borderRadius: 18,
-    backgroundColor: "rgba(255,255,255,0.3)",
-  },
-  logoSlice: {
-    position: "absolute",
-    top: 0,
-    right: 0,
-    width: 35,
-    height: 70,
-    backgroundColor: "rgba(255,100,150,0.5)",
-    transform: [{ rotate: "-15deg" }],
+    borderRadius: 16,
   },
   brandText: {
     fontSize: 14,

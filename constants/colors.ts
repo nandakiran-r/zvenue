@@ -1,0 +1,25 @@
+const Colors = {
+  primary: '#FF0066',
+  primaryDark: '#E6005C',
+  primaryLight: '#FF3385',
+  gradientStart: '#FF0066',
+  gradientEnd: '#FF0066',
+  background: '#FFFFFF',
+  surface: '#F8F8F8',
+  card: '#FFFFFF',
+  text: '#1A1A1A',
+  textSecondary: '#888888',
+  textTertiary: '#BBBBBB',
+  border: '#EEEEEE',
+  borderActive: '#FF0066',
+  inputBorder: '#E8E8E8',
+  inputBackground: '#F9F9F9',
+  success: '#4CD964',
+  successLight: '#D4F5DC',
+  white: '#FFFFFF',
+  black: '#000000',
+  overlay: 'rgba(0,0,0,0.5)',
+  tabInactive: '#CCCCCC',
+};
+
+export default Colors;

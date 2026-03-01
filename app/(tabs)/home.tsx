@@ -1,4 +1,5 @@
 import { router } from "expo-router";
+import { MaterialIcons } from "@expo/vector-icons";
 import { Bell, Heart, MapPin, Search, SlidersHorizontal } from "lucide-react-native";
 import React, { useState } from "react";
 import {
@@ -62,7 +63,11 @@ export default function HomeScreen() {
               ]}
               onPress={() => setSelectedCategory(cat.id)}
             >
-              <Text style={styles.categoryEmoji}>{cat.emoji}</Text>
+              <MaterialIcons
+                name={cat.icon as any}
+                size={16}
+                color={selectedCategory === cat.id ? "#FFFFFF" : Colors.textSecondary}
+              />
               <Text
                 style={[
                   styles.categoryText,
@@ -270,8 +275,8 @@ const styles = StyleSheet.create({
   categoryChipActive: {
     backgroundColor: Colors.primary,
   },
-  categoryEmoji: {
-    fontSize: 16,
+  categoryIcon: {
+    // icon styles handled via MaterialIcons props
   },
   categoryText: {
     fontSize: 13,

@@ -1,5 +1,6 @@
 import { router } from "expo-router";
 import { safeBack } from "@/constants/navigation";
+import { MaterialIcons } from "@expo/vector-icons";
 import { ChevronLeft } from "lucide-react-native";
 import React, { useState } from "react";
 import {
@@ -53,7 +54,11 @@ export default function SelectFavouriteScreen() {
                 onPress={() => toggleCategory(cat.id)}
                 activeOpacity={0.7}
               >
-                <Text style={styles.categoryEmoji}>{cat.emoji}</Text>
+                <MaterialIcons
+                  name={cat.icon as any}
+                  size={18}
+                  color={isSelected ? Colors.primary : Colors.textSecondary}
+                />
                 <Text
                   style={[styles.categoryText, isSelected && styles.categoryTextActive]}
                 >
@@ -140,8 +145,8 @@ const styles = StyleSheet.create({
     borderWidth: 1,
     borderColor: Colors.primary,
   },
-  categoryEmoji: {
-    fontSize: 18,
+  categoryIcon: {
+    // icon styles handled via MaterialIcons props
   },
   categoryText: {
     fontSize: 14,

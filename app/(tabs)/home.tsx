@@ -550,6 +550,7 @@ const styles = StyleSheet.create({
     justifyContent: "space-between",
     alignItems: "center",
     paddingHorizontal: 20,
+    paddingRight: 10,
     marginBottom: 14,
     marginTop: 8,
   },

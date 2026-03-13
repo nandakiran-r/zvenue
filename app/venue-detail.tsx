@@ -134,21 +134,7 @@ export default function VenueDetailScreen() {
                     </View>
                 </View>
 
-                <View style={styles.section}>
-                    <Text style={styles.sectionTitle}>Location</Text>
-                    <View style={styles.mapContainer}>
-                        <Image
-                            source={{ uri: "https://images.unsplash.com/photo-1524661135-423995f22d0b?w=600&h=300&fit=crop" }}
-                            style={styles.mapImage}
-                        />
-                        <TouchableOpacity style={styles.seeLocationButton}>
-                            <Text style={styles.seeLocationText}>See on Map</Text>
-                        </TouchableOpacity>
-                        <View style={styles.mapPinContainer}>
-                            <MapPin size={24} color={Colors.primary} fill={Colors.primary} />
-                        </View>
-                    </View>
-                </View>
+
             </ScrollView>
 
             <View style={[styles.bottomBar, { paddingBottom: insets.bottom + 12 }]}>
@@ -379,44 +365,7 @@ const styles = StyleSheet.create({
         color: Colors.text,
         fontWeight: "500" as const,
     },
-    mapContainer: {
-        height: 160,
-        borderRadius: 16,
-        overflow: "hidden",
-        position: "relative",
-    },
-    mapImage: {
-        width: "100%",
-        height: "100%",
-        opacity: 0.7,
-    },
-    seeLocationButton: {
-        position: "absolute",
-        top: 12,
-        left: 12,
-        backgroundColor: Colors.white,
-        borderRadius: 8,
-        paddingHorizontal: 12,
-        paddingVertical: 6,
-    },
-    seeLocationText: {
-        fontSize: 12,
-        fontWeight: "600" as const,
-        color: Colors.text,
-    },
-    mapPinContainer: {
-        position: "absolute",
-        top: "50%",
-        left: "50%",
-        marginLeft: -12,
-        marginTop: -24,
-        backgroundColor: "rgba(255,0,102,0.15)",
-        borderRadius: 20,
-        width: 40,
-        height: 40,
-        alignItems: "center",
-        justifyContent: "center",
-    },
+
     bottomBar: {
         position: "absolute",
         bottom: 0,

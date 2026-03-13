@@ -14,7 +14,7 @@ export interface Venue {
     amenities: string[];
     ownerName: string;
     ownerImage: string;
-    area: string; // sq ft or sq meters
+    area: string;
     availableDates: string[];
 }
 
@@ -74,166 +74,120 @@ export const AVATAR_IMAGES = [
     'https://images.unsplash.com/photo-1472099645785-5658abf4ff4e?w=50&h=50&fit=crop',
 ];
 
-export const VENUES: Venue[] = [
-    {
-        id: '1',
-        name: 'The Grand Ballroom',
-        location: '14, Palace Road, Ahmedabad',
-        city: 'Ahmedabad',
-        pricePerHour: '₹5,000',
-        pricePerDay: '₹40,000',
-        image: VENUE_IMAGES.wedding1,
-        category: 'Wedding',
-        capacity: 500,
-        rating: 4.8,
-        reviewCount: 128,
-        description: 'A stunning ballroom adorned with crystal chandeliers and marble floors, perfect for grand weddings and gala events. Equipped with state-of-the-art sound and lighting systems, a bridal suite, and a dedicated catering kitchen.',
-        amenities: ['AC', 'Parking', 'Catering', 'DJ Setup', 'Bridal Room', 'Stage'],
-        ownerName: 'Rajesh Mehta',
-        ownerImage: AVATAR_IMAGES[0],
-        area: '8,000 sq ft',
-        availableDates: ['Mar 5', 'Mar 10', 'Mar 15', 'Mar 20'],
-    },
-    {
-        id: '2',
-        name: 'Skyline Rooftop Terrace',
-        location: 'Rooftop, The Metropolitan, Pune',
-        city: 'Pune',
-        pricePerHour: '₹3,500',
-        pricePerDay: '₹28,000',
-        image: VENUE_IMAGES.rooftop1,
-        category: 'Party',
-        capacity: 200,
-        rating: 4.6,
-        reviewCount: 84,
-        description: 'A breathtaking open-air rooftop venue with panoramic city views. Ideal for cocktail parties, birthday bashes, and corporate get-togethers. Features a built-in bar, lounge seating, and ambient fairy lights.',
-        amenities: ['Open Air', 'Bar', 'Lounge Seating', 'City View', 'Live Music Ready', 'Parking'],
-        ownerName: 'Priya Sharma',
-        ownerImage: AVATAR_IMAGES[1],
-        area: '3,500 sq ft',
-        availableDates: ['Mar 3', 'Mar 8', 'Mar 12', 'Mar 18'],
-    },
-    {
-        id: '3',
-        name: 'Prestige Conference Centre',
-        location: '5th Floor, Prestige Tower, Bangalore',
-        city: 'Bangalore',
-        pricePerHour: '₹2,000',
-        pricePerDay: '₹15,000',
-        image: VENUE_IMAGES.corporate1,
-        category: 'Corporate',
-        capacity: 150,
-        rating: 4.7,
-        reviewCount: 210,
-        description: 'A modern, fully-equipped conference and seminar hall with high-speed Wi-Fi, projector screens, and video-conferencing facilities. Perfect for product launches, corporate meetings, and seminars.',
-        amenities: ['Wi-Fi', 'Projector', 'Video Conferencing', 'AC', 'Cafeteria', 'Whiteboard'],
-        ownerName: 'Anil Kumar',
-        ownerImage: AVATAR_IMAGES[2],
-        area: '2,400 sq ft',
-        availableDates: ['Mar 4', 'Mar 6', 'Mar 11', 'Mar 14'],
-    },
-    {
-        id: '4',
-        name: 'Garden of Roses',
-        location: 'ECR Road, Chennai',
-        city: 'Chennai',
-        pricePerHour: '₹4,000',
-        pricePerDay: '₹32,000',
-        image: VENUE_IMAGES.garden1,
-        category: 'Wedding',
-        capacity: 350,
-        rating: 4.9,
-        reviewCount: 175,
-        description: 'A lush, beautifully manicured garden venue with a floral arch, fountain, and outdoor stage. An enchanting space for weddings, engagement ceremonies, and outdoor receptions under the open sky.',
-        amenities: ['Garden', 'Fountain', 'Outdoor Stage', 'Floral Decor', 'Catering', 'Parking'],
-        ownerName: 'Kavitha Nair',
-        ownerImage: AVATAR_IMAGES[3],
-        area: '12,000 sq ft',
-        availableDates: ['Mar 7', 'Mar 13', 'Mar 19', 'Mar 25'],
-    },
-    {
-        id: '5',
-        name: 'Crystal Banquet Hall',
-        location: 'MG Road, Mumbai',
-        city: 'Mumbai',
-        pricePerHour: '₹6,000',
-        pricePerDay: '₹50,000',
-        image: VENUE_IMAGES.banquet1,
-        category: 'Banquet',
-        capacity: 600,
-        rating: 4.5,
-        reviewCount: 92,
-        description: 'An opulent banquet hall with a grand entrance, tiered seating, and professional-grade AV equipment. Ideal for large receptions, award ceremonies, and premium social events.',
-        amenities: ['AC', 'Stage', 'AV Equipment', 'Valet Parking', 'Green Room', 'Catering'],
-        ownerName: 'Sunita Desai',
-        ownerImage: AVATAR_IMAGES[0],
-        area: '10,000 sq ft',
-        availableDates: ['Mar 2', 'Mar 9', 'Mar 16', 'Mar 22'],
-    },
-    {
-        id: '6',
-        name: 'The Party Loft',
-        location: 'Koregaon Park, Pune',
-        city: 'Pune',
-        pricePerHour: '₹2,500',
-        pricePerDay: '₹20,000',
-        image: VENUE_IMAGES.party1,
-        category: 'Party',
-        capacity: 120,
-        rating: 4.4,
-        reviewCount: 61,
-        description: 'A vibrant, industrial-chic loft space with a professional DJ console, dance floor, neon lighting, and a fully stocked bar. The ultimate venue for private parties and nightlife experiences.',
-        amenities: ['DJ Console', 'Dance Floor', 'Bar', 'Neon Lighting', 'AC', 'Lounge Area'],
-        ownerName: 'Arjun Singh',
-        ownerImage: AVATAR_IMAGES[1],
-        area: '2,000 sq ft',
-        availableDates: ['Mar 1', 'Mar 6', 'Mar 14', 'Mar 21'],
-    },
-    {
-        id: '7',
-        name: 'Emerald Convention Hall',
-        location: 'Jubilee Hills, Hyderabad',
-        city: 'Hyderabad',
-        pricePerHour: '₹4,500',
-        pricePerDay: '₹36,000',
-        image: VENUE_IMAGES.hall1,
-        category: 'Banquet',
-        capacity: 400,
-        rating: 4.7,
-        reviewCount: 143,
-        description: 'A sophisticated convention hall with elegant décor, plush seating, and a dedicated event coordination team. Perfect for weddings, corporate dinners, and high-profile social gatherings.',
-        amenities: ['AC', 'Catering', 'Event Coordinator', 'Parking', 'Stage', 'Photo Booth'],
-        ownerName: 'Meena Reddy',
-        ownerImage: AVATAR_IMAGES[2],
-        area: '7,000 sq ft',
-        availableDates: ['Mar 5', 'Mar 11', 'Mar 17', 'Mar 23'],
-    },
-];
-
 export const CATEGORIES = [
-    { id: '1', name: 'Wedding', icon: 'favorite' },
-    { id: '2', name: 'Party', icon: 'celebration' },
-    { id: '3', name: 'Corporate', icon: 'business' },
-    { id: '4', name: 'Banquet', icon: 'restaurant' },
-    { id: '5', name: 'Outdoor', icon: 'park' },
-    { id: '6', name: 'Conference', icon: 'meeting-room' },
+    { id: '1', name: 'Halls', icon: 'meeting-room' },
+    { id: '2', name: 'Salons', icon: 'spa' },
+    { id: '3', name: 'Decoration', icon: 'celebration' },
+    { id: '4', name: 'Catering', icon: 'restaurant' },
+    { id: '5', name: 'Mehndi', icon: 'brush' },
+    { id: '6', name: 'Travel', icon: 'flight' },
+    { id: '7', name: 'Water', icon: 'water-drop' },
+    { id: '8', name: 'Fashion', icon: 'checkroom' },
+    { id: '9', name: 'Jewelry', icon: 'diamond' },
+    { id: '10', name: 'Rentals', icon: 'car-rental' },
 ];
 
-export const FAVOURITE_CATEGORIES = [
-    { id: '1', name: 'Wedding Hall', icon: 'favorite' },
-    { id: '2', name: 'Birthday Party', icon: 'celebration' },
-    { id: '3', name: 'Corporate Events', icon: 'business' },
-    { id: '4', name: 'Banquet', icon: 'restaurant' },
-    { id: '5', name: 'Outdoor Garden', icon: 'park' },
-    { id: '6', name: 'Conference Room', icon: 'meeting-room' },
-    { id: '7', name: 'Engagement', icon: 'diamond' },
-    { id: '8', name: 'Reception', icon: 'people' },
-    { id: '9', name: 'Baby Shower', icon: 'child-care' },
-    { id: '10', name: 'Anniversary', icon: 'cake' },
-    { id: '11', name: 'Exhibition', icon: 'photo-library' },
-    { id: '12', name: 'Farewell', icon: 'flight-takeoff' },
-    { id: '13', name: 'Seminars', icon: 'school' },
-    { id: '14', name: 'Sports Events', icon: 'sports-soccer' },
-    { id: '15', name: 'Film Shoots', icon: 'movie' },
-    { id: '16', name: 'Photoshoots', icon: 'camera-alt' },
+export const FAVOURITE_CATEGORIES = CATEGORIES;
+
+export const VENUES: Venue[] = [
+    // Halls
+    {
+        id: 'h1', name: 'The Grand Ballroom', location: '14, Palace Road, Ahmedabad', city: 'Ahmedabad', pricePerHour: '₹5,000', pricePerDay: '₹40,000', image: VENUE_IMAGES.wedding1, category: 'Halls', capacity: 500, rating: 4.8, reviewCount: 128, description: 'A stunning ballroom perfect for events.', amenities: ['AC', 'Parking'], ownerName: 'Rajesh', ownerImage: AVATAR_IMAGES[0], area: '8,000 sq ft', availableDates: ['Mar 5', 'Mar 10'],
+    },
+    {
+        id: 'h2', name: 'Crystal Banquet Hall', location: 'MG Road, Mumbai', city: 'Mumbai', pricePerHour: '₹6,000', pricePerDay: '₹50,000', image: VENUE_IMAGES.banquet1, category: 'Halls', capacity: 600, rating: 4.5, reviewCount: 92, description: 'An opulent banquet hall.', amenities: ['AC', 'Stage'], ownerName: 'Sunita', ownerImage: AVATAR_IMAGES[0], area: '10,000 sq ft', availableDates: ['Mar 2', 'Mar 9'],
+    },
+    {
+        id: 'h3', name: 'Emerald Convention Hall', location: 'Jubilee Hills, Hyderabad', city: 'Hyderabad', pricePerHour: '₹4,500', pricePerDay: '₹36,000', image: VENUE_IMAGES.hall1, category: 'Halls', capacity: 400, rating: 4.7, reviewCount: 143, description: 'A sophisticated convention hall.', amenities: ['AC', 'Catering'], ownerName: 'Meena', ownerImage: AVATAR_IMAGES[2], area: '7,000 sq ft', availableDates: ['Mar 5', 'Mar 11'],
+    },
+    // Salons
+    {
+        id: 's1', name: 'Glamour Beauty Salon', location: 'Andheri West, Mumbai', city: 'Mumbai', pricePerHour: '₹2,000', pricePerDay: '₹12,000', image: VENUE_IMAGES.wedding2, category: 'Salons', capacity: 20, rating: 4.6, reviewCount: 50, description: 'Premium bridal packages and spa.', amenities: ['Air Conditioned', 'Spa Services'], ownerName: 'Priya', ownerImage: AVATAR_IMAGES[1], area: '1,500 sq ft', availableDates: ['Mar 1', 'Mar 2'],
+    },
+    {
+        id: 's2', name: 'Elite Hair Studio', location: 'South Ex, Delhi', city: 'Delhi', pricePerHour: '₹1,500', pricePerDay: '₹10,000', image: VENUE_IMAGES.wedding3, category: 'Salons', capacity: 15, rating: 4.4, reviewCount: 40, description: 'Top tier stylists.', amenities: ['WiFi', 'Coffee Bar'], ownerName: 'Anil', ownerImage: AVATAR_IMAGES[2], area: '1,200 sq ft', availableDates: ['Mar 5', 'Mar 10'],
+    },
+    {
+        id: 's3', name: 'Luxe Spa & Salon', location: 'Indiranagar, Bangalore', city: 'Bengaluru', pricePerHour: '₹2,500', pricePerDay: '₹15,000', image: VENUE_IMAGES.banquet2, category: 'Salons', capacity: 25, rating: 4.9, reviewCount: 110, description: 'Relaxing environment with top professionals.', amenities: ['Massage', 'Facials'], ownerName: 'Kavitha', ownerImage: AVATAR_IMAGES[3], area: '2,000 sq ft', availableDates: ['Mar 3', 'Mar 4'],
+    },
+    // Decoration
+    {
+        id: 'd1', name: 'Royal Decorators', location: 'Navrangpura, Ahmedabad', city: 'Ahmedabad', pricePerHour: '₹1,000', pricePerDay: '₹8,000', image: VENUE_IMAGES.garden1, category: 'Decoration', capacity: 0, rating: 4.7, reviewCount: 88, description: 'Exquisite floral and light decorations.', amenities: ['Floral', 'Lighting'], ownerName: 'Mahesh', ownerImage: AVATAR_IMAGES[0], area: 'N/A', availableDates: ['Any'],
+    },
+    {
+        id: 'd2', name: 'Elegant Events', location: 'Bandra, Mumbai', city: 'Mumbai', pricePerHour: '₹1,500', pricePerDay: '₹10,000', image: VENUE_IMAGES.party1, category: 'Decoration', capacity: 0, rating: 4.5, reviewCount: 60, description: 'Modern and theme-based decorations.', amenities: ['Themes', 'Props'], ownerName: 'Aditi', ownerImage: AVATAR_IMAGES[1], area: 'N/A', availableDates: ['Any'],
+    },
+    {
+        id: 'd3', name: 'Dream Wed Decor', location: 'Banjarahills, Hyderabad', city: 'Hyderabad', pricePerHour: '₹1,200', pricePerDay: '₹9,000', image: VENUE_IMAGES.rooftop1, category: 'Decoration', capacity: 0, rating: 4.8, reviewCount: 105, description: 'Bespoke event decorators.', amenities: ['Custom Decor'], ownerName: 'Vikram', ownerImage: AVATAR_IMAGES[2], area: 'N/A', availableDates: ['Any'],
+    },
+    // Catering
+    {
+        id: 'c1', name: 'Gourmet Delights', location: 'Vastrapur, Ahmedabad', city: 'Ahmedabad', pricePerHour: '₹500', pricePerDay: '₹15,000', image: VENUE_IMAGES.corporate1, category: 'Catering', capacity: 500, rating: 4.9, reviewCount: 200, description: 'Multi-cuisine premium catering.', amenities: ['Veg', 'Non-Veg'], ownerName: 'Sanjeev', ownerImage: AVATAR_IMAGES[3], area: 'N/A', availableDates: ['Any'],
+    },
+    {
+        id: 'c2', name: 'Royal Feast', location: 'Karol Bagh, Delhi', city: 'Delhi', pricePerHour: '₹400', pricePerDay: '₹12,000', image: VENUE_IMAGES.banquet1, category: 'Catering', capacity: 1000, rating: 4.6, reviewCount: 150, description: 'Traditional North Indian feasts.', amenities: ['Live Counters'], ownerName: 'Raman', ownerImage: AVATAR_IMAGES[0], area: 'N/A', availableDates: ['Any'],
+    },
+    {
+        id: 'c3', name: 'Spice Route', location: 'T Nagar, Chennai', city: 'Chennai', pricePerHour: '₹450', pricePerDay: '₹14,000', image: VENUE_IMAGES.hall2, category: 'Catering', capacity: 800, rating: 4.7, reviewCount: 180, description: 'Authentic South Indian & Continental food.', amenities: ['Buffet'], ownerName: 'Lakshmi', ownerImage: AVATAR_IMAGES[1], area: 'N/A', availableDates: ['Any'],
+    },
+    // Mehndi
+    {
+        id: 'm1', name: 'Bridal Henna Art', location: 'C G Road, Ahmedabad', city: 'Ahmedabad', pricePerHour: '₹800', pricePerDay: '₹5,000', image: VENUE_IMAGES.wedding1, category: 'Mehndi', capacity: 5, rating: 4.8, reviewCount: 85, description: 'Intricate bridal henna designs.', amenities: ['Organic Henna'], ownerName: 'Neha', ownerImage: AVATAR_IMAGES[2], area: 'N/A', availableDates: ['Any'],
+    },
+    {
+        id: 'm2', name: 'Mehendi by Sara', location: 'Juhu, Mumbai', city: 'Mumbai', pricePerHour: '₹1,000', pricePerDay: '₹6,000', image: VENUE_IMAGES.wedding2, category: 'Mehndi', capacity: 5, rating: 4.9, reviewCount: 120, description: 'Celebrity mehendi artist.', amenities: ['Arabic Designs'], ownerName: 'Sara', ownerImage: AVATAR_IMAGES[3], area: 'N/A', availableDates: ['Any'],
+    },
+    {
+        id: 'm3', name: 'Classic Mehndi', location: 'Malleswaram, Bangalore', city: 'Bengaluru', pricePerHour: '₹700', pricePerDay: '₹4,500', image: VENUE_IMAGES.wedding3, category: 'Mehndi', capacity: 10, rating: 4.6, reviewCount: 65, description: 'Traditional and fusion henna art.', amenities: ['Group Bookings'], ownerName: 'Anita', ownerImage: AVATAR_IMAGES[0], area: 'N/A', availableDates: ['Any'],
+    },
+    // Travel
+    {
+        id: 't1', name: 'Luxury Rides', location: 'Airport Road, Ahmedabad', city: 'Ahmedabad', pricePerHour: '₹1,200', pricePerDay: '₹8,000', image: VENUE_IMAGES.corporate2, category: 'Travel', capacity: 4, rating: 4.7, reviewCount: 90, description: 'Luxury car rentals for brides and grooms.', amenities: ['Chauffeur', 'Decorated'], ownerName: 'Amit', ownerImage: AVATAR_IMAGES[1], area: 'N/A', availableDates: ['Any'],
+    },
+    {
+        id: 't2', name: 'City Shuttles', location: 'Dadar, Mumbai', city: 'Mumbai', pricePerHour: '₹3,000', pricePerDay: '₹12,000', image: VENUE_IMAGES.hall1, category: 'Travel', capacity: 40, rating: 4.5, reviewCount: 110, description: 'Volvo buses for guest transportation.', amenities: ['AC', 'Music System'], ownerName: 'Raj', ownerImage: AVATAR_IMAGES[2], area: 'N/A', availableDates: ['Any'],
+    },
+    {
+        id: 't3', name: 'Elite Transport Co.', location: 'CP, Delhi', city: 'Delhi', pricePerHour: '₹1,500', pricePerDay: '₹10,000', image: VENUE_IMAGES.party1, category: 'Travel', capacity: 7, rating: 4.8, reviewCount: 140, description: 'Premium SUVs for families.', amenities: ['AC', 'Water'], ownerName: 'Sanjay', ownerImage: AVATAR_IMAGES[3], area: 'N/A', availableDates: ['Any'],
+    },
+    // Water
+    {
+        id: 'w1', name: 'PureAqua Suppliers', location: 'Gota, Ahmedabad', city: 'Ahmedabad', pricePerHour: '₹100', pricePerDay: '₹1,000', image: VENUE_IMAGES.garden1, category: 'Water', capacity: 0, rating: 4.6, reviewCount: 45, description: 'Premium bottled water supply for events.', amenities: ['Dispensers'], ownerName: 'Jatin', ownerImage: AVATAR_IMAGES[0], area: 'N/A', availableDates: ['Any'],
+    },
+    {
+        id: 'w2', name: 'Crystal Clear Water', location: 'Powai, Mumbai', city: 'Mumbai', pricePerHour: '₹150', pricePerDay: '₹1,500', image: VENUE_IMAGES.rooftop1, category: 'Water', capacity: 0, rating: 4.8, reviewCount: 60, description: 'Mineral water and ice supply.', amenities: ['Ice Cubes'], ownerName: 'Deepak', ownerImage: AVATAR_IMAGES[1], area: 'N/A', availableDates: ['Any'],
+    },
+    {
+        id: 'w3', name: 'Aqua Fresh', location: 'Koramangala, Bangalore', city: 'Bengaluru', pricePerHour: '₹120', pricePerDay: '₹1,200', image: VENUE_IMAGES.hall2, category: 'Water', capacity: 0, rating: 4.7, reviewCount: 55, description: 'Bulk water jar deliveries.', amenities: ['Chilled Jars'], ownerName: 'Kiran', ownerImage: AVATAR_IMAGES[2], area: 'N/A', availableDates: ['Any'],
+    },
+    // Fashion
+    {
+        id: 'f1', name: 'Bridal Couture', location: 'Sindhu Bhavan, Ahmedabad', city: 'Ahmedabad', pricePerHour: '₹0', pricePerDay: '₹25,000', image: VENUE_IMAGES.wedding1, category: 'Fashion', capacity: 0, rating: 4.9, reviewCount: 175, description: 'Designer lehengas and suits.', amenities: ['Fittings'], ownerName: 'Riya', ownerImage: AVATAR_IMAGES[3], area: 'N/A', availableDates: ['Any'],
+    },
+    {
+        id: 'f2', name: 'Groom Studios', location: 'Santa Cruz, Mumbai', city: 'Mumbai', pricePerHour: '₹0', pricePerDay: '₹20,000', image: VENUE_IMAGES.corporate1, category: 'Fashion', capacity: 0, rating: 4.7, reviewCount: 130, description: 'Sherwanis and bespoke suits.', amenities: ['Custom Tailoring'], ownerName: 'Vijay', ownerImage: AVATAR_IMAGES[0], area: 'N/A', availableDates: ['Any'],
+    },
+    {
+        id: 'f3', name: 'Ethnic Elegance', location: 'Lajpat Nagar, Delhi', city: 'Delhi', pricePerHour: '₹0', pricePerDay: '₹15,000', image: VENUE_IMAGES.wedding3, category: 'Fashion', capacity: 0, rating: 4.6, reviewCount: 95, description: 'Pre-wedding photoshoot outfits.', amenities: ['Rentals Available'], ownerName: 'Simran', ownerImage: AVATAR_IMAGES[1], area: 'N/A', availableDates: ['Any'],
+    },
+    // Jewelry
+    {
+        id: 'j1', name: 'Sparkle Jewellers', location: 'C G Road, Ahmedabad', city: 'Ahmedabad', pricePerHour: '₹0', pricePerDay: '₹50,000', image: VENUE_IMAGES.wedding2, category: 'Jewelry', capacity: 0, rating: 4.8, reviewCount: 210, description: 'Bridal gold and diamond jewelry.', amenities: ['Hallmarked'], ownerName: 'Prakash', ownerImage: AVATAR_IMAGES[2], area: 'N/A', availableDates: ['Any'],
+    },
+    {
+        id: 'j2', name: 'Diamond World', location: 'Zaveri Bazaar, Mumbai', city: 'Mumbai', pricePerHour: '₹0', pricePerDay: '₹75,000', image: VENUE_IMAGES.banquet2, category: 'Jewelry', capacity: 0, rating: 4.9, reviewCount: 300, description: 'Exquisite diamond necklaces and rings.', amenities: ['Certificates'], ownerName: 'Nitin', ownerImage: AVATAR_IMAGES[3], area: 'N/A', availableDates: ['Any'],
+    },
+    {
+        id: 'j3', name: 'Royal Ornaments', location: 'Jayanagar, Bangalore', city: 'Bengaluru', pricePerHour: '₹0', pricePerDay: '₹40,000', image: VENUE_IMAGES.wedding1, category: 'Jewelry', capacity: 0, rating: 4.7, reviewCount: 155, description: 'Traditional antique jewelry collections.', amenities: ['Custom Designs'], ownerName: 'Radhika', ownerImage: AVATAR_IMAGES[0], area: 'N/A', availableDates: ['Any'],
+    },
+    // Rentals
+    {
+        id: 'r1', name: 'Event Props & Co.', location: 'SG Highway, Ahmedabad', city: 'Ahmedabad', pricePerHour: '₹500', pricePerDay: '₹5,000', image: VENUE_IMAGES.party1, category: 'Rentals', capacity: 0, rating: 4.5, reviewCount: 70, description: 'Furniture and event props rental.', amenities: ['Delivery'], ownerName: 'Harsh', ownerImage: AVATAR_IMAGES[1], area: 'N/A', availableDates: ['Any'],
+    },
+    {
+        id: 'r2', name: 'Sound & Light Rentals', location: 'Goregaon, Mumbai', city: 'Mumbai', pricePerHour: '₹1,500', pricePerDay: '₹15,000', image: VENUE_IMAGES.corporate2, category: 'Rentals', capacity: 0, rating: 4.8, reviewCount: 125, description: 'DJ setup, speakers, and intelligent lighting.', amenities: ['Setup included'], ownerName: 'Sameer', ownerImage: AVATAR_IMAGES[2], area: 'N/A', availableDates: ['Any'],
+    },
+    {
+        id: 'r3', name: 'Tent House Rentals', location: 'Rohini, Delhi', city: 'Delhi', pricePerHour: '₹2,000', pricePerDay: '₹20,000', image: VENUE_IMAGES.garden1, category: 'Rentals', capacity: 0, rating: 4.6, reviewCount: 90, description: 'Tents, AC units, and outdoor seating.', amenities: ['Installation'], ownerName: 'Puneet', ownerImage: AVATAR_IMAGES[3], area: 'N/A', availableDates: ['Any'],
+    },
 ];

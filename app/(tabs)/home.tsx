@@ -1,6 +1,6 @@
 import { router } from "expo-router";
 import { MaterialIcons } from "@expo/vector-icons";
-import { Bell, ChevronDown, Heart, MapPin, Navigation, Search, SlidersHorizontal, Star, Users, X } from "lucide-react-native";
+import { Bell, ChevronDown, ChevronRight, Heart, MapPin, Navigation, Search, SlidersHorizontal, Star, Users, X } from "lucide-react-native";
 import React, { useState } from "react";
 import {
   FlatList,
@@ -44,14 +44,12 @@ const POPULAR_CITIES = ["Mumbai", "Delhi", "Bengaluru", "Jaipur"];
 
 export default function HomeScreen() {
   const insets = useSafeAreaInsets();
-  const [selectedCategory, setSelectedCategory] = useState<string>("1");
+  const [selectedCategory, setSelectedCategory] = useState<string>("all");
   const [locationModalVisible, setLocationModalVisible] = useState(false);
   const [selectedLocation, setSelectedLocation] = useState("Ahmedabad, Gujarat");
   const [locationSearch, setLocationSearch] = useState("");
 
-  const featuredVenues = VENUES.slice(0, 3);
-  const popularVenues = VENUES.slice(2, 5);
-  const nearbyVenues = VENUES.slice(3);
+  // Removed static featured/popular/nearby arrays
 
   const filteredCities = locationSearch.trim()
     ? CITIES.filter(
@@ -213,14 +211,18 @@ export default function HomeScreen() {
         </View>
 
         <ScrollView horizontal showsHorizontalScrollIndicator={false} style={styles.categoriesRow}>
-          {CATEGORIES.map((cat) => (
+          {[{ id: 'all', name: 'All', icon: 'apps' }, ...CATEGORIES].map((cat) => (
             <TouchableOpacity
               key={cat.id}
               style={[
                 styles.categoryChip,
                 selectedCategory === cat.id && styles.categoryChipActive,
               ]}
-              onPress={() => setSelectedCategory(cat.id)}
+              onPress={() => {
+                if (cat.id !== 'all') {
+                  router.push({ pathname: "/category-venues" as any, params: { category: cat.name } });
+                }
+              }}
             >
               <MaterialIcons
                 name={cat.icon as any}
@@ -239,113 +241,62 @@ export default function HomeScreen() {
           ))}
         </ScrollView>
 
-        <View style={styles.sectionHeader}>
-          <Text style={styles.sectionTitle}>Featured Venues</Text>
-          <TouchableOpacity>
-            <Text style={styles.seeAll}>See All</Text>
-          </TouchableOpacity>
-        </View>
+        {CATEGORIES.map((category) => {
+          const categoryVenues = VENUES.filter(v => v.category === category.name);
+          if (categoryVenues.length === 0) return null;
 
-        {featuredVenues.map((venue) => (
-          <TouchableOpacity
-            key={venue.id}
-            style={styles.featuredCard}
-            onPress={() => router.push({ pathname: "/venue-detail", params: { id: venue.id } })}
-            activeOpacity={0.7}
-          >
-            <Image source={{ uri: venue.image }} style={styles.featuredImage} />
-            <View style={styles.featuredInfo}>
-              <Text style={styles.featuredTitle} numberOfLines={2}>{venue.name}</Text>
-              <View style={styles.featuredLocationRow}>
-                <MapPin size={12} color={Colors.textSecondary} />
-                <Text style={styles.featuredLocation}>{venue.city}</Text>
-              </View>
-              <View style={styles.featuredFooter}>
-                <View style={styles.ratingRow}>
-                  <Star size={12} color="#FFB800" fill="#FFB800" />
-                  <Text style={styles.ratingText}>{venue.rating}</Text>
-                </View>
-                <TouchableOpacity
-                  style={styles.bookButton}
-                  onPress={() => router.push({ pathname: "/venue-detail", params: { id: venue.id } })}
-                >
-                  <Text style={styles.bookText}>Book</Text>
+          return (
+            <View key={category.id}>
+              <View style={styles.sectionHeader}>
+                <Text style={styles.sectionTitle}>{category.name}</Text>
+                <TouchableOpacity style={styles.seeMoreButton} onPress={() => router.push({ pathname: "/category-venues" as any, params: { category: category.name } })}>
+                  <Text style={styles.seeAll}>See More</Text>
+                  <ChevronRight size={16} color={Colors.primary} />
                 </TouchableOpacity>
               </View>
+
+              <ScrollView horizontal showsHorizontalScrollIndicator={false} style={styles.popularScroll}>
+                {categoryVenues.map((venue) => (
+                  <TouchableOpacity
+                    key={venue.id}
+                    style={styles.popularCard}
+                    onPress={() => router.push({ pathname: "/venue-detail", params: { id: venue.id } })}
+                    activeOpacity={0.8}
+                  >
+                    <Image source={{ uri: venue.image }} style={styles.popularImage} />
+                    <View style={styles.popularOverlay}>
+                      <View style={styles.popularBadge}>
+                        <Text style={styles.popularBadgeText}>{venue.category}</Text>
+                      </View>
+                      <TouchableOpacity style={styles.popularHeart}>
+                        <Heart size={18} color={Colors.primary} fill={Colors.primary} />
+                      </TouchableOpacity>
+                      <View style={styles.popularBottom}>
+                        {venue.capacity > 0 && (
+                          <View style={styles.capacityBadge}>
+                            <Users size={11} color={Colors.white} />
+                            <Text style={styles.capacityText}>Up to {venue.capacity}</Text>
+                          </View>
+                        )}
+                      </View>
+                    </View>
+                    <View style={styles.popularDetails}>
+                      <Text style={styles.popularTitle} numberOfLines={1}>{venue.name}</Text>
+                      <Text style={styles.popularCity}>{venue.city}</Text>
+                      <View style={styles.popularFooter}>
+                        <View style={styles.ratingRow}>
+                          <Star size={12} color="#FFB800" fill="#FFB800" />
+                          <Text style={styles.ratingText}>{venue.rating} ({venue.reviewCount})</Text>
+                        </View>
+                        <Text style={styles.popularPrice}>{venue.pricePerDay}</Text>
+                      </View>
+                    </View>
+                  </TouchableOpacity>
+                ))}
+              </ScrollView>
             </View>
-          </TouchableOpacity>
-        ))}
-
-        <View style={styles.sectionHeader}>
-          <Text style={styles.sectionTitle}>Popular Halls</Text>
-          <TouchableOpacity>
-            <Text style={styles.seeAll}>See All</Text>
-          </TouchableOpacity>
-        </View>
-
-        <ScrollView horizontal showsHorizontalScrollIndicator={false} style={styles.popularScroll}>
-          {popularVenues.map((venue) => (
-            <TouchableOpacity
-              key={venue.id}
-              style={styles.popularCard}
-              onPress={() => router.push({ pathname: "/venue-detail", params: { id: venue.id } })}
-              activeOpacity={0.8}
-            >
-              <Image source={{ uri: venue.image }} style={styles.popularImage} />
-              <View style={styles.popularOverlay}>
-                <View style={styles.popularBadge}>
-                  <Text style={styles.popularBadgeText}>{venue.category}</Text>
-                </View>
-                <TouchableOpacity style={styles.popularHeart}>
-                  <Heart size={18} color={Colors.primary} fill={Colors.primary} />
-                </TouchableOpacity>
-                <View style={styles.popularBottom}>
-                  <View style={styles.capacityBadge}>
-                    <Users size={11} color={Colors.white} />
-                    <Text style={styles.capacityText}>Up to {venue.capacity}</Text>
-                  </View>
-                </View>
-              </View>
-              <View style={styles.popularDetails}>
-                <Text style={styles.popularTitle} numberOfLines={1}>{venue.name}</Text>
-                <Text style={styles.popularCity}>{venue.city}</Text>
-                <View style={styles.popularFooter}>
-                  <View style={styles.ratingRow}>
-                    <Star size={12} color="#FFB800" fill="#FFB800" />
-                    <Text style={styles.ratingText}>{venue.rating} ({venue.reviewCount})</Text>
-                  </View>
-                  <Text style={styles.popularPrice}>{venue.pricePerDay}</Text>
-                </View>
-              </View>
-            </TouchableOpacity>
-          ))}
-        </ScrollView>
-
-        <View style={styles.sectionHeader}>
-          <Text style={styles.sectionTitle}>Nearby Venues</Text>
-          <TouchableOpacity>
-            <Text style={styles.seeAll}>See All</Text>
-          </TouchableOpacity>
-        </View>
-
-        {nearbyVenues.map((venue) => (
-          <TouchableOpacity
-            key={venue.id}
-            style={styles.nearbyCard}
-            onPress={() => router.push({ pathname: "/venue-detail", params: { id: venue.id } })}
-            activeOpacity={0.7}
-          >
-            <Image source={{ uri: venue.image }} style={styles.nearbyImage} />
-            <View style={styles.nearbyInfo}>
-              <Text style={styles.nearbyTitle} numberOfLines={2}>{venue.name}</Text>
-              <View style={styles.nearbyLocationRow}>
-                <MapPin size={12} color={Colors.textSecondary} />
-                <Text style={styles.nearbyLocation}>{venue.city}</Text>
-              </View>
-            </View>
-            <Text style={styles.nearbyPrice}>{venue.pricePerDay}</Text>
-          </TouchableOpacity>
-        ))}
+          );
+        })}
       </ScrollView>
     </View>
   );
@@ -611,6 +562,11 @@ const styles = StyleSheet.create({
     fontSize: 14,
     color: Colors.primary,
     fontWeight: "600" as const,
+  },
+  seeMoreButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 2,
   },
   featuredCard: {
     flexDirection: "row",

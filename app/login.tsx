@@ -1,5 +1,5 @@
 import { router } from "expo-router";
-import { Eye, EyeOff, Lock, User } from "lucide-react-native";
+import { Eye, EyeOff, Lock, Mail } from "lucide-react-native";
 import React, { useState } from "react";
 import {
   Image,
@@ -16,7 +16,7 @@ import { useSafeAreaInsets } from "react-native-safe-area-context";
 import Colors from "@/constants/colors";
 
 export default function LoginScreen() {
-  const [username, setUsername] = useState<string>("");
+  const [email, setEmail] = useState<string>("");
   const [password, setPassword] = useState<string>("");
   const [showPassword, setShowPassword] = useState<boolean>(false);
   const insets = useSafeAreaInsets();
@@ -44,14 +44,17 @@ export default function LoginScreen() {
           <Text style={styles.subtitle}>Use Credentials to access your account</Text>
 
           <View style={styles.inputContainer}>
-            <User size={20} color={Colors.textSecondary} />
+            <Mail size={20} color={Colors.textSecondary} />
             <TextInput
               style={styles.input}
-              placeholder="Enter Username"
+              placeholder="Enter Email Address"
               placeholderTextColor={Colors.textTertiary}
-              value={username}
-              onChangeText={setUsername}
-              testID="login-username"
+              value={email}
+              onChangeText={setEmail}
+              keyboardType="email-address"
+              autoCapitalize="none"
+              autoCorrect={false}
+              testID="login-email"
             />
           </View>
 
@@ -96,15 +99,6 @@ export default function LoginScreen() {
             <Text style={styles.orText}>Or</Text>
             <View style={styles.orLine} />
           </View>
-
-          <TouchableOpacity
-            style={styles.socialButton}
-            activeOpacity={0.7}
-            onPress={() => router.replace("/(tabs)/home")}
-          >
-            <Text style={styles.socialIcon}>f</Text>
-            <Text style={styles.socialText}>Login with Facebook</Text>
-          </TouchableOpacity>
 
           <TouchableOpacity
             style={styles.socialButton}

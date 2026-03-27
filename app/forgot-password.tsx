@@ -1,65 +1,75 @@
-import { router } from "expo-router";
 import { safeBack } from "@/constants/navigation";
-import { ChevronLeft, Mail, MessageCircle } from "lucide-react-native";
+import { ChevronLeft, Mail } from "lucide-react-native";
 import React, { useState } from "react";
-import { StyleSheet, Text, TouchableOpacity, View } from "react-native";
+import {
+  Alert,
+  KeyboardAvoidingView,
+  Platform,
+  StyleSheet,
+  Text,
+  TextInput,
+  TouchableOpacity,
+  View,
+} from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import Colors from "@/constants/colors";
 
 export default function ForgotPasswordScreen() {
-  const [selectedMethod, setSelectedMethod] = useState<"sms" | "email">("sms");
+  const [email, setEmail] = useState("");
   const insets = useSafeAreaInsets();
 
+  const handleSend = () => {
+    if (!email.trim()) {
+      Alert.alert("Required", "Please enter your email address.");
+      return;
+    }
+    Alert.alert(
+      "Email Sent",
+      "A password reset link has been sent to your email. Please check your inbox.",
+      [{ text: "OK", onPress: () => safeBack("/login") }]
+    );
+  };
+
   return (
-    <View style={[styles.container, { paddingTop: insets.top, paddingBottom: insets.bottom }]}>
+    <KeyboardAvoidingView
+      behavior={Platform.OS === "ios" ? "padding" : "height"}
+      style={[styles.container, { paddingTop: insets.top, paddingBottom: insets.bottom }]}
+    >
       <TouchableOpacity onPress={() => safeBack("/login")} style={styles.backButton}>
         <ChevronLeft size={24} color={Colors.text} />
       </TouchableOpacity>
 
       <Text style={styles.title}>Forgot Password</Text>
       <Text style={styles.subtitle}>
-        Select which contact details should we use to reset your password
+        Enter your email address and we'll send you a link to reset your password.
       </Text>
 
-      <TouchableOpacity
-        style={[styles.methodCard, selectedMethod === "sms" && styles.methodCardActive]}
-        onPress={() => setSelectedMethod("sms")}
-        activeOpacity={0.7}
-      >
-        <View style={[styles.methodIcon, selectedMethod === "sms" && styles.methodIconActive]}>
-          <MessageCircle size={22} color={selectedMethod === "sms" ? Colors.white : Colors.textSecondary} />
-        </View>
-        <View style={styles.methodInfo}>
-          <Text style={styles.methodLabel}>Send OTP via SMS</Text>
-          <Text style={styles.methodValue}>(406) 555-0120</Text>
-        </View>
-      </TouchableOpacity>
-
-      <TouchableOpacity
-        style={[styles.methodCard, selectedMethod === "email" && styles.methodCardActive]}
-        onPress={() => setSelectedMethod("email")}
-        activeOpacity={0.7}
-      >
-        <View style={[styles.methodIcon, selectedMethod === "email" && styles.methodIconActive]}>
-          <Mail size={22} color={selectedMethod === "email" ? Colors.white : Colors.textSecondary} />
-        </View>
-        <View style={styles.methodInfo}>
-          <Text style={styles.methodLabel}>Send OTP via Email</Text>
-          <Text style={styles.methodValue}>tanya.hill@example.com</Text>
-        </View>
-      </TouchableOpacity>
+      <View style={styles.inputContainer}>
+        <Mail size={20} color={Colors.textSecondary} />
+        <TextInput
+          style={styles.input}
+          placeholder="Enter your email"
+          placeholderTextColor={Colors.textTertiary}
+          value={email}
+          onChangeText={setEmail}
+          keyboardType="email-address"
+          autoCapitalize="none"
+          autoCorrect={false}
+          testID="forgot-email"
+        />
+      </View>
 
       <View style={styles.spacer} />
 
       <TouchableOpacity
         style={styles.primaryButton}
-        onPress={() => router.push("/enter-otp")}
+        onPress={handleSend}
         activeOpacity={0.8}
         testID="forgot-continue"
       >
-        <Text style={styles.primaryButtonText}>Continue</Text>
+        <Text style={styles.primaryButtonText}>Send Reset Link</Text>
       </TouchableOpacity>
-    </View>
+    </KeyboardAvoidingView>
   );
 }
 
@@ -88,41 +98,20 @@ const styles = StyleSheet.create({
     lineHeight: 20,
     marginBottom: 28,
   },
-  methodCard: {
+  inputContainer: {
     flexDirection: "row",
     alignItems: "center",
-    borderWidth: 1.5,
+    borderWidth: 1,
     borderColor: Colors.inputBorder,
     borderRadius: 16,
-    padding: 18,
-    marginBottom: 16,
-    gap: 14,
+    paddingHorizontal: 16,
+    paddingVertical: 14,
+    backgroundColor: Colors.white,
+    gap: 12,
   },
-  methodCardActive: {
-    borderColor: Colors.primary,
-  },
-  methodIcon: {
-    width: 44,
-    height: 44,
-    borderRadius: 22,
-    backgroundColor: Colors.surface,
-    alignItems: "center",
-    justifyContent: "center",
-  },
-  methodIconActive: {
-    backgroundColor: Colors.primary,
-  },
-  methodInfo: {
+  input: {
     flex: 1,
-  },
-  methodLabel: {
-    fontSize: 12,
-    color: Colors.textSecondary,
-    marginBottom: 4,
-  },
-  methodValue: {
     fontSize: 15,
-    fontWeight: "600" as const,
     color: Colors.text,
   },
   spacer: {

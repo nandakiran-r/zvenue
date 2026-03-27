@@ -3,6 +3,7 @@ import { safeBack } from "@/constants/navigation";
 import { ChevronLeft, Eye, EyeOff, Lock, Mail, User } from "lucide-react-native";
 import React, { useState } from "react";
 import {
+  Alert,
   Image,
   KeyboardAvoidingView,
   Platform,
@@ -22,6 +23,14 @@ export default function SignupScreen() {
   const [password, setPassword] = useState<string>("");
   const [showPassword, setShowPassword] = useState<boolean>(false);
   const insets = useSafeAreaInsets();
+
+  const handleSignup = () => {
+    Alert.alert(
+      "Confirmation Email Sent",
+      "A verification email has been sent to your inbox. Please verify and login.",
+      [{ text: "OK", onPress: () => router.replace("/login") }]
+    );
+  };
 
   return (
     <View style={[styles.container, { paddingTop: insets.top }]}>
@@ -97,7 +106,7 @@ export default function SignupScreen() {
 
           <TouchableOpacity
             style={styles.primaryButton}
-            onPress={() => router.replace("/create-username")}
+            onPress={handleSignup}
             activeOpacity={0.8}
             testID="signup-button"
           >
@@ -111,13 +120,8 @@ export default function SignupScreen() {
           </View>
 
           <TouchableOpacity style={styles.socialButton} activeOpacity={0.7}>
-            <Text style={styles.socialIcon}>f</Text>
-            <Text style={styles.socialText}>Login with Facebook</Text>
-          </TouchableOpacity>
-
-          <TouchableOpacity style={styles.socialButton} activeOpacity={0.7}>
             <Text style={styles.socialIcon}>G</Text>
-            <Text style={styles.socialText}>Login with Google</Text>
+            <Text style={styles.socialText}>Sign up with Google</Text>
           </TouchableOpacity>
 
           <View style={styles.bottomRow}>

@@ -1,5 +1,5 @@
 import { router } from "expo-router";
-import { Bell, ChevronRight, CreditCard, Heart, HelpCircle, LogOut, Settings, User } from "lucide-react-native";
+import { Bell, ChevronRight, HelpCircle, LogOut, Settings, User } from "lucide-react-native";
 import React from "react";
 import {
   Image,
@@ -15,9 +15,7 @@ import { PROFILE_IMAGES } from "@/mocks/venues";
 
 const MENU_ITEMS = [
   { icon: User, label: "Edit Profile", route: "/edit-profile" },
-  { icon: CreditCard, label: "Payment Methods", route: "" },
   { icon: Bell, label: "Notifications", route: "" },
-  { icon: Heart, label: "My Favorites", route: "" },
   { icon: Settings, label: "Settings", route: "" },
   { icon: HelpCircle, label: "Help & Support", route: "" },
 ];

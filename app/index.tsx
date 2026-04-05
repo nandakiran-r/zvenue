@@ -1,3 +1,4 @@
+import { useAuth } from "@/context/AuthContext";
 import { router } from "expo-router";
 import React, { useEffect, useRef } from "react";
 import { Animated, Image, StyleSheet, View } from "react-native";
@@ -6,6 +7,7 @@ import Colors from "@/constants/colors";
 export default function SplashScreen() {
   const scaleAnim = useRef(new Animated.Value(0.5)).current;
   const opacityAnim = useRef(new Animated.Value(0)).current;
+  const { isLoaded, isSignedIn } = useAuth();
 
   useEffect(() => {
     Animated.parallel([
@@ -22,10 +24,16 @@ export default function SplashScreen() {
     ]).start();
 
     const timer = setTimeout(() => {
-      router.replace("/onboarding");
+      if (isLoaded) {
+        if (isSignedIn) {
+          router.replace("/(tabs)/home");
+        } else {
+          router.replace("/onboarding");
+        }
+      }
     }, 2500);
     return () => clearTimeout(timer);
-  }, [scaleAnim, opacityAnim]);
+  }, [scaleAnim, opacityAnim, isLoaded, isSignedIn]);
 
   return (
     <View style={styles.container}>

@@ -1,9 +1,20 @@
-import { Tabs } from "expo-router";
+import { useAuth } from "@/context/AuthContext";
+import { Redirect, Tabs } from "expo-router";
 import { Heart, Home, Search, User } from "lucide-react-native";
 import React from "react";
 import Colors from "@/constants/colors";
 
 export default function TabLayout() {
+  const { isSignedIn, isLoaded } = useAuth();
+
+  // Wait for Clerk to load before deciding
+  if (!isLoaded) return null;
+
+  // Redirect unauthenticated users to login
+  if (!isSignedIn) {
+    return <Redirect href="/login" />;
+  }
+
   return (
     <Tabs
       screenOptions={{

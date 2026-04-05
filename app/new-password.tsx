@@ -1,8 +1,12 @@
-import { router } from "expo-router";
+import { useSignIn } from "@clerk/clerk-expo";
+import { useAuth } from "@/context/AuthContext";
+import { router, useLocalSearchParams } from "expo-router";
 import { safeBack } from "@/constants/navigation";
 import { ChevronLeft, Eye, EyeOff, Lock } from "lucide-react-native";
-import React, { useState } from "react";
+import React, { useCallback, useState } from "react";
 import {
+  ActivityIndicator,
+  Alert,
   KeyboardAvoidingView,
   Platform,
   StyleSheet,
@@ -15,11 +19,53 @@ import { useSafeAreaInsets } from "react-native-safe-area-context";
 import Colors from "@/constants/colors";
 
 export default function NewPasswordScreen() {
+  const { code, email } = useLocalSearchParams<{ code: string; email: string }>();
   const [password, setPassword] = useState<string>("");
   const [confirmPassword, setConfirmPassword] = useState<string>("");
   const [showPassword, setShowPassword] = useState<boolean>(false);
   const [showConfirm, setShowConfirm] = useState<boolean>(false);
+  const [loading, setLoading] = useState<boolean>(false);
   const insets = useSafeAreaInsets();
+
+  const { signIn, isLoaded } = useSignIn();
+  const { signOut } = useAuth();
+
+  const handleSave = useCallback(async () => {
+    if (!isLoaded || !signIn) return;
+    if (!password.trim()) {
+      Alert.alert("Required", "Please enter a new password.");
+      return;
+    }
+    if (password !== confirmPassword) {
+      Alert.alert("Mismatch", "Passwords do not match.");
+      return;
+    }
+    if (password.length < 8) {
+      Alert.alert("Too Short", "Password must be at least 8 characters.");
+      return;
+    }
+
+    setLoading(true);
+    try {
+      const result = await signIn.attemptFirstFactor({
+        strategy: "reset_password_email_code",
+        code: code ?? "",
+        password,
+      });
+
+      if (result.status === "complete") {
+        await signOut();
+        router.replace("/password-reset-success");
+      } else {
+        Alert.alert("Error", "Could not reset password. Please try again.");
+      }
+    } catch (err: any) {
+      const message = err?.errors?.[0]?.longMessage ?? "Password reset failed. Please try again.";
+      Alert.alert("Error", message);
+    } finally {
+      setLoading(false);
+    }
+  }, [isLoaded, signIn, signOut, code, password, confirmPassword]);
 
   return (
     <View style={[styles.container, { paddingTop: insets.top, paddingBottom: insets.bottom }]}>
@@ -32,7 +78,7 @@ export default function NewPasswordScreen() {
         </TouchableOpacity>
 
         <Text style={styles.title}>Enter New Password</Text>
-        <Text style={styles.subtitle}>Please enter new password</Text>
+        <Text style={styles.subtitle}>Please enter your new password</Text>
 
         <View style={styles.inputContainer}>
           <Lock size={20} color={Colors.textSecondary} />
@@ -77,12 +123,17 @@ export default function NewPasswordScreen() {
         <View style={styles.spacer} />
 
         <TouchableOpacity
-          style={styles.primaryButton}
-          onPress={() => router.push("/password-reset-success")}
+          style={[styles.primaryButton, loading && styles.disabledButton]}
+          onPress={handleSave}
           activeOpacity={0.8}
+          disabled={loading}
           testID="save-password"
         >
-          <Text style={styles.primaryButtonText}>Save</Text>
+          {loading ? (
+            <ActivityIndicator color={Colors.white} />
+          ) : (
+            <Text style={styles.primaryButtonText}>Save</Text>
+          )}
         </TouchableOpacity>
       </KeyboardAvoidingView>
     </View>
@@ -142,6 +193,9 @@ const styles = StyleSheet.create({
     paddingVertical: 18,
     alignItems: "center",
     marginBottom: 16,
+  },
+  disabledButton: {
+    opacity: 0.6,
   },
   primaryButtonText: {
     color: Colors.white,

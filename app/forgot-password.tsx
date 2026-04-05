@@ -1,7 +1,9 @@
+import { useSignIn } from "@clerk/clerk-expo";
 import { safeBack } from "@/constants/navigation";
 import { ChevronLeft, Mail } from "lucide-react-native";
-import React, { useState } from "react";
+import React, { useCallback, useState } from "react";
 import {
+  ActivityIndicator,
   Alert,
   KeyboardAvoidingView,
   Platform,
@@ -12,23 +14,42 @@ import {
   View,
 } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
+import { router } from "expo-router";
 import Colors from "@/constants/colors";
 
 export default function ForgotPasswordScreen() {
   const [email, setEmail] = useState("");
+  const [loading, setLoading] = useState(false);
   const insets = useSafeAreaInsets();
 
-  const handleSend = () => {
+  const { signIn, isLoaded } = useSignIn();
+
+  const handleSend = useCallback(async () => {
+    if (!isLoaded || !signIn) return;
     if (!email.trim()) {
       Alert.alert("Required", "Please enter your email address.");
       return;
     }
-    Alert.alert(
-      "Email Sent",
-      "A password reset link has been sent to your email. Please check your inbox.",
-      [{ text: "OK", onPress: () => safeBack("/login") }]
-    );
-  };
+
+    setLoading(true);
+    try {
+      await signIn.create({
+        strategy: "reset_password_email_code",
+        identifier: email.trim(),
+      });
+
+      // Navigate to OTP screen in password-reset mode
+      router.push({
+        pathname: "/enter-otp",
+        params: { mode: "reset", email: email.trim() },
+      });
+    } catch (err: any) {
+      const message = err?.errors?.[0]?.longMessage ?? "Could not send reset email. Please try again.";
+      Alert.alert("Error", message);
+    } finally {
+      setLoading(false);
+    }
+  }, [isLoaded, signIn, email]);
 
   return (
     <KeyboardAvoidingView
@@ -41,7 +62,7 @@ export default function ForgotPasswordScreen() {
 
       <Text style={styles.title}>Forgot Password</Text>
       <Text style={styles.subtitle}>
-        Enter your email address and we'll send you a link to reset your password.
+        Enter your email address and we'll send you a code to reset your password.
       </Text>
 
       <View style={styles.inputContainer}>
@@ -62,12 +83,17 @@ export default function ForgotPasswordScreen() {
       <View style={styles.spacer} />
 
       <TouchableOpacity
-        style={styles.primaryButton}
+        style={[styles.primaryButton, loading && styles.disabledButton]}
         onPress={handleSend}
         activeOpacity={0.8}
+        disabled={loading}
         testID="forgot-continue"
       >
-        <Text style={styles.primaryButtonText}>Send Reset Link</Text>
+        {loading ? (
+          <ActivityIndicator color={Colors.white} />
+        ) : (
+          <Text style={styles.primaryButtonText}>Send Reset Code</Text>
+        )}
       </TouchableOpacity>
     </KeyboardAvoidingView>
   );
@@ -123,6 +149,9 @@ const styles = StyleSheet.create({
     paddingVertical: 18,
     alignItems: "center",
     marginBottom: 16,
+  },
+  disabledButton: {
+    opacity: 0.6,
   },
   primaryButtonText: {
     color: Colors.white,

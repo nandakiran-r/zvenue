@@ -1,7 +1,12 @@
-import { router } from "expo-router";
+import { useSignIn, useOAuth } from "@clerk/clerk-expo";
+import { router, useFocusEffect } from "expo-router";
+import { useAuth } from "@/context/AuthContext";
+import * as WebBrowser from "expo-web-browser";
 import { Eye, EyeOff, Lock, Mail } from "lucide-react-native";
-import React, { useState } from "react";
+import React, { useCallback, useState } from "react";
 import {
+  ActivityIndicator,
+  Alert,
   Image,
   KeyboardAvoidingView,
   Platform,
@@ -15,11 +20,74 @@ import {
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import Colors from "@/constants/colors";
 
+// Required for OAuth browser flow to close properly
+WebBrowser.maybeCompleteAuthSession();
+
 export default function LoginScreen() {
   const [email, setEmail] = useState<string>("");
   const [password, setPassword] = useState<string>("");
   const [showPassword, setShowPassword] = useState<boolean>(false);
+  const [loading, setLoading] = useState<boolean>(false);
+  const [googleLoading, setGoogleLoading] = useState<boolean>(false);
   const insets = useSafeAreaInsets();
+
+  const { signIn, setActive, isLoaded } = useSignIn();
+  const { startOAuthFlow } = useOAuth({ strategy: "oauth_google" });
+  const { isSignedIn } = useAuth();
+
+  useFocusEffect(
+    useCallback(() => {
+      if (isSignedIn) {
+        router.replace("/(tabs)/home");
+      }
+    }, [isSignedIn])
+  );
+
+  // ── Email / Password Login ──────────────────────────────────────────────────
+  const handleLogin = useCallback(async () => {
+    if (!isLoaded || !signIn) return;
+    if (!email.trim() || !password.trim()) {
+      Alert.alert("Required", "Please enter your email and password.");
+      return;
+    }
+
+    setLoading(true);
+    try {
+      const result = await signIn.create({
+        identifier: email.trim(),
+        password,
+      });
+
+      if (result.status === "complete") {
+        await setActive({ session: result.createdSessionId });
+        router.replace("/(tabs)/home");
+      } else {
+        Alert.alert("Login Error", "Additional verification required. Please try again.");
+      }
+    } catch (err: any) {
+      const message = err?.errors?.[0]?.longMessage ?? err?.message ?? "Login failed. Please check your credentials.";
+      Alert.alert("Login Failed", message);
+    } finally {
+      setLoading(false);
+    }
+  }, [isLoaded, signIn, setActive, email, password]);
+
+  // ── Google OAuth ────────────────────────────────────────────────────────────
+  const handleGoogleLogin = useCallback(async () => {
+    setGoogleLoading(true);
+    try {
+      const { createdSessionId, setActive: setActiveOAuth } = await startOAuthFlow();
+      if (createdSessionId && setActiveOAuth) {
+        await setActiveOAuth({ session: createdSessionId });
+        router.replace("/(tabs)/home");
+      }
+    } catch (err: any) {
+      const message = err?.errors?.[0]?.longMessage ?? "Google sign-in failed. Please try again.";
+      Alert.alert("Google Sign-In Failed", message);
+    } finally {
+      setGoogleLoading(false);
+    }
+  }, [startOAuthFlow]);
 
   return (
     <View style={[styles.container, { paddingTop: insets.top }]}>
@@ -82,16 +150,21 @@ export default function LoginScreen() {
             onPress={() => router.push("/forgot-password")}
             style={styles.forgotRow}
           >
-            <Text style={styles.forgotText}>Forgot Password ?</Text>
+            <Text style={styles.forgotText}>Forgot Password ?</Text>
           </TouchableOpacity>
 
           <TouchableOpacity
-            style={styles.primaryButton}
-            onPress={() => router.replace("/(tabs)/home")}
+            style={[styles.primaryButton, loading && styles.disabledButton]}
+            onPress={handleLogin}
             activeOpacity={0.8}
+            disabled={loading}
             testID="login-button"
           >
-            <Text style={styles.primaryButtonText}>Login</Text>
+            {loading ? (
+              <ActivityIndicator color={Colors.white} />
+            ) : (
+              <Text style={styles.primaryButtonText}>Login</Text>
+            )}
           </TouchableOpacity>
 
           <View style={styles.orRow}>
@@ -101,12 +174,19 @@ export default function LoginScreen() {
           </View>
 
           <TouchableOpacity
-            style={styles.socialButton}
+            style={[styles.socialButton, googleLoading && styles.disabledButton]}
             activeOpacity={0.7}
-            onPress={() => router.replace("/(tabs)/home")}
+            onPress={handleGoogleLogin}
+            disabled={googleLoading}
           >
-            <Text style={styles.socialIcon}>G</Text>
-            <Text style={styles.socialText}>Login with Google</Text>
+            {googleLoading ? (
+              <ActivityIndicator color={Colors.text} />
+            ) : (
+              <>
+                <Text style={styles.socialIcon}>G</Text>
+                <Text style={styles.socialText}>Login with Google</Text>
+              </>
+            )}
           </TouchableOpacity>
 
           <View style={styles.bottomRow}>
@@ -195,6 +275,9 @@ const styles = StyleSheet.create({
     paddingVertical: 18,
     alignItems: "center",
     marginBottom: 20,
+  },
+  disabledButton: {
+    opacity: 0.6,
   },
   primaryButtonText: {
     color: Colors.white,

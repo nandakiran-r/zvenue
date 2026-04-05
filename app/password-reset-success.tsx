@@ -14,7 +14,7 @@ import Colors from "@/constants/colors";
 export default function PasswordResetSuccessScreen() {
   return (
     <Modal animationType="fade" transparent visible onRequestClose={() => router.back()}>
-      <Pressable style={styles.overlay} onPress={() => {}}>
+      <Pressable style={styles.overlay} onPress={() => { }}>
         <View style={styles.card}>
           <View style={styles.checkCircle}>
             <Check size={32} color={Colors.white} strokeWidth={3} />
@@ -29,7 +29,7 @@ export default function PasswordResetSuccessScreen() {
             activeOpacity={0.8}
             testID="back-to-home"
           >
-            <Text style={styles.primaryButtonText}>Back to Home</Text>
+            <Text style={styles.primaryButtonText}>Return to Login</Text>
           </TouchableOpacity>
         </View>
       </Pressable>

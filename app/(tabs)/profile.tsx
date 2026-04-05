@@ -1,5 +1,6 @@
 import { router } from "expo-router";
 import { Bell, ChevronRight, HelpCircle, LogOut, Settings, User } from "lucide-react-native";
+import { useAuth } from "@/context/AuthContext";
 import React from "react";
 import {
   Image,
@@ -22,6 +23,16 @@ const MENU_ITEMS = [
 
 export default function ProfileScreen() {
   const insets = useSafeAreaInsets();
+  const { signOut } = useAuth();
+
+  const handleLogout = async () => {
+    try {
+      await signOut();
+      router.replace("/login");
+    } catch (error) {
+      console.error("Error signing out:", error);
+    }
+  };
 
   return (
     <View style={[styles.container, { paddingTop: insets.top }]}>
@@ -53,7 +64,7 @@ export default function ProfileScreen() {
 
         <TouchableOpacity
           style={styles.logoutButton}
-          onPress={() => router.replace("/login")}
+          onPress={handleLogout}
           activeOpacity={0.7}
         >
           <LogOut size={20} color={Colors.primary} />

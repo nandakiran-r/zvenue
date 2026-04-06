@@ -16,7 +16,7 @@ import { PROFILE_IMAGES } from "@/mocks/venues";
 
 const MENU_ITEMS = [
   { icon: User, label: "Edit Profile", route: "/edit-profile" },
-  { icon: Bell, label: "Notifications", route: "" },
+  { icon: Bell, label: "Notifications", route: "/notifications" },
   { icon: Settings, label: "Settings", route: "" },
   { icon: HelpCircle, label: "Help & Support", route: "" },
 ];

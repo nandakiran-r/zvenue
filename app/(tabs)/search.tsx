@@ -12,26 +12,29 @@ import {
 } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import Colors from "@/constants/colors";
-import { VENUES } from "@/mocks/venues";
+import { CATEGORIES, VENUES } from "@/mocks/venues";
+import { useFavorites } from "@/context/FavoritesContext";
 
 export default function SearchScreen() {
   const insets = useSafeAreaInsets();
   const [searchText, setSearchText] = useState<string>("");
-  const [favorites, setFavorites] = useState<string[]>([]);
+  const { favorites, toggleFavorite: toggleFav } = useFavorites();
+  const [showFilters, setShowFilters] = useState(false);
+  const [selectedCategory, setSelectedCategory] = useState<string | null>(null);
+  const [minCapacity, setMinCapacity] = useState<number | null>(null);
 
-  const toggleFav = (id: string) => {
-    setFavorites((prev) =>
-      prev.includes(id) ? prev.filter((f) => f !== id) : [...prev, id]
-    );
-  };
-
-  const filteredVenues = searchText
-    ? VENUES.filter((v) =>
-      v.name.toLowerCase().includes(searchText.toLowerCase()) ||
-      v.city.toLowerCase().includes(searchText.toLowerCase()) ||
-      v.category.toLowerCase().includes(searchText.toLowerCase())
-    )
-    : VENUES;
+  const filteredVenues = VENUES.filter((v) => {
+    const matchesSearch = searchText
+      ? v.name.toLowerCase().includes(searchText.toLowerCase()) ||
+        v.city.toLowerCase().includes(searchText.toLowerCase()) ||
+        v.category.toLowerCase().includes(searchText.toLowerCase())
+      : true;
+      
+    const matchesCategory = selectedCategory ? v.category === selectedCategory : true;
+    const matchesCapacity = minCapacity !== null ? v.capacity >= minCapacity : true;
+    
+    return matchesSearch && matchesCategory && matchesCapacity;
+  });
 
   return (
     <View style={[styles.container, { paddingTop: insets.top }]}>
@@ -47,15 +50,49 @@ export default function SearchScreen() {
             testID="search-input"
           />
         </View>
-        <TouchableOpacity style={styles.filterButton}>
-          <SlidersHorizontal size={18} color={Colors.text} />
+        <TouchableOpacity style={styles.filterButton} onPress={() => setShowFilters(!showFilters)}>
+          <SlidersHorizontal size={18} color={showFilters ? Colors.primary : Colors.text} />
         </TouchableOpacity>
       </View>
 
-      <TouchableOpacity style={styles.locationBanner} activeOpacity={0.7}>
-        <MapPin size={16} color={Colors.primary} />
-        <Text style={styles.locationText}>Search Near My Location</Text>
-      </TouchableOpacity>
+      {showFilters && (
+        <View style={styles.filtersContainer}>
+          <Text style={styles.filterTitle}>Category</Text>
+          <ScrollView horizontal showsHorizontalScrollIndicator={false} style={styles.filterScroll} contentContainerStyle={styles.filterScrollContent}>
+            {CATEGORIES.map(cat => (
+              <TouchableOpacity 
+                key={cat.id} 
+                style={[styles.filterChip, selectedCategory === cat.name && styles.filterChipActive]}
+                onPress={() => setSelectedCategory(selectedCategory === cat.name ? null : cat.name)}
+              >
+                <Text style={[styles.filterChipText, selectedCategory === cat.name && styles.filterChipTextActive]}>{cat.name}</Text>
+              </TouchableOpacity>
+            ))}
+          </ScrollView>
+
+          <Text style={styles.filterTitle}>Minimum Capacity</Text>
+          <View style={styles.capacityRow}>
+            {[10, 50, 100, 500].map(cap => (
+              <TouchableOpacity 
+                key={cap} 
+                style={[styles.filterChip, minCapacity === cap && styles.filterChipActive]}
+                onPress={() => setMinCapacity(minCapacity === cap ? null : cap)}
+              >
+                <Text style={[styles.filterChipText, minCapacity === cap && styles.filterChipTextActive]}>{cap}+</Text>
+              </TouchableOpacity>
+            ))}
+          </View>
+          
+          <View style={styles.filterActions}>
+            <TouchableOpacity 
+              style={styles.clearFilterBtn} 
+              onPress={() => { setSelectedCategory(null); setMinCapacity(null); }}
+            >
+              <Text style={styles.clearFilterText}>Clear All</Text>
+            </TouchableOpacity>
+          </View>
+        </View>
+      )}
 
       <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={styles.scrollContent}>
         {filteredVenues.map((venue) => (
@@ -132,6 +169,65 @@ const styles = StyleSheet.create({
     borderColor: Colors.border,
     alignItems: "center",
     justifyContent: "center",
+  },
+  filtersContainer: {
+    paddingHorizontal: 20,
+    paddingBottom: 16,
+    borderBottomWidth: 1,
+    borderBottomColor: Colors.border,
+    marginBottom: 16,
+  },
+  filterTitle: {
+    fontSize: 14,
+    fontWeight: "600",
+    color: Colors.text,
+    marginBottom: 10,
+    marginTop: 4,
+  },
+  filterScroll: {
+    marginBottom: 12,
+  },
+  filterScrollContent: {
+    gap: 8,
+  },
+  capacityRow: {
+    flexDirection: "row",
+    gap: 8,
+    marginBottom: 12,
+  },
+  filterChip: {
+    paddingHorizontal: 16,
+    paddingVertical: 8,
+    borderRadius: 20,
+    backgroundColor: Colors.surface,
+    borderWidth: 1,
+    borderColor: Colors.border,
+  },
+  filterChipActive: {
+    backgroundColor: Colors.primary,
+    borderColor: Colors.primary,
+  },
+  filterChipText: {
+    fontSize: 13,
+    color: Colors.text,
+  },
+  filterChipTextActive: {
+    color: Colors.white,
+    fontWeight: "600",
+  },
+  filterActions: {
+    flexDirection: "row",
+    justifyContent: "flex-end",
+    marginTop: 8,
+  },
+  clearFilterBtn: {
+    paddingVertical: 6,
+    paddingHorizontal: 12,
+  },
+  clearFilterText: {
+    fontSize: 13,
+    fontWeight: "600",
+    color: Colors.primary,
   },
   locationBanner: {
     flexDirection: "row",

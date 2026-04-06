@@ -14,6 +14,7 @@ import {
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import Colors from "@/constants/colors";
 import { VENUES } from "@/mocks/venues";
+import { useFavorites } from "@/context/FavoritesContext";
 
 const AMENITY_ICONS: Record<string, any> = {
     'AC': Wind,
@@ -28,7 +29,8 @@ export default function VenueDetailScreen() {
     const { id } = useLocalSearchParams<{ id: string }>();
     const insets = useSafeAreaInsets();
     const venue = VENUES.find((v) => v.id === id) ?? VENUES[0];
-    const [isFav, setIsFav] = useState(false);
+    const { isFavorite, toggleFavorite } = useFavorites();
+    const isFav = isFavorite(venue.id);
 
     return (
         <View style={styles.container}>
@@ -39,8 +41,8 @@ export default function VenueDetailScreen() {
                         <TouchableOpacity style={styles.iconButton} onPress={() => safeBack("/(tabs)/home")}>
                             <ChevronLeft size={22} color={Colors.white} />
                         </TouchableOpacity>
-                        <TouchableOpacity style={styles.iconButton} onPress={() => setIsFav(p => !p)}>
-                            <Heart size={22} color={Colors.white} fill={isFav ? Colors.white : "none"} />
+                        <TouchableOpacity style={styles.iconButton} onPress={() => toggleFavorite(venue.id)}>
+                            <Heart size={22} color={isFav ? Colors.primary : Colors.white} fill={isFav ? Colors.primary : "none"} />
                         </TouchableOpacity>
                     </View>
                     <View style={styles.categoryBadge}>

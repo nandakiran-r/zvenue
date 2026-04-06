@@ -12,10 +12,12 @@ import {
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import Colors from "@/constants/colors";
 import { VENUES } from "@/mocks/venues";
+import { useFavorites } from "@/context/FavoritesContext";
 
 export default function FavoritesScreen() {
   const insets = useSafeAreaInsets();
-  const favoriteVenues = VENUES.slice(0, 4);
+  const { favorites, toggleFavorite } = useFavorites();
+  const favoriteVenues = VENUES.filter(v => favorites.includes(v.id));
 
   return (
     <View style={[styles.container, { paddingTop: insets.top }]}>
@@ -44,8 +46,8 @@ export default function FavoritesScreen() {
               </View>
               <Text style={styles.priceText}>{venue.pricePerDay}/day</Text>
             </View>
-            <TouchableOpacity style={styles.heartButton}>
-              <Heart size={20} color={Colors.primary} fill={Colors.primary} />
+            <TouchableOpacity style={styles.heartButton} onPress={() => toggleFavorite(venue.id)}>
+              <Heart size={20} color={Colors.primary} fill={favorites.includes(venue.id) ? Colors.primary : "none"} />
             </TouchableOpacity>
           </TouchableOpacity>
         ))}

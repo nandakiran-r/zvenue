@@ -13,11 +13,13 @@ import {
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import Colors from "@/constants/colors";
 import { VENUES } from "@/mocks/venues";
+import { useFavorites } from "@/context/FavoritesContext";
 
 export default function CategoryVenuesScreen() {
   const insets = useSafeAreaInsets();
   const { category } = useLocalSearchParams<{ category: string }>();
   const [searchQuery, setSearchQuery] = useState("");
+  const { isFavorite, toggleFavorite } = useFavorites();
 
   const categoryVenues = VENUES.filter((v) => v.category === category);
   const filteredVenues = categoryVenues.filter((v) =>
@@ -64,8 +66,8 @@ export default function CategoryVenuesScreen() {
             <View style={styles.venueInfo}>
               <View style={styles.titleRow}>
                 <Text style={styles.venueTitle} numberOfLines={1}>{venue.name}</Text>
-                <TouchableOpacity>
-                  <Heart size={18} color={Colors.textSecondary} />
+                <TouchableOpacity onPress={() => toggleFavorite(venue.id)}>
+                  <Heart size={18} color={isFavorite(venue.id) ? Colors.primary : Colors.textSecondary} fill={isFavorite(venue.id) ? Colors.primary : "none"} />
                 </TouchableOpacity>
               </View>
               <View style={styles.locationRow}>

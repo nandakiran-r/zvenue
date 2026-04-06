@@ -16,6 +16,7 @@ import {
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import Colors from "@/constants/colors";
 import { AVATAR_IMAGES, CATEGORIES, VENUES } from "@/mocks/venues";
+import { useFavorites } from "@/context/FavoritesContext";
 
 const CITIES = [
   { id: "1", name: "Ahmedabad", state: "Gujarat" },
@@ -48,6 +49,7 @@ export default function HomeScreen() {
   const [locationModalVisible, setLocationModalVisible] = useState(false);
   const [selectedLocation, setSelectedLocation] = useState("Ahmedabad, Gujarat");
   const [locationSearch, setLocationSearch] = useState("");
+  const { isFavorite, toggleFavorite } = useFavorites();
 
   // Removed static featured/popular/nearby arrays
 
@@ -77,7 +79,7 @@ export default function HomeScreen() {
               <ChevronDown size={16} color={Colors.primary} style={{ marginLeft: 2 }} />
             </View>
           </TouchableOpacity>
-          <TouchableOpacity style={styles.notificationButton}>
+          <TouchableOpacity style={styles.notificationButton} onPress={() => router.push("/notifications" as any)}>
             <Bell size={22} color={Colors.text} />
           </TouchableOpacity>
         </View>
@@ -268,8 +270,8 @@ export default function HomeScreen() {
                       <View style={styles.popularBadge}>
                         <Text style={styles.popularBadgeText}>{venue.category}</Text>
                       </View>
-                      <TouchableOpacity style={styles.popularHeart}>
-                        <Heart size={18} color={Colors.primary} fill={Colors.primary} />
+                      <TouchableOpacity style={styles.popularHeart} onPress={() => toggleFavorite(venue.id)}>
+                        <Heart size={18} color={isFavorite(venue.id) ? Colors.primary : Colors.textTertiary} fill={isFavorite(venue.id) ? Colors.primary : "none"} />
                       </TouchableOpacity>
                       <View style={styles.popularBottom}>
                         {venue.capacity > 0 && (

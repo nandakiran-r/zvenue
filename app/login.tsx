@@ -33,7 +33,7 @@ export default function LoginScreen() {
 
   const { signIn, setActive, isLoaded } = useSignIn();
   const { startOAuthFlow } = useOAuth({ strategy: "oauth_google" });
-  const { isSignedIn } = useAuth();
+  const { isSignedIn, signOut } = useAuth();
 
   useFocusEffect(
     useCallback(() => {
@@ -53,6 +53,10 @@ export default function LoginScreen() {
 
     setLoading(true);
     try {
+      try {
+        await signOut();
+      } catch (e) { }
+
       const result = await signIn.create({
         identifier: email.trim(),
         password,
@@ -76,6 +80,10 @@ export default function LoginScreen() {
   const handleGoogleLogin = useCallback(async () => {
     setGoogleLoading(true);
     try {
+      try {
+        await signOut();
+      } catch (e) { }
+
       const { createdSessionId, setActive: setActiveOAuth } = await startOAuthFlow();
       if (createdSessionId && setActiveOAuth) {
         await setActiveOAuth({ session: createdSessionId });

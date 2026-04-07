@@ -1,4 +1,5 @@
 import { useSignIn } from "@clerk/clerk-expo";
+import { useAuth } from "@/context/AuthContext";
 import { safeBack } from "@/constants/navigation";
 import { ChevronLeft, Mail } from "lucide-react-native";
 import React, { useCallback, useState } from "react";
@@ -23,6 +24,7 @@ export default function ForgotPasswordScreen() {
   const insets = useSafeAreaInsets();
 
   const { signIn, isLoaded } = useSignIn();
+  const { signOut } = useAuth();
 
   const handleSend = useCallback(async () => {
     if (!isLoaded || !signIn) return;
@@ -33,6 +35,10 @@ export default function ForgotPasswordScreen() {
 
     setLoading(true);
     try {
+      try {
+        await signOut();
+      } catch (e) {}
+
       await signIn.create({
         strategy: "reset_password_email_code",
         identifier: email.trim(),

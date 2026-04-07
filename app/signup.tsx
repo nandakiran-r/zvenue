@@ -1,5 +1,6 @@
 import { useSignUp, useOAuth } from "@clerk/clerk-expo";
 import { router } from "expo-router";
+import { useAuth } from "@/context/AuthContext";
 import { safeBack } from "@/constants/navigation";
 import * as WebBrowser from "expo-web-browser";
 import { ChevronLeft, Eye, EyeOff, Lock, Mail, User } from "lucide-react-native";
@@ -33,6 +34,7 @@ export default function SignupScreen() {
 
   const { signUp, isLoaded } = useSignUp();
   const { startOAuthFlow } = useOAuth({ strategy: "oauth_google" });
+  const { signOut } = useAuth();
 
   // ── Email / Password Sign-Up ────────────────────────────────────────────────
   const handleSignup = useCallback(async () => {
@@ -44,6 +46,10 @@ export default function SignupScreen() {
 
     setLoading(true);
     try {
+      try {
+        await signOut();
+      } catch (e) {}
+
       await signUp.create({
         firstName: name.trim().split(" ")[0],
         lastName: name.trim().split(" ").slice(1).join(" ") || undefined,
@@ -71,6 +77,10 @@ export default function SignupScreen() {
   const handleGoogleSignup = useCallback(async () => {
     setGoogleLoading(true);
     try {
+      try {
+        await signOut();
+      } catch (e) {}
+
       const { createdSessionId, setActive } = await startOAuthFlow();
       if (createdSessionId && setActive) {
         await setActive({ session: createdSessionId });

@@ -1,7 +1,8 @@
 import { router } from "expo-router";
 import { Heart, MapPin, Search as SearchIcon, SlidersHorizontal, Star, Users } from "lucide-react-native";
-import React, { useState } from "react";
+import React, { useEffect, useState } from "react";
 import {
+  ActivityIndicator,
   Image,
   ScrollView,
   StyleSheet,
@@ -12,29 +13,50 @@ import {
 } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import Colors from "@/constants/colors";
-import { CATEGORIES, VENUES } from "@/mocks/venues";
+import { useAuth } from "@/context/AuthContext";
 import { useFavorites } from "@/context/FavoritesContext";
+import { fetchCategories, fetchVenues } from "@/lib/api";
+import type { DbCategory, DbVenue } from "@/lib/types";
 
 export default function SearchScreen() {
   const insets = useSafeAreaInsets();
-  const [searchText, setSearchText] = useState<string>("");
+  const { supabase } = useAuth();
   const { favorites, toggleFavorite: toggleFav } = useFavorites();
+
+  const [searchText, setSearchText] = useState<string>("");
   const [showFilters, setShowFilters] = useState(false);
   const [selectedCategory, setSelectedCategory] = useState<string | null>(null);
   const [minCapacity, setMinCapacity] = useState<number | null>(null);
 
-  const filteredVenues = VENUES.filter((v) => {
-    const matchesSearch = searchText
-      ? v.name.toLowerCase().includes(searchText.toLowerCase()) ||
-        v.city.toLowerCase().includes(searchText.toLowerCase()) ||
-        v.category.toLowerCase().includes(searchText.toLowerCase())
-      : true;
-      
-    const matchesCategory = selectedCategory ? v.category === selectedCategory : true;
-    const matchesCapacity = minCapacity !== null ? v.capacity >= minCapacity : true;
-    
-    return matchesSearch && matchesCategory && matchesCapacity;
-  });
+  const [categories, setCategories] = useState<DbCategory[]>([]);
+  const [venues, setVenues] = useState<DbVenue[]>([]);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    fetchCategories(supabase).then(setCategories).catch(console.error);
+  }, [supabase]);
+
+  useEffect(() => {
+    loadVenues();
+  }, [supabase, searchText, selectedCategory, minCapacity]);
+
+  const loadVenues = async () => {
+    try {
+      setLoading(true);
+      const data = await fetchVenues(supabase, {
+        search: searchText || undefined,
+        categoryName: selectedCategory ?? undefined,
+        minCapacity: minCapacity ?? undefined,
+      });
+      setVenues(data);
+    } catch (err) {
+      console.error("Failed to load venues:", err);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const formatPrice = (amount: number) => `₹${amount.toLocaleString("en-IN")}`;
 
   return (
     <View style={[styles.container, { paddingTop: insets.top }]}>
@@ -59,9 +81,9 @@ export default function SearchScreen() {
         <View style={styles.filtersContainer}>
           <Text style={styles.filterTitle}>Category</Text>
           <ScrollView horizontal showsHorizontalScrollIndicator={false} style={styles.filterScroll} contentContainerStyle={styles.filterScrollContent}>
-            {CATEGORIES.map(cat => (
-              <TouchableOpacity 
-                key={cat.id} 
+            {categories.map(cat => (
+              <TouchableOpacity
+                key={cat.id}
                 style={[styles.filterChip, selectedCategory === cat.name && styles.filterChipActive]}
                 onPress={() => setSelectedCategory(selectedCategory === cat.name ? null : cat.name)}
               >
@@ -73,8 +95,8 @@ export default function SearchScreen() {
           <Text style={styles.filterTitle}>Minimum Capacity</Text>
           <View style={styles.capacityRow}>
             {[10, 50, 100, 500].map(cap => (
-              <TouchableOpacity 
-                key={cap} 
+              <TouchableOpacity
+                key={cap}
                 style={[styles.filterChip, minCapacity === cap && styles.filterChipActive]}
                 onPress={() => setMinCapacity(minCapacity === cap ? null : cap)}
               >
@@ -82,10 +104,10 @@ export default function SearchScreen() {
               </TouchableOpacity>
             ))}
           </View>
-          
+
           <View style={styles.filterActions}>
-            <TouchableOpacity 
-              style={styles.clearFilterBtn} 
+            <TouchableOpacity
+              style={styles.clearFilterBtn}
               onPress={() => { setSelectedCategory(null); setMinCapacity(null); }}
             >
               <Text style={styles.clearFilterText}>Clear All</Text>
@@ -94,42 +116,49 @@ export default function SearchScreen() {
         </View>
       )}
 
-      <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={styles.scrollContent}>
-        {filteredVenues.map((venue) => (
-          <TouchableOpacity
-            key={venue.id}
-            style={styles.venueCard}
-            onPress={() => router.push({ pathname: "/venue-detail", params: { id: venue.id } })}
-            activeOpacity={0.7}
-          >
-            <Image source={{ uri: venue.image }} style={styles.venueImage} />
-            <View style={styles.venueInfo}>
-              <Text style={styles.venueTitle} numberOfLines={2}>{venue.name}</Text>
-              <View style={styles.metaRow}>
-                <MapPin size={11} color={Colors.textSecondary} />
-                <Text style={styles.venueCity}>{venue.city}</Text>
-                <Users size={11} color={Colors.textSecondary} />
-                <Text style={styles.venueCapacity}>Up to {venue.capacity}</Text>
-              </View>
-              <View style={styles.ratingRow}>
-                <Star size={12} color="#FFB800" fill="#FFB800" />
-                <Text style={styles.ratingText}>{venue.rating}</Text>
-                <Text style={styles.priceText}>{venue.pricePerDay}/day</Text>
-              </View>
-            </View>
+      {loading ? (
+        <ActivityIndicator size="large" color={Colors.primary} style={{ marginTop: 40 }} />
+      ) : (
+        <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={styles.scrollContent}>
+          {venues.map((venue) => (
             <TouchableOpacity
-              onPress={() => toggleFav(venue.id)}
-              style={styles.heartButton}
+              key={venue.id}
+              style={styles.venueCard}
+              onPress={() => router.push({ pathname: "/venue-detail", params: { id: venue.id } })}
+              activeOpacity={0.7}
             >
-              <Heart
-                size={20}
-                color={favorites.includes(venue.id) ? Colors.primary : Colors.textTertiary}
-                fill={favorites.includes(venue.id) ? Colors.primary : "none"}
-              />
+              <Image source={{ uri: venue.image_url ?? undefined }} style={styles.venueImage} />
+              <View style={styles.venueInfo}>
+                <Text style={styles.venueTitle} numberOfLines={2}>{venue.name}</Text>
+                <View style={styles.metaRow}>
+                  <MapPin size={11} color={Colors.textSecondary} />
+                  <Text style={styles.venueCity}>{venue.city}</Text>
+                  <Users size={11} color={Colors.textSecondary} />
+                  <Text style={styles.venueCapacity}>Up to {venue.capacity}</Text>
+                </View>
+                <View style={styles.ratingRow}>
+                  <Star size={12} color="#FFB800" fill="#FFB800" />
+                  <Text style={styles.ratingText}>{venue.rating}</Text>
+                  <Text style={styles.priceText}>{formatPrice(venue.price_per_day)}/day</Text>
+                </View>
+              </View>
+              <TouchableOpacity
+                onPress={() => toggleFav(venue.id)}
+                style={styles.heartButton}
+              >
+                <Heart
+                  size={20}
+                  color={favorites.includes(venue.id) ? Colors.primary : Colors.textTertiary}
+                  fill={favorites.includes(venue.id) ? Colors.primary : "none"}
+                />
+              </TouchableOpacity>
             </TouchableOpacity>
-          </TouchableOpacity>
-        ))}
-      </ScrollView>
+          ))}
+          {venues.length === 0 && (
+            <Text style={{ textAlign: "center", color: Colors.textSecondary, marginTop: 40 }}>No venues found.</Text>
+          )}
+        </ScrollView>
+      )}
     </View>
   );
 }
@@ -227,22 +256,6 @@ const styles = StyleSheet.create({
   clearFilterText: {
     fontSize: 13,
     fontWeight: "600",
-    color: Colors.primary,
-  },
-  locationBanner: {
-    flexDirection: "row",
-    alignItems: "center",
-    justifyContent: "center",
-    backgroundColor: "#FFF0F5",
-    marginHorizontal: 20,
-    borderRadius: 24,
-    paddingVertical: 12,
-    gap: 8,
-    marginBottom: 16,
-  },
-  locationText: {
-    fontSize: 14,
-    fontWeight: "600" as const,
     color: Colors.primary,
   },
   scrollContent: {

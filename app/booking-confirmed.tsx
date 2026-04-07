@@ -12,7 +12,7 @@ import {
 import Colors from "@/constants/colors";
 
 export default function BookingConfirmedScreen() {
-    const { id } = useLocalSearchParams<{ id: string }>();
+    const { id, venueId } = useLocalSearchParams<{ id: string; venueId: string }>();
 
     return (
         <Modal animationType="fade" transparent visible onRequestClose={() => router.back()}>
@@ -27,7 +27,7 @@ export default function BookingConfirmedScreen() {
                     </Text>
                     <TouchableOpacity
                         style={styles.primaryButton}
-                        onPress={() => router.replace({ pathname: "/view-booking", params: { id: id ?? "1" } })}
+                        onPress={() => router.replace({ pathname: "/view-booking", params: { id: id ?? "1", venueId: venueId ?? "" } })}
                         activeOpacity={0.8}
                         testID="view-booking"
                     >

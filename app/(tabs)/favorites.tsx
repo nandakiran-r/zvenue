@@ -1,7 +1,8 @@
-import { router } from "expo-router";
+import { router, useFocusEffect } from "expo-router";
 import { Heart, MapPin, Star, Users } from "lucide-react-native";
-import React from "react";
+import React, { useCallback, useState } from "react";
 import {
+  ActivityIndicator,
   Image,
   ScrollView,
   StyleSheet,
@@ -11,55 +12,90 @@ import {
 } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import Colors from "@/constants/colors";
-import { VENUES } from "@/mocks/venues";
+import { useAuth } from "@/context/AuthContext";
 import { useFavorites } from "@/context/FavoritesContext";
+import { fetchFavoriteVenues } from "@/lib/api";
+import type { DbVenue } from "@/lib/types";
 
 export default function FavoritesScreen() {
   const insets = useSafeAreaInsets();
+  const { supabase, dbUser } = useAuth();
   const { favorites, toggleFavorite } = useFavorites();
-  const favoriteVenues = VENUES.filter(v => favorites.includes(v.id));
+
+  const [favoriteVenues, setFavoriteVenues] = useState<DbVenue[]>([]);
+  const [loading, setLoading] = useState(true);
+
+  useFocusEffect(
+    useCallback(() => {
+      if (!dbUser) {
+        setFavoriteVenues([]);
+        setLoading(false);
+        return;
+      }
+      loadFavorites();
+    }, [dbUser?.id, favorites.length])
+  );
+
+  const loadFavorites = async () => {
+    if (!dbUser) return;
+    try {
+      setLoading(true);
+      const venues = await fetchFavoriteVenues(supabase, dbUser.id);
+      setFavoriteVenues(venues);
+    } catch (err) {
+      console.error("Failed to load favorite venues:", err);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const formatPrice = (amount: number) => `₹${amount.toLocaleString("en-IN")}`;
 
   return (
     <View style={[styles.container, { paddingTop: insets.top }]}>
       <Text style={styles.headerTitle}>Saved Venues</Text>
 
-      <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={styles.scrollContent}>
-        {favoriteVenues.map((venue) => (
-          <TouchableOpacity
-            key={venue.id}
-            style={styles.venueCard}
-            onPress={() => router.push({ pathname: "/venue-detail", params: { id: venue.id } })}
-            activeOpacity={0.7}
-          >
-            <Image source={{ uri: venue.image }} style={styles.venueImage} />
-            <View style={styles.venueInfo}>
-              <Text style={styles.venueTitle} numberOfLines={2}>{venue.name}</Text>
-              <View style={styles.locationRow}>
-                <MapPin size={12} color={Colors.textSecondary} />
-                <Text style={styles.venueLocation}>{venue.city}</Text>
+      {loading ? (
+        <ActivityIndicator size="large" color={Colors.primary} style={{ marginTop: 40 }} />
+      ) : (
+        <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={styles.scrollContent}>
+          {favoriteVenues.map((venue) => (
+            <TouchableOpacity
+              key={venue.id}
+              style={styles.venueCard}
+              onPress={() => router.push({ pathname: "/venue-detail", params: { id: venue.id } })}
+              activeOpacity={0.7}
+            >
+              <Image source={{ uri: venue.image_url ?? undefined }} style={styles.venueImage} />
+              <View style={styles.venueInfo}>
+                <Text style={styles.venueTitle} numberOfLines={2}>{venue.name}</Text>
+                <View style={styles.locationRow}>
+                  <MapPin size={12} color={Colors.textSecondary} />
+                  <Text style={styles.venueLocation}>{venue.city}</Text>
+                </View>
+                <View style={styles.metaRow}>
+                  <Star size={12} color="#FFB800" fill="#FFB800" />
+                  <Text style={styles.ratingText}>{venue.rating}</Text>
+                  <Users size={12} color={Colors.textSecondary} />
+                  <Text style={styles.capacityText}>Up to {venue.capacity}</Text>
+                </View>
+                <Text style={styles.priceText}>{formatPrice(venue.price_per_day)}/day</Text>
               </View>
-              <View style={styles.metaRow}>
-                <Star size={12} color="#FFB800" fill="#FFB800" />
-                <Text style={styles.ratingText}>{venue.rating}</Text>
-                <Users size={12} color={Colors.textSecondary} />
-                <Text style={styles.capacityText}>Up to {venue.capacity}</Text>
-              </View>
-              <Text style={styles.priceText}>{venue.pricePerDay}/day</Text>
-            </View>
-            <TouchableOpacity style={styles.heartButton} onPress={() => toggleFavorite(venue.id)}>
-              <Heart size={20} color={Colors.primary} fill={favorites.includes(venue.id) ? Colors.primary : "none"} />
+              <TouchableOpacity style={styles.heartButton} onPress={() => toggleFavorite(venue.id)}>
+                <Heart size={20} color={Colors.primary} fill={favorites.includes(venue.id) ? Colors.primary : "none"} />
+              </TouchableOpacity>
             </TouchableOpacity>
-          </TouchableOpacity>
-        ))}
+          ))}
 
-        {favoriteVenues.length === 0 && (
-          <View style={styles.emptyState}>
-            <Heart size={48} color={Colors.textTertiary} />
-            <Text style={styles.emptyText}>No saved venues yet</Text>
-            <Text style={styles.emptySubtext}>Start adding venues to your favorites</Text>
-          </View>
-        )}
-      </ScrollView>
+          {favoriteVenues.length === 0 && (
+            <View style={styles.emptyState}>
+              <Heart size={48} color={Colors.textTertiary} />
+              <Text style={styles.emptyText}>No saved venues yet</Text>
+              <Text style={styles.emptySubtext}>Start adding venues to your favorites</Text>
+            </View>
+          )}
+        </ScrollView>
+      )}
     </View>
   );
 }

@@ -1,8 +1,9 @@
 import { router } from "expo-router";
 import { MaterialIcons } from "@expo/vector-icons";
 import { Bell, ChevronDown, ChevronRight, Heart, MapPin, Navigation, Search, SlidersHorizontal, Star, Users, X } from "lucide-react-native";
-import React, { useState } from "react";
+import React, { useEffect, useState } from "react";
 import {
+  ActivityIndicator,
   FlatList,
   Image,
   Modal,
@@ -15,8 +16,10 @@ import {
 } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import Colors from "@/constants/colors";
-import { AVATAR_IMAGES, CATEGORIES, VENUES } from "@/mocks/venues";
+import { useAuth } from "@/context/AuthContext";
 import { useFavorites } from "@/context/FavoritesContext";
+import { fetchCategories, fetchVenues } from "@/lib/api";
+import type { DbCategory, DbVenue } from "@/lib/types";
 
 const CITIES = [
   { id: "1", name: "Ahmedabad", state: "Gujarat" },
@@ -45,13 +48,45 @@ const POPULAR_CITIES = ["Mumbai", "Delhi", "Bengaluru", "Jaipur"];
 
 export default function HomeScreen() {
   const insets = useSafeAreaInsets();
+  const { supabase } = useAuth();
+  const { isFavorite, toggleFavorite } = useFavorites();
+
+  const [categories, setCategories] = useState<DbCategory[]>([]);
+  const [venuesByCategory, setVenuesByCategory] = useState<Record<string, DbVenue[]>>({});
+  const [loading, setLoading] = useState(true);
+
   const [selectedCategory, setSelectedCategory] = useState<string>("all");
   const [locationModalVisible, setLocationModalVisible] = useState(false);
   const [selectedLocation, setSelectedLocation] = useState("Ahmedabad, Gujarat");
   const [locationSearch, setLocationSearch] = useState("");
-  const { isFavorite, toggleFavorite } = useFavorites();
 
-  // Removed static featured/popular/nearby arrays
+  useEffect(() => {
+    loadData();
+  }, [supabase]);
+
+  const loadData = async () => {
+    try {
+      setLoading(true);
+      const [cats, allVenues] = await Promise.all([
+        fetchCategories(supabase),
+        fetchVenues(supabase),
+      ]);
+      setCategories(cats);
+
+      // Group venues by category name
+      const grouped: Record<string, DbVenue[]> = {};
+      for (const venue of allVenues) {
+        const catName = venue.category?.name ?? "Other";
+        if (!grouped[catName]) grouped[catName] = [];
+        grouped[catName].push(venue);
+      }
+      setVenuesByCategory(grouped);
+    } catch (err) {
+      console.error("Failed to load home data:", err);
+    } finally {
+      setLoading(false);
+    }
+  };
 
   const filteredCities = locationSearch.trim()
     ? CITIES.filter(
@@ -66,6 +101,8 @@ export default function HomeScreen() {
     setLocationSearch("");
     setLocationModalVisible(false);
   };
+
+  const formatPrice = (amount: number) => `₹${amount.toLocaleString("en-IN")}`;
 
   return (
     <View style={[styles.container, { paddingTop: insets.top }]}>
@@ -93,7 +130,6 @@ export default function HomeScreen() {
         >
           <View style={styles.modalOverlay}>
             <View style={styles.modalContainer}>
-              {/* Modal Header */}
               <View style={styles.modalHeader}>
                 <Text style={styles.modalTitle}>Select Location</Text>
                 <TouchableOpacity
@@ -107,7 +143,6 @@ export default function HomeScreen() {
                 </TouchableOpacity>
               </View>
 
-              {/* Search Input */}
               <View style={styles.modalSearchContainer}>
                 <Search size={18} color={Colors.textSecondary} />
                 <TextInput
@@ -124,7 +159,6 @@ export default function HomeScreen() {
                 )}
               </View>
 
-              {/* Use Current Location */}
               <TouchableOpacity
                 style={styles.currentLocationRow}
                 onPress={() => {
@@ -142,7 +176,6 @@ export default function HomeScreen() {
                 </View>
               </TouchableOpacity>
 
-              {/* Popular Cities */}
               {!locationSearch && (
                 <>
                   <Text style={styles.sectionLabel}>Popular Cities</Text>
@@ -163,7 +196,6 @@ export default function HomeScreen() {
                 </>
               )}
 
-              {/* City List */}
               <Text style={styles.sectionLabel}>
                 {locationSearch ? "Search Results" : "All Cities"}
               </Text>
@@ -213,7 +245,7 @@ export default function HomeScreen() {
         </View>
 
         <ScrollView horizontal showsHorizontalScrollIndicator={false} style={styles.categoriesRow}>
-          {[{ id: 'all', name: 'All', icon: 'apps' }, ...CATEGORIES].map((cat) => (
+          {[{ id: 'all', name: 'All', icon: 'apps', sort_order: 0, created_at: '' }, ...categories].map((cat) => (
             <TouchableOpacity
               key={cat.id}
               style={[
@@ -243,62 +275,66 @@ export default function HomeScreen() {
           ))}
         </ScrollView>
 
-        {CATEGORIES.map((category) => {
-          const categoryVenues = VENUES.filter(v => v.category === category.name);
-          if (categoryVenues.length === 0) return null;
+        {loading ? (
+          <ActivityIndicator size="large" color={Colors.primary} style={{ marginTop: 40 }} />
+        ) : (
+          categories.map((category) => {
+            const categoryVenues = venuesByCategory[category.name] ?? [];
+            if (categoryVenues.length === 0) return null;
 
-          return (
-            <View key={category.id}>
-              <View style={styles.sectionHeader}>
-                <Text style={styles.sectionTitle}>{category.name}</Text>
-                <TouchableOpacity style={styles.seeMoreButton} onPress={() => router.push({ pathname: "/category-venues" as any, params: { category: category.name } })}>
-                  <Text style={styles.seeAll}>See More</Text>
-                  <ChevronRight size={16} color={Colors.primary} />
-                </TouchableOpacity>
-              </View>
-
-              <ScrollView horizontal showsHorizontalScrollIndicator={false} style={styles.popularScroll}>
-                {categoryVenues.map((venue) => (
-                  <TouchableOpacity
-                    key={venue.id}
-                    style={styles.popularCard}
-                    onPress={() => router.push({ pathname: "/venue-detail", params: { id: venue.id } })}
-                    activeOpacity={0.8}
-                  >
-                    <Image source={{ uri: venue.image }} style={styles.popularImage} />
-                    <View style={styles.popularOverlay}>
-                      <View style={styles.popularBadge}>
-                        <Text style={styles.popularBadgeText}>{venue.category}</Text>
-                      </View>
-                      <TouchableOpacity style={styles.popularHeart} onPress={() => toggleFavorite(venue.id)}>
-                        <Heart size={18} color={isFavorite(venue.id) ? Colors.primary : Colors.textTertiary} fill={isFavorite(venue.id) ? Colors.primary : "none"} />
-                      </TouchableOpacity>
-                      <View style={styles.popularBottom}>
-                        {venue.capacity > 0 && (
-                          <View style={styles.capacityBadge}>
-                            <Users size={11} color={Colors.white} />
-                            <Text style={styles.capacityText}>Up to {venue.capacity}</Text>
-                          </View>
-                        )}
-                      </View>
-                    </View>
-                    <View style={styles.popularDetails}>
-                      <Text style={styles.popularTitle} numberOfLines={1}>{venue.name}</Text>
-                      <Text style={styles.popularCity}>{venue.city}</Text>
-                      <View style={styles.popularFooter}>
-                        <View style={styles.ratingRow}>
-                          <Star size={12} color="#FFB800" fill="#FFB800" />
-                          <Text style={styles.ratingText}>{venue.rating} ({venue.reviewCount})</Text>
-                        </View>
-                        <Text style={styles.popularPrice}>{venue.pricePerDay}</Text>
-                      </View>
-                    </View>
+            return (
+              <View key={category.id}>
+                <View style={styles.sectionHeader}>
+                  <Text style={styles.sectionTitle}>{category.name}</Text>
+                  <TouchableOpacity style={styles.seeMoreButton} onPress={() => router.push({ pathname: "/category-venues" as any, params: { category: category.name } })}>
+                    <Text style={styles.seeAll}>See More</Text>
+                    <ChevronRight size={16} color={Colors.primary} />
                   </TouchableOpacity>
-                ))}
-              </ScrollView>
-            </View>
-          );
-        })}
+                </View>
+
+                <ScrollView horizontal showsHorizontalScrollIndicator={false} style={styles.popularScroll}>
+                  {categoryVenues.map((venue) => (
+                    <TouchableOpacity
+                      key={venue.id}
+                      style={styles.popularCard}
+                      onPress={() => router.push({ pathname: "/venue-detail", params: { id: venue.id } })}
+                      activeOpacity={0.8}
+                    >
+                      <Image source={{ uri: venue.image_url ?? undefined }} style={styles.popularImage} />
+                      <View style={styles.popularOverlay}>
+                        <View style={styles.popularBadge}>
+                          <Text style={styles.popularBadgeText}>{category.name}</Text>
+                        </View>
+                        <TouchableOpacity style={styles.popularHeart} onPress={() => toggleFavorite(venue.id)}>
+                          <Heart size={18} color={isFavorite(venue.id) ? Colors.primary : Colors.textTertiary} fill={isFavorite(venue.id) ? Colors.primary : "none"} />
+                        </TouchableOpacity>
+                        <View style={styles.popularBottom}>
+                          {venue.capacity > 0 && (
+                            <View style={styles.capacityBadge}>
+                              <Users size={11} color={Colors.white} />
+                              <Text style={styles.capacityText}>Up to {venue.capacity}</Text>
+                            </View>
+                          )}
+                        </View>
+                      </View>
+                      <View style={styles.popularDetails}>
+                        <Text style={styles.popularTitle} numberOfLines={1}>{venue.name}</Text>
+                        <Text style={styles.popularCity}>{venue.city}</Text>
+                        <View style={styles.popularFooter}>
+                          <View style={styles.ratingRow}>
+                            <Star size={12} color="#FFB800" fill="#FFB800" />
+                            <Text style={styles.ratingText}>{venue.rating} ({venue.review_count})</Text>
+                          </View>
+                          <Text style={styles.popularPrice}>{formatPrice(venue.price_per_day)}</Text>
+                        </View>
+                      </View>
+                    </TouchableOpacity>
+                  ))}
+                </ScrollView>
+              </View>
+            );
+          })
+        )}
       </ScrollView>
     </View>
   );
@@ -571,70 +607,6 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     gap: 2,
   },
-  featuredCard: {
-    flexDirection: "row",
-    marginHorizontal: 20,
-    marginBottom: 14,
-    backgroundColor: Colors.white,
-    borderRadius: 14,
-    overflow: "hidden",
-    gap: 12,
-    borderWidth: 1,
-    borderColor: Colors.border,
-    padding: 10,
-  },
-  featuredImage: {
-    width: 90,
-    height: 90,
-    borderRadius: 12,
-  },
-  featuredInfo: {
-    flex: 1,
-    justifyContent: "space-between",
-  },
-  featuredTitle: {
-    fontSize: 14,
-    fontWeight: "600" as const,
-    color: Colors.text,
-    marginBottom: 4,
-  },
-  featuredLocationRow: {
-    flexDirection: "row",
-    alignItems: "center",
-    gap: 4,
-    marginBottom: 6,
-  },
-  featuredLocation: {
-    fontSize: 12,
-    color: Colors.textSecondary,
-  },
-  featuredFooter: {
-    flexDirection: "row",
-    alignItems: "center",
-    justifyContent: "space-between",
-  },
-  ratingRow: {
-    flexDirection: "row",
-    alignItems: "center",
-    gap: 4,
-  },
-  ratingText: {
-    fontSize: 12,
-    color: Colors.text,
-    fontWeight: "600" as const,
-  },
-  bookButton: {
-    alignSelf: "flex-start",
-    backgroundColor: Colors.primary,
-    borderRadius: 8,
-    paddingHorizontal: 20,
-    paddingVertical: 6,
-  },
-  bookText: {
-    fontSize: 12,
-    color: Colors.white,
-    fontWeight: "600" as const,
-  },
   popularScroll: {
     paddingLeft: 20,
     marginBottom: 8,
@@ -721,42 +693,17 @@ const styles = StyleSheet.create({
     justifyContent: "space-between",
     alignItems: "center",
   },
-  popularPrice: {
-    fontSize: 13,
-    fontWeight: "700" as const,
-    color: Colors.primary,
-  },
-  nearbyCard: {
-    flexDirection: "row",
-    marginHorizontal: 20,
-    marginBottom: 14,
-    alignItems: "center",
-    gap: 12,
-  },
-  nearbyImage: {
-    width: 70,
-    height: 70,
-    borderRadius: 12,
-  },
-  nearbyInfo: {
-    flex: 1,
-  },
-  nearbyTitle: {
-    fontSize: 14,
-    fontWeight: "600" as const,
-    color: Colors.text,
-    marginBottom: 4,
-  },
-  nearbyLocationRow: {
+  ratingRow: {
     flexDirection: "row",
     alignItems: "center",
     gap: 4,
   },
-  nearbyLocation: {
+  ratingText: {
     fontSize: 12,
-    color: Colors.textSecondary,
+    color: Colors.text,
+    fontWeight: "600" as const,
   },
-  nearbyPrice: {
+  popularPrice: {
     fontSize: 13,
     fontWeight: "700" as const,
     color: Colors.primary,

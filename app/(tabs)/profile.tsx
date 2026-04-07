@@ -12,7 +12,6 @@ import {
 } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import Colors from "@/constants/colors";
-import { PROFILE_IMAGES } from "@/mocks/venues";
 
 const MENU_ITEMS = [
   { icon: User, label: "Edit Profile", route: "/edit-profile" },
@@ -24,7 +23,11 @@ const MENU_ITEMS = [
 
 export default function ProfileScreen() {
   const insets = useSafeAreaInsets();
-  const { signOut } = useAuth();
+  const { signOut, user, dbUser } = useAuth();
+
+  const displayName = dbUser?.full_name ?? user?.fullName ?? "User";
+  const displayEmail = dbUser?.email ?? user?.emailAddresses?.[0]?.emailAddress ?? "";
+  const displayAvatar = dbUser?.avatar_url ?? user?.imageUrl ?? null;
 
   const handleLogout = async () => {
     try {
@@ -41,9 +44,15 @@ export default function ProfileScreen() {
         <Text style={styles.headerTitle}>Profile</Text>
 
         <View style={styles.profileCard}>
-          <Image source={{ uri: PROFILE_IMAGES[0] }} style={styles.profileImage} />
-          <Text style={styles.profileName}>Tanya Hill</Text>
-          <Text style={styles.profileEmail}>tanya.hill@example.com</Text>
+          {displayAvatar ? (
+            <Image source={{ uri: displayAvatar }} style={styles.profileImage} />
+          ) : (
+            <View style={[styles.profileImage, styles.profilePlaceholder]}>
+              <User size={36} color={Colors.textSecondary} />
+            </View>
+          )}
+          <Text style={styles.profileName}>{displayName}</Text>
+          <Text style={styles.profileEmail}>{displayEmail}</Text>
         </View>
 
         <View style={styles.menuContainer}>
@@ -101,6 +110,11 @@ const styles = StyleSheet.create({
     height: 90,
     borderRadius: 45,
     marginBottom: 12,
+  },
+  profilePlaceholder: {
+    backgroundColor: Colors.surface,
+    alignItems: "center",
+    justifyContent: "center",
   },
   profileName: {
     fontSize: 20,

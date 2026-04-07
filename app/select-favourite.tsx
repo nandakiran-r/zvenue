@@ -2,8 +2,9 @@ import { router } from "expo-router";
 import { safeBack } from "@/constants/navigation";
 import { MaterialIcons } from "@expo/vector-icons";
 import { ChevronLeft } from "lucide-react-native";
-import React, { useState } from "react";
+import React, { useEffect, useState } from "react";
 import {
+  ActivityIndicator,
   ScrollView,
   StyleSheet,
   Text,
@@ -12,11 +13,33 @@ import {
 } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import Colors from "@/constants/colors";
-import { FAVOURITE_CATEGORIES } from "@/mocks/venues";
+import { useAuth } from "@/context/AuthContext";
+import { fetchCategories } from "@/lib/api";
+import type { DbCategory } from "@/lib/types";
 
 export default function SelectFavouriteScreen() {
-  const [selected, setSelected] = useState<string[]>(["3"]);
+  const [selected, setSelected] = useState<string[]>([]);
+  const [categories, setCategories] = useState<DbCategory[]>([]);
+  const [loading, setLoading] = useState(true);
   const insets = useSafeAreaInsets();
+  const { supabase } = useAuth();
+
+  useEffect(() => {
+    loadCategories();
+  }, [supabase]);
+
+  const loadCategories = async () => {
+    try {
+      const data = await fetchCategories(supabase);
+      setCategories(data);
+      // Pre-select the third one if it exists
+      if (data.length >= 3) setSelected([data[2].id]);
+    } catch (err) {
+      console.error("Failed to load categories:", err);
+    } finally {
+      setLoading(false);
+    }
+  };
 
   const toggleCategory = (id: string) => {
     setSelected((prev) =>
@@ -39,36 +62,40 @@ export default function SelectFavouriteScreen() {
       <Text style={styles.title}>What kind of events{"\n"}will you host?</Text>
       <Text style={styles.subtitle}>We'll recommend the best venues for you.</Text>
 
-      <ScrollView
-        style={styles.scrollView}
-        showsVerticalScrollIndicator={false}
-        contentContainerStyle={styles.categoriesContainer}
-      >
-        <View style={styles.categoriesWrap}>
-          {FAVOURITE_CATEGORIES.map((cat) => {
-            const isSelected = selected.includes(cat.id);
-            return (
-              <TouchableOpacity
-                key={cat.id}
-                style={[styles.categoryChip, isSelected && styles.categoryChipActive]}
-                onPress={() => toggleCategory(cat.id)}
-                activeOpacity={0.7}
-              >
-                <MaterialIcons
-                  name={cat.icon as any}
-                  size={18}
-                  color={isSelected ? Colors.primary : Colors.textSecondary}
-                />
-                <Text
-                  style={[styles.categoryText, isSelected && styles.categoryTextActive]}
+      {loading ? (
+        <ActivityIndicator size="large" color={Colors.primary} style={{ marginTop: 40 }} />
+      ) : (
+        <ScrollView
+          style={styles.scrollView}
+          showsVerticalScrollIndicator={false}
+          contentContainerStyle={styles.categoriesContainer}
+        >
+          <View style={styles.categoriesWrap}>
+            {categories.map((cat) => {
+              const isSelected = selected.includes(cat.id);
+              return (
+                <TouchableOpacity
+                  key={cat.id}
+                  style={[styles.categoryChip, isSelected && styles.categoryChipActive]}
+                  onPress={() => toggleCategory(cat.id)}
+                  activeOpacity={0.7}
                 >
-                  {cat.name}
-                </Text>
-              </TouchableOpacity>
-            );
-          })}
-        </View>
-      </ScrollView>
+                  <MaterialIcons
+                    name={cat.icon as any}
+                    size={18}
+                    color={isSelected ? Colors.primary : Colors.textSecondary}
+                  />
+                  <Text
+                    style={[styles.categoryText, isSelected && styles.categoryTextActive]}
+                  >
+                    {cat.name}
+                  </Text>
+                </TouchableOpacity>
+              );
+            })}
+          </View>
+        </ScrollView>
+      )}
 
       <TouchableOpacity
         style={styles.primaryButton}
@@ -144,9 +171,6 @@ const styles = StyleSheet.create({
     backgroundColor: "#FFF0F5",
     borderWidth: 1,
     borderColor: Colors.primary,
-  },
-  categoryIcon: {
-    // icon styles handled via MaterialIcons props
   },
   categoryText: {
     fontSize: 14,

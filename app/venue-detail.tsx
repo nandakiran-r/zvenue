@@ -2,8 +2,9 @@ import { router, useLocalSearchParams } from "expo-router";
 import { safeBack } from "@/constants/navigation";
 import { Calendar, ChevronLeft, Clock, Heart, MapPin, MessageCircle, Star, Users, Wifi, Wind, Car, Utensils, Music, Tv } from "lucide-react-native";
 import { MaterialIcons } from "@expo/vector-icons";
-import React, { useState } from "react";
+import React, { useEffect, useState } from "react";
 import {
+    ActivityIndicator,
     Image,
     ScrollView,
     StyleSheet,
@@ -13,8 +14,10 @@ import {
 } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import Colors from "@/constants/colors";
-import { VENUES } from "@/mocks/venues";
+import { useAuth } from "@/context/AuthContext";
 import { useFavorites } from "@/context/FavoritesContext";
+import { fetchVenueById } from "@/lib/api";
+import type { DbVenue } from "@/lib/types";
 
 const AMENITY_ICONS: Record<string, any> = {
     'AC': Wind,
@@ -22,21 +25,63 @@ const AMENITY_ICONS: Record<string, any> = {
     'Catering': Utensils,
     'DJ Setup': Music,
     'Wi-Fi': Wifi,
+    'WiFi': Wifi,
     'Projector': Tv,
 };
 
 export default function VenueDetailScreen() {
     const { id } = useLocalSearchParams<{ id: string }>();
     const insets = useSafeAreaInsets();
-    const venue = VENUES.find((v) => v.id === id) ?? VENUES[0];
+    const { supabase } = useAuth();
     const { isFavorite, toggleFavorite } = useFavorites();
+
+    const [venue, setVenue] = useState<DbVenue | null>(null);
+    const [loading, setLoading] = useState(true);
+
+    useEffect(() => {
+        if (!id) return;
+        loadVenue();
+    }, [id]);
+
+    const loadVenue = async () => {
+        try {
+            setLoading(true);
+            const data = await fetchVenueById(supabase, id!);
+            setVenue(data);
+        } catch (err) {
+            console.error("Failed to load venue:", err);
+        } finally {
+            setLoading(false);
+        }
+    };
+
+    const formatPrice = (amount: number) => `₹${amount.toLocaleString("en-IN")}`;
+
+    if (loading) {
+        return (
+            <View style={[styles.container, { justifyContent: "center", alignItems: "center" }]}>
+                <ActivityIndicator size="large" color={Colors.primary} />
+            </View>
+        );
+    }
+
+    if (!venue) {
+        return (
+            <View style={[styles.container, { justifyContent: "center", alignItems: "center" }]}>
+                <Text style={{ color: Colors.textSecondary }}>Venue not found</Text>
+            </View>
+        );
+    }
+
     const isFav = isFavorite(venue.id);
+    const amenities = venue.amenities ?? [];
+    const availableDates = venue.available_dates ?? [];
 
     return (
         <View style={styles.container}>
             <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={styles.scrollContent}>
                 <View style={styles.imageContainer}>
-                    <Image source={{ uri: venue.image }} style={styles.heroImage} />
+                    <Image source={{ uri: venue.image_url ?? undefined }} style={styles.heroImage} />
                     <View style={[styles.imageOverlay, { paddingTop: insets.top }]}>
                         <TouchableOpacity style={styles.iconButton} onPress={() => safeBack("/(tabs)/home")}>
                             <ChevronLeft size={22} color={Colors.white} />
@@ -46,7 +91,7 @@ export default function VenueDetailScreen() {
                         </TouchableOpacity>
                     </View>
                     <View style={styles.categoryBadge}>
-                        <Text style={styles.categoryBadgeText}>{venue.category}</Text>
+                        <Text style={styles.categoryBadgeText}>{venue.category?.name ?? "Venue"}</Text>
                     </View>
                 </View>
 
@@ -60,11 +105,11 @@ export default function VenueDetailScreen() {
                             </View>
                             <View style={styles.metaRow}>
                                 <Star size={14} color="#FFB800" fill="#FFB800" />
-                                <Text style={styles.metaText}>{venue.rating} ({venue.reviewCount} reviews)</Text>
+                                <Text style={styles.metaText}>{venue.rating} ({venue.review_count} reviews)</Text>
                             </View>
                         </View>
                         <View style={styles.pricingBlock}>
-                            <Text style={styles.price}>{venue.pricePerHour}</Text>
+                            <Text style={styles.price}>{formatPrice(venue.price_per_hour)}</Text>
                             <Text style={styles.priceLabel}>/hour</Text>
                         </View>
                     </View>
@@ -78,13 +123,13 @@ export default function VenueDetailScreen() {
                         <View style={styles.statDivider} />
                         <View style={styles.statItem}>
                             <MaterialIcons name="square-foot" size={18} color={Colors.primary} />
-                            <Text style={styles.statValue}>{venue.area}</Text>
+                            <Text style={styles.statValue}>{venue.area ?? "N/A"}</Text>
                             <Text style={styles.statLabel}>Area</Text>
                         </View>
                         <View style={styles.statDivider} />
                         <View style={styles.statItem}>
                             <Clock size={18} color={Colors.primary} />
-                            <Text style={styles.statValue}>{venue.pricePerDay}</Text>
+                            <Text style={styles.statValue}>{formatPrice(venue.price_per_day)}</Text>
                             <Text style={styles.statLabel}>Per Day</Text>
                         </View>
                     </View>
@@ -98,7 +143,7 @@ export default function VenueDetailScreen() {
                 <View style={styles.section}>
                     <Text style={styles.sectionTitle}>Amenities</Text>
                     <View style={styles.amenitiesWrap}>
-                        {venue.amenities.map((amenity, i) => {
+                        {amenities.map((amenity, i) => {
                             const Icon = AMENITY_ICONS[amenity];
                             return (
                                 <View key={i} style={styles.amenityChip}>
@@ -113,10 +158,10 @@ export default function VenueDetailScreen() {
                 <View style={styles.section}>
                     <Text style={styles.sectionTitle}>Venue Owner</Text>
                     <View style={styles.ownerRow}>
-                        <Image source={{ uri: venue.ownerImage }} style={styles.ownerAvatar} />
+                        <Image source={{ uri: venue.owner_image ?? undefined }} style={styles.ownerAvatar} />
                         <View style={styles.ownerInfo}>
                             <Text style={styles.ownerLabel}>Owner / Manager</Text>
-                            <Text style={styles.ownerName}>{venue.ownerName}</Text>
+                            <Text style={styles.ownerName}>{venue.owner_name}</Text>
                         </View>
                         <TouchableOpacity style={styles.chatButton}>
                             <MessageCircle size={20} color={Colors.primary} />
@@ -124,19 +169,19 @@ export default function VenueDetailScreen() {
                     </View>
                 </View>
 
-                <View style={styles.section}>
-                    <Text style={styles.sectionTitle}>Available Dates</Text>
-                    <View style={styles.datesRow}>
-                        {venue.availableDates.map((date, i) => (
-                            <View key={i} style={styles.dateChip}>
-                                <Calendar size={13} color={Colors.primary} />
-                                <Text style={styles.dateText}>{date}</Text>
-                            </View>
-                        ))}
+                {availableDates.length > 0 && (
+                    <View style={styles.section}>
+                        <Text style={styles.sectionTitle}>Available Dates</Text>
+                        <View style={styles.datesRow}>
+                            {availableDates.map((date, i) => (
+                                <View key={i} style={styles.dateChip}>
+                                    <Calendar size={13} color={Colors.primary} />
+                                    <Text style={styles.dateText}>{date}</Text>
+                                </View>
+                            ))}
+                        </View>
                     </View>
-                </View>
-
-
+                )}
             </ScrollView>
 
             <View style={[styles.bottomBar, { paddingBottom: insets.bottom + 12 }]}>
@@ -367,7 +412,6 @@ const styles = StyleSheet.create({
         color: Colors.text,
         fontWeight: "500" as const,
     },
-
     bottomBar: {
         position: "absolute",
         bottom: 0,

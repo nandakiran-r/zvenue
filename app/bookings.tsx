@@ -1,73 +1,74 @@
-import React from 'react';
-import { View, Text, StyleSheet, FlatList, Image, TouchableOpacity } from 'react-native';
+import React, { useEffect, useState } from 'react';
+import { View, Text, StyleSheet, FlatList, Image, TouchableOpacity, ActivityIndicator } from 'react-native';
 import { useRouter } from 'expo-router';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { ArrowLeft, Calendar, MapPin, Clock } from 'lucide-react-native';
 import Colors from '@/constants/colors';
-import { VENUES } from '@/mocks/venues';
-
-const MOCK_BOOKINGS = [
-  {
-    id: 'b1',
-    venueId: 'h1',
-    date: '2026-05-15',
-    time: '10:00 AM - 06:00 PM',
-    status: 'Confirmed',
-    guests: 200,
-  },
-  {
-    id: 'b2',
-    venueId: 's1',
-    date: '2026-06-02',
-    time: '02:00 PM - 05:00 PM',
-    status: 'Pending',
-    guests: 2,
-  },
-];
+import { useAuth } from '@/context/AuthContext';
+import { fetchBookings } from '@/lib/api';
+import type { DbBooking } from '@/lib/types';
 
 export default function BookingsScreen() {
   const router = useRouter();
   const insets = useSafeAreaInsets();
-  
-  // Join bookings with venue data
-  const bookings = MOCK_BOOKINGS.map(booking => {
-    const venue = VENUES.find(v => v.id === booking.venueId);
-    return { ...booking, venue };
-  });
+  const { supabase, dbUser } = useAuth();
+
+  const [bookings, setBookings] = useState<DbBooking[]>([]);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    if (!dbUser) return;
+    loadBookings();
+  }, [dbUser?.id]);
+
+  const loadBookings = async () => {
+    if (!dbUser) return;
+    try {
+      setLoading(true);
+      const data = await fetchBookings(supabase, dbUser.id);
+      setBookings(data);
+    } catch (err) {
+      console.error('Failed to load bookings:', err);
+    } finally {
+      setLoading(false);
+    }
+  };
 
   const getStatusColor = (status: string) => {
-    if (status === 'Confirmed') return Colors.primary;
-    if (status === 'Pending') return '#F59E0B'; // Amber
+    const s = status.toLowerCase();
+    if (s === 'confirmed') return Colors.primary;
+    if (s === 'pending') return '#F59E0B';
     return Colors.textSecondary;
   };
 
-  const renderItem = ({ item }: { item: typeof bookings[0] }) => {
-    if (!item.venue) return null;
+  const renderItem = ({ item }: { item: DbBooking }) => {
+    const venue = item.venue;
+    if (!venue) return null;
     return (
       <View style={styles.bookingCard}>
-        <Image source={{ uri: item.venue.image }} style={styles.venueImage} />
-        
+        <Image source={{ uri: venue.image_url ?? undefined }} style={styles.venueImage} />
+
         <View style={styles.bookingDetails}>
           <View style={styles.headerRow}>
-            <Text style={styles.venueName} numberOfLines={1}>{item.venue.name}</Text>
+            <Text style={styles.venueName} numberOfLines={1}>{venue.name}</Text>
             <View style={[styles.statusBadge, { backgroundColor: getStatusColor(item.status) + '15' }]}>
               <Text style={[styles.statusText, { color: getStatusColor(item.status) }]}>{item.status}</Text>
             </View>
           </View>
-          
+
           <View style={styles.infoRow}>
             <MapPin size={14} color={Colors.textSecondary} />
-            <Text style={styles.infoText} numberOfLines={1}>{item.venue.city}</Text>
+            <Text style={styles.infoText} numberOfLines={1}>{venue.city}</Text>
           </View>
-          
+
           <View style={styles.infoRow}>
             <Calendar size={14} color={Colors.textSecondary} />
-            <Text style={styles.infoText}>{item.date}</Text>
+            <Text style={styles.infoText}>{item.booking_date}</Text>
           </View>
-          
+
           <View style={styles.infoRow}>
             <Clock size={14} color={Colors.textSecondary} />
-            <Text style={styles.infoText}>{item.time}</Text>
+            <Text style={styles.infoText}>{item.start_time ?? ''} - {item.end_time ?? ''} ({item.duration_hours}h)</Text>
           </View>
         </View>
       </View>
@@ -88,23 +89,27 @@ export default function BookingsScreen() {
         <View style={{ width: 24 }} />
       </View>
 
-      <FlatList
-        data={bookings}
-        keyExtractor={(item) => item.id}
-        renderItem={renderItem}
-        contentContainerStyle={styles.listContent}
-        showsVerticalScrollIndicator={false}
-        ListEmptyComponent={() => (
-          <View style={styles.emptyState}>
-            <Calendar size={48} color={Colors.textTertiary} style={styles.emptyIcon} />
-            <Text style={styles.emptyTitle}>No bookings yet</Text>
-            <Text style={styles.emptySubtitle}>When you book a venue, it will appear here.</Text>
-            <TouchableOpacity style={styles.exploreButton} onPress={() => router.push('/search')}>
-              <Text style={styles.exploreButtonText}>Explore Venues</Text>
-            </TouchableOpacity>
-          </View>
-        )}
-      />
+      {loading ? (
+        <ActivityIndicator size="large" color={Colors.primary} style={{ marginTop: 40 }} />
+      ) : (
+        <FlatList
+          data={bookings}
+          keyExtractor={(item) => item.id}
+          renderItem={renderItem}
+          contentContainerStyle={styles.listContent}
+          showsVerticalScrollIndicator={false}
+          ListEmptyComponent={() => (
+            <View style={styles.emptyState}>
+              <Calendar size={48} color={Colors.textTertiary} style={styles.emptyIcon} />
+              <Text style={styles.emptyTitle}>No bookings yet</Text>
+              <Text style={styles.emptySubtitle}>When you book a venue, it will appear here.</Text>
+              <TouchableOpacity style={styles.exploreButton} onPress={() => router.push('/search')}>
+                <Text style={styles.exploreButtonText}>Explore Venues</Text>
+              </TouchableOpacity>
+            </View>
+          )}
+        />
+      )}
     </View>
   );
 }

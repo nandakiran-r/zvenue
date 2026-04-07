@@ -1,8 +1,9 @@
 import { router } from "expo-router";
 import { safeBack } from "@/constants/navigation";
 import { Calendar, Camera, ChevronLeft, Mail, Phone, User } from "lucide-react-native";
-import React, { useState } from "react";
+import React, { useEffect, useState } from "react";
 import {
+    Alert,
     Image,
     KeyboardAvoidingView,
     Platform,
@@ -15,14 +16,52 @@ import {
 } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import Colors from "@/constants/colors";
-import { PROFILE_IMAGES } from "@/mocks/venues";
+import { useAuth } from "@/context/AuthContext";
+import { updateUser } from "@/lib/api";
 
 export default function EditProfileScreen() {
     const insets = useSafeAreaInsets();
-    const [name, setName] = useState("Tanya Hill");
-    const [email, setEmail] = useState("tanya.hill@example.com");
-    const [phone, setPhone] = useState("+1 234 567 8900");
-    const [dob, setDob] = useState("12 April 1995");
+    const { supabase, user, dbUser, userId, refreshProfile } = useAuth();
+
+    const [name, setName] = useState("");
+    const [email, setEmail] = useState("");
+    const [phone, setPhone] = useState("");
+    const [dob, setDob] = useState("");
+    const [saving, setSaving] = useState(false);
+
+    useEffect(() => {
+        if (dbUser) {
+            setName(dbUser.full_name ?? "");
+            setEmail(dbUser.email ?? "");
+            setPhone(dbUser.phone ?? "");
+            setDob(dbUser.dob ?? "");
+        } else if (user) {
+            setName(user.fullName ?? user.firstName ?? "");
+            setEmail(user.emailAddresses?.[0]?.emailAddress ?? "");
+        }
+    }, [dbUser, user]);
+
+    const handleSave = async () => {
+        if (!userId || saving) return;
+        try {
+            setSaving(true);
+            await updateUser(supabase, userId, {
+                full_name: name,
+                email,
+                phone,
+                dob,
+            });
+            await refreshProfile();
+            safeBack("/(tabs)/home");
+        } catch (err) {
+            console.error("Failed to save profile:", err);
+            Alert.alert("Error", "Failed to save profile. Please try again.");
+        } finally {
+            setSaving(false);
+        }
+    };
+
+    const displayAvatar = dbUser?.avatar_url ?? user?.imageUrl ?? null;
 
     return (
         <View style={[styles.container, { paddingTop: insets.top }]}>
@@ -45,7 +84,13 @@ export default function EditProfileScreen() {
                 >
                     <View style={styles.imageSection}>
                         <View style={styles.imageWrapper}>
-                            <Image source={{ uri: PROFILE_IMAGES[0] }} style={styles.profileImage} />
+                            {displayAvatar ? (
+                                <Image source={{ uri: displayAvatar }} style={styles.profileImage} />
+                            ) : (
+                                <View style={[styles.profileImage, styles.profilePlaceholder]}>
+                                    <User size={40} color={Colors.textSecondary} />
+                                </View>
+                            )}
                             <TouchableOpacity style={styles.cameraButton} activeOpacity={0.8}>
                                 <Camera size={20} color={Colors.white} />
                             </TouchableOpacity>
@@ -114,11 +159,12 @@ export default function EditProfileScreen() {
                     </View>
 
                     <TouchableOpacity
-                        style={styles.saveButton}
-                        onPress={() => safeBack("/(tabs)/home")}
+                        style={[styles.saveButton, saving && { opacity: 0.6 }]}
+                        onPress={handleSave}
                         activeOpacity={0.8}
+                        disabled={saving}
                     >
-                        <Text style={styles.saveButtonText}>Save Changes</Text>
+                        <Text style={styles.saveButtonText}>{saving ? "Saving..." : "Save Changes"}</Text>
                     </TouchableOpacity>
                 </ScrollView>
             </KeyboardAvoidingView>
@@ -172,6 +218,11 @@ const styles = StyleSheet.create({
         width: 110,
         height: 110,
         borderRadius: 55,
+    },
+    profilePlaceholder: {
+        backgroundColor: Colors.surface,
+        alignItems: "center",
+        justifyContent: "center",
     },
     cameraButton: {
         position: "absolute",

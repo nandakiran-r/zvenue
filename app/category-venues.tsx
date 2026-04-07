@@ -1,7 +1,8 @@
 import { router, useLocalSearchParams } from "expo-router";
 import { ChevronLeft, Heart, MapPin, Search, Star, Users } from "lucide-react-native";
-import React, { useState } from "react";
+import React, { useEffect, useState } from "react";
 import {
+  ActivityIndicator,
   FlatList,
   Image,
   StyleSheet,
@@ -12,20 +13,44 @@ import {
 } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import Colors from "@/constants/colors";
-import { VENUES } from "@/mocks/venues";
+import { useAuth } from "@/context/AuthContext";
 import { useFavorites } from "@/context/FavoritesContext";
+import { fetchVenuesByCategory } from "@/lib/api";
+import type { DbVenue } from "@/lib/types";
 
 export default function CategoryVenuesScreen() {
   const insets = useSafeAreaInsets();
   const { category } = useLocalSearchParams<{ category: string }>();
-  const [searchQuery, setSearchQuery] = useState("");
+  const { supabase } = useAuth();
   const { isFavorite, toggleFavorite } = useFavorites();
 
-  const categoryVenues = VENUES.filter((v) => v.category === category);
-  const filteredVenues = categoryVenues.filter((v) =>
+  const [searchQuery, setSearchQuery] = useState("");
+  const [venues, setVenues] = useState<DbVenue[]>([]);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    if (!category) return;
+    loadVenues();
+  }, [category]);
+
+  const loadVenues = async () => {
+    try {
+      setLoading(true);
+      const data = await fetchVenuesByCategory(supabase, category!);
+      setVenues(data);
+    } catch (err) {
+      console.error("Failed to load category venues:", err);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const filteredVenues = venues.filter((v) =>
     v.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
-    v.city.toLowerCase().includes(searchQuery.toLowerCase())
+    (v.city ?? "").toLowerCase().includes(searchQuery.toLowerCase())
   );
+
+  const formatPrice = (amount: number) => `₹${amount.toLocaleString("en-IN")}`;
 
   return (
     <View style={[styles.container, { paddingTop: insets.top }]}>
@@ -33,7 +58,7 @@ export default function CategoryVenuesScreen() {
         <TouchableOpacity onPress={() => router.back()} style={styles.backButton}>
           <ChevronLeft size={24} color={Colors.text} />
         </TouchableOpacity>
-        <Text style={styles.headerTitle}>{category} ({categoryVenues.length})</Text>
+        <Text style={styles.headerTitle}>{category} ({venues.length})</Text>
         <View style={{ width: 44 }} />
       </View>
 
@@ -48,52 +73,56 @@ export default function CategoryVenuesScreen() {
         />
       </View>
 
-      <FlatList
-        data={filteredVenues}
-        keyExtractor={(item) => item.id}
-        contentContainerStyle={styles.listContent}
-        showsVerticalScrollIndicator={false}
-        ListEmptyComponent={
-          <Text style={styles.emptyText}>No venues found.</Text>
-        }
-        renderItem={({ item: venue }) => (
-          <TouchableOpacity
-            style={styles.venueCard}
-            onPress={() => router.push({ pathname: "/venue-detail", params: { id: venue.id } })}
-            activeOpacity={0.8}
-          >
-            <Image source={{ uri: venue.image }} style={styles.venueImage} />
-            <View style={styles.venueInfo}>
-              <View style={styles.titleRow}>
-                <Text style={styles.venueTitle} numberOfLines={1}>{venue.name}</Text>
-                <TouchableOpacity onPress={() => toggleFavorite(venue.id)}>
-                  <Heart size={18} color={isFavorite(venue.id) ? Colors.primary : Colors.textSecondary} fill={isFavorite(venue.id) ? Colors.primary : "none"} />
-                </TouchableOpacity>
-              </View>
-              <View style={styles.locationRow}>
-                <MapPin size={14} color={Colors.textSecondary} />
-                <Text style={styles.locationText}>{venue.city}</Text>
-              </View>
-              <View style={styles.detailsRow}>
-                <View style={styles.ratingRow}>
-                  <Star size={14} color="#FFB800" fill="#FFB800" />
-                  <Text style={styles.ratingText}>{venue.rating} ({venue.reviewCount})</Text>
+      {loading ? (
+        <ActivityIndicator size="large" color={Colors.primary} style={{ marginTop: 40 }} />
+      ) : (
+        <FlatList
+          data={filteredVenues}
+          keyExtractor={(item) => item.id}
+          contentContainerStyle={styles.listContent}
+          showsVerticalScrollIndicator={false}
+          ListEmptyComponent={
+            <Text style={styles.emptyText}>No venues found.</Text>
+          }
+          renderItem={({ item: venue }) => (
+            <TouchableOpacity
+              style={styles.venueCard}
+              onPress={() => router.push({ pathname: "/venue-detail", params: { id: venue.id } })}
+              activeOpacity={0.8}
+            >
+              <Image source={{ uri: venue.image_url ?? undefined }} style={styles.venueImage} />
+              <View style={styles.venueInfo}>
+                <View style={styles.titleRow}>
+                  <Text style={styles.venueTitle} numberOfLines={1}>{venue.name}</Text>
+                  <TouchableOpacity onPress={() => toggleFavorite(venue.id)}>
+                    <Heart size={18} color={isFavorite(venue.id) ? Colors.primary : Colors.textSecondary} fill={isFavorite(venue.id) ? Colors.primary : "none"} />
+                  </TouchableOpacity>
                 </View>
-                {venue.capacity > 0 && (
-                  <View style={styles.capacityRow}>
-                    <Users size={14} color={Colors.textSecondary} />
-                    <Text style={styles.capacityText}>Upto {venue.capacity}</Text>
+                <View style={styles.locationRow}>
+                  <MapPin size={14} color={Colors.textSecondary} />
+                  <Text style={styles.locationText}>{venue.city}</Text>
+                </View>
+                <View style={styles.detailsRow}>
+                  <View style={styles.ratingRow}>
+                    <Star size={14} color="#FFB800" fill="#FFB800" />
+                    <Text style={styles.ratingText}>{venue.rating} ({venue.review_count})</Text>
                   </View>
-                )}
+                  {venue.capacity > 0 && (
+                    <View style={styles.capacityRow}>
+                      <Users size={14} color={Colors.textSecondary} />
+                      <Text style={styles.capacityText}>Upto {venue.capacity}</Text>
+                    </View>
+                  )}
+                </View>
+                <View style={styles.priceRow}>
+                  <Text style={styles.priceText}>{formatPrice(venue.price_per_day)}</Text>
+                  <Text style={styles.priceUnit}> / day</Text>
+                </View>
               </View>
-              <View style={styles.priceRow}>
-                <Text style={styles.priceText}>{venue.pricePerDay}</Text>
-                <Text style={styles.priceUnit}> / day</Text>
-              </View>
-            </View>
-          </TouchableOpacity>
-        )}
-      />
+            </TouchableOpacity>
+          )}
+        />
+      )}
     </View>
   );
 }

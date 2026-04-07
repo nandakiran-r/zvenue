@@ -1,8 +1,9 @@
 import { router, useLocalSearchParams } from "expo-router";
 import { safeBack } from "@/constants/navigation";
 import { Calendar, ChevronLeft, Clock, MapPin, Users } from "lucide-react-native";
-import React, { useState } from "react";
+import React, { useEffect, useState } from "react";
 import {
+    ActivityIndicator,
     Image,
     ScrollView,
     StyleSheet,
@@ -12,19 +13,77 @@ import {
 } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import Colors from "@/constants/colors";
-import { VENUES } from "@/mocks/venues";
+import { useAuth } from "@/context/AuthContext";
+import { fetchVenueById, createBooking } from "@/lib/api";
+import type { DbVenue } from "@/lib/types";
 
 export default function BookingDetailScreen() {
     const { id } = useLocalSearchParams<{ id: string }>();
     const insets = useSafeAreaInsets();
-    const venue = VENUES.find((v) => v.id === id) ?? VENUES[0];
+    const { supabase, dbUser } = useAuth();
+
+    const [venue, setVenue] = useState<DbVenue | null>(null);
+    const [loading, setLoading] = useState(true);
+    const [submitting, setSubmitting] = useState(false);
     const [paymentMethod, setPaymentMethod] = useState<"card" | "paypal">("card");
 
+    useEffect(() => {
+        if (!id) return;
+        loadVenue();
+    }, [id]);
+
+    const loadVenue = async () => {
+        try {
+            setLoading(true);
+            const data = await fetchVenueById(supabase, id!);
+            setVenue(data);
+        } catch (err) {
+            console.error("Failed to load venue:", err);
+        } finally {
+            setLoading(false);
+        }
+    };
+
+    if (loading || !venue) {
+        return (
+            <View style={[styles.container, { paddingTop: insets.top, justifyContent: "center", alignItems: "center" }]}>
+                <ActivityIndicator size="large" color={Colors.primary} />
+            </View>
+        );
+    }
+
     const hoursBooked = 4;
-    const hourlyRate = 5000;
+    const hourlyRate = venue.price_per_hour;
     const subtotal = hourlyRate * hoursBooked;
     const serviceFee = 500;
     const total = subtotal + serviceFee;
+
+    const formatPrice = (amount: number) => `₹${amount.toLocaleString("en-IN")}`;
+
+    const handleConfirm = async () => {
+        if (!dbUser || submitting) return;
+        try {
+            setSubmitting(true);
+            const booking = await createBooking(supabase, {
+                user_id: dbUser.id,
+                venue_id: venue.id,
+                booking_date: new Date().toISOString().split("T")[0],
+                start_time: "10:00 AM",
+                end_time: "02:00 PM",
+                duration_hours: hoursBooked,
+                guests: 200,
+                subtotal,
+                service_fee: serviceFee,
+                total,
+                payment_method: paymentMethod,
+            });
+            router.push({ pathname: "/booking-confirmed", params: { id: booking.id, venueId: venue.id } });
+        } catch (err) {
+            console.error("Failed to create booking:", err);
+        } finally {
+            setSubmitting(false);
+        }
+    };
 
     return (
         <View style={[styles.container, { paddingTop: insets.top }]}>
@@ -38,7 +97,7 @@ export default function BookingDetailScreen() {
 
             <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={styles.scrollContent}>
                 <View style={styles.venueCard}>
-                    <Image source={{ uri: venue.image }} style={styles.venueImage} />
+                    <Image source={{ uri: venue.image_url ?? undefined }} style={styles.venueImage} />
                     <View style={styles.venueInfo}>
                         <Text style={styles.venueTitle} numberOfLines={2}>{venue.name}</Text>
                         <View style={styles.metaRow}>
@@ -58,7 +117,7 @@ export default function BookingDetailScreen() {
                         <View style={styles.infoItem}>
                             <Calendar size={16} color={Colors.primary} />
                             <Text style={styles.infoLabel}>Date</Text>
-                            <Text style={styles.infoValue}>Mar 15, 2026</Text>
+                            <Text style={styles.infoValue}>{new Date().toLocaleDateString("en-IN", { month: "short", day: "numeric", year: "numeric" })}</Text>
                         </View>
                         <View style={styles.infoDivider} />
                         <View style={styles.infoItem}>
@@ -78,21 +137,21 @@ export default function BookingDetailScreen() {
                 <Text style={styles.sectionTitle}>Booking Summary</Text>
 
                 <View style={styles.summaryRow}>
-                    <Text style={styles.summaryLabel}>{hoursBooked} hours × {venue.pricePerHour}</Text>
-                    <Text style={styles.summaryValue}>₹{subtotal.toLocaleString()}</Text>
+                    <Text style={styles.summaryLabel}>{hoursBooked} hours × {formatPrice(hourlyRate)}</Text>
+                    <Text style={styles.summaryValue}>{formatPrice(subtotal)}</Text>
                 </View>
                 <View style={styles.summaryRow}>
                     <Text style={styles.summaryLabel}>Subtotal</Text>
-                    <Text style={styles.summaryValue}>₹{subtotal.toLocaleString()}</Text>
+                    <Text style={styles.summaryValue}>{formatPrice(subtotal)}</Text>
                 </View>
                 <View style={styles.summaryRow}>
                     <Text style={styles.summaryLabel}>Service Fee</Text>
-                    <Text style={styles.summaryValue}>₹{serviceFee.toLocaleString()}</Text>
+                    <Text style={styles.summaryValue}>{formatPrice(serviceFee)}</Text>
                 </View>
                 <View style={styles.divider} />
                 <View style={styles.summaryRow}>
                     <Text style={styles.totalLabel}>Total</Text>
-                    <Text style={styles.totalValue}>₹{total.toLocaleString()}</Text>
+                    <Text style={styles.totalValue}>{formatPrice(total)}</Text>
                 </View>
 
                 <Text style={[styles.sectionTitle, { marginTop: 8 }]}>Payment Method</Text>
@@ -129,16 +188,17 @@ export default function BookingDetailScreen() {
 
             <View style={[styles.bottomBar, { paddingBottom: insets.bottom + 12 }]}>
                 <View style={styles.priceColumn}>
-                    <Text style={styles.priceLabel}>Total Amount</Text>
-                    <Text style={styles.priceAmount}>₹{total.toLocaleString()}</Text>
+                    <Text style={styles.priceLabelBottom}>Total Amount</Text>
+                    <Text style={styles.priceAmount}>{formatPrice(total)}</Text>
                 </View>
                 <TouchableOpacity
-                    style={styles.confirmButton}
-                    onPress={() => router.push({ pathname: "/booking-confirmed", params: { id: venue.id } })}
+                    style={[styles.confirmButton, submitting && { opacity: 0.6 }]}
+                    onPress={handleConfirm}
                     activeOpacity={0.8}
+                    disabled={submitting}
                     testID="confirm-booking"
                 >
-                    <Text style={styles.confirmText}>Confirm Booking</Text>
+                    <Text style={styles.confirmText}>{submitting ? "Booking..." : "Confirm Booking"}</Text>
                 </TouchableOpacity>
             </View>
         </View>
@@ -347,7 +407,7 @@ const styles = StyleSheet.create({
         borderTopColor: Colors.border,
     },
     priceColumn: {},
-    priceLabel: {
+    priceLabelBottom: {
         fontSize: 12,
         color: Colors.textSecondary,
     },

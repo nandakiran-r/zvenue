@@ -1,8 +1,9 @@
 import { router, useLocalSearchParams } from "expo-router";
 import { safeBack } from "@/constants/navigation";
-import { Calendar, ChevronLeft, Clock, MapPin, Users } from "lucide-react-native";
-import React from "react";
+import { ChevronLeft } from "lucide-react-native";
+import React, { useEffect, useState } from "react";
 import {
+    ActivityIndicator,
     StyleSheet,
     Text,
     TouchableOpacity,
@@ -10,12 +11,45 @@ import {
 } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import Colors from "@/constants/colors";
-import { VENUES } from "@/mocks/venues";
+import { useAuth } from "@/context/AuthContext";
+import { fetchBookingById } from "@/lib/api";
+import type { DbBooking } from "@/lib/types";
 
 export default function ViewBookingScreen() {
     const { id } = useLocalSearchParams<{ id: string }>();
     const insets = useSafeAreaInsets();
-    const venue = VENUES.find((v) => v.id === id) ?? VENUES[0];
+    const { supabase, dbUser } = useAuth();
+
+    const [booking, setBooking] = useState<DbBooking | null>(null);
+    const [loading, setLoading] = useState(true);
+
+    useEffect(() => {
+        if (!id) return;
+        loadBooking();
+    }, [id]);
+
+    const loadBooking = async () => {
+        try {
+            setLoading(true);
+            const data = await fetchBookingById(supabase, id!);
+            setBooking(data);
+        } catch (err) {
+            console.error("Failed to load booking:", err);
+        } finally {
+            setLoading(false);
+        }
+    };
+
+    if (loading) {
+        return (
+            <View style={[styles.container, { paddingTop: insets.top, justifyContent: "center", alignItems: "center" }]}>
+                <ActivityIndicator size="large" color={Colors.primary} />
+            </View>
+        );
+    }
+
+    const venue = booking?.venue;
+    const displayName = dbUser?.full_name ?? "User";
 
     return (
         <View style={[styles.container, { paddingTop: insets.top }]}>
@@ -56,7 +90,9 @@ export default function ViewBookingScreen() {
                     </View>
 
                     <View style={styles.statusBadge}>
-                        <Text style={styles.statusText}>✓ Confirmed</Text>
+                        <Text style={styles.statusText}>
+                            {booking?.status === "confirmed" || booking?.status === "Confirmed" ? "✓ Confirmed" : `⏳ ${booking?.status ?? "Pending"}`}
+                        </Text>
                     </View>
                 </View>
 
@@ -71,38 +107,38 @@ export default function ViewBookingScreen() {
                 </View>
 
                 <View style={styles.bookingBottom}>
-                    <Text style={styles.venueName}>{venue.name.toUpperCase().slice(0, 22)}</Text>
+                    <Text style={styles.venueName}>{(venue?.name ?? "VENUE").toUpperCase().slice(0, 22)}</Text>
 
                     <View style={styles.detailsGrid}>
                         <View style={styles.detailItem}>
                             <Text style={styles.detailLabel}>Booked By</Text>
-                            <Text style={styles.detailValue}>Tanya Hill</Text>
+                            <Text style={styles.detailValue}>{displayName}</Text>
                         </View>
                         <View style={styles.detailItem}>
                             <Text style={styles.detailLabel}>Duration</Text>
-                            <Text style={styles.detailValue}>4 Hours</Text>
+                            <Text style={styles.detailValue}>{booking?.duration_hours ?? 0} Hours</Text>
                         </View>
                     </View>
 
                     <View style={styles.detailsGrid}>
                         <View style={styles.detailItem}>
                             <Text style={styles.detailLabel}>Date</Text>
-                            <Text style={styles.detailValue}>15 Mar 2026</Text>
+                            <Text style={styles.detailValue}>{booking?.booking_date ?? "N/A"}</Text>
                         </View>
                         <View style={styles.detailItem}>
                             <Text style={styles.detailLabel}>Guests</Text>
-                            <Text style={styles.detailValue}>200 People</Text>
+                            <Text style={styles.detailValue}>{booking?.guests ?? 0} People</Text>
                         </View>
                     </View>
 
                     <View style={styles.detailsGrid}>
                         <View style={styles.detailItem}>
                             <Text style={styles.detailLabel}>City</Text>
-                            <Text style={styles.detailValue}>{venue.city}</Text>
+                            <Text style={styles.detailValue}>{venue?.city ?? "N/A"}</Text>
                         </View>
                         <View style={styles.detailItem}>
                             <Text style={styles.detailLabel}>Booking ID</Text>
-                            <Text style={styles.detailValue}>#{venue.id}8392</Text>
+                            <Text style={styles.detailValue}>#{(booking?.id ?? "").slice(0, 8)}</Text>
                         </View>
                     </View>
                 </View>

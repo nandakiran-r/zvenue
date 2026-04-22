@@ -1,6 +1,7 @@
-import React, { createContext, useContext, useEffect, useState, useCallback } from "react";
-import { useAuth } from "@/context/AuthContext";
-import { fetchFavoriteVenueIds, addFavorite, removeFavorite } from "@/lib/api";
+import React, { createContext, useContext, useEffect, useState, useCallback, useRef } from "react";
+import AsyncStorage from "@react-native-async-storage/async-storage";
+
+const STORAGE_KEY = "@zvenue_favorites";
 
 interface FavoritesContextType {
   favorites: string[];
@@ -12,65 +13,51 @@ interface FavoritesContextType {
 const FavoritesContext = createContext<FavoritesContextType | undefined>(undefined);
 
 export const FavoritesProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
-  const { supabase, dbUser, isSignedIn } = useAuth();
   const [favorites, setFavorites] = useState<string[]>([]);
   const [isLoaded, setIsLoaded] = useState(false);
+  const favoritesRef = useRef<string[]>([]);
 
-  // Load favorites from Supabase when user is available
+  // Keep ref in sync for use in persist
   useEffect(() => {
-    if (!isSignedIn || !dbUser) {
-      setFavorites([]);
-      setIsLoaded(true);
-      return;
-    }
+    favoritesRef.current = favorites;
+  }, [favorites]);
 
-    let cancelled = false;
-    const load = async () => {
+  // Load from AsyncStorage on mount
+  useEffect(() => {
+    (async () => {
       try {
-        const ids = await fetchFavoriteVenueIds(supabase, dbUser.id);
-        if (!cancelled) setFavorites(ids);
+        const raw = await AsyncStorage.getItem(STORAGE_KEY);
+        if (raw) {
+          const parsed: string[] = JSON.parse(raw);
+          setFavorites(parsed);
+          favoritesRef.current = parsed;
+        }
       } catch (err) {
-        console.error("Failed to load favorites:", err);
+        console.error("Failed to load favorites from storage:", err);
       } finally {
-        if (!cancelled) setIsLoaded(true);
+        setIsLoaded(true);
       }
-    };
+    })();
+  }, []);
 
-    load();
-    return () => { cancelled = true; };
-  }, [isSignedIn, dbUser?.id, supabase]);
+  const persist = useCallback(async (next: string[]) => {
+    try {
+      await AsyncStorage.setItem(STORAGE_KEY, JSON.stringify(next));
+    } catch (err) {
+      console.error("Failed to persist favorites:", err);
+    }
+  }, []);
 
   const toggleFavorite = useCallback(
     (venueId: string) => {
-      if (!dbUser) return;
-
-      const isFav = favorites.includes(venueId);
-
-      // Optimistic update
-      setFavorites((prev) =>
-        isFav ? prev.filter((id) => id !== venueId) : [...prev, venueId]
-      );
-
-      // Persist to Supabase
-      const persist = async () => {
-        try {
-          if (isFav) {
-            await removeFavorite(supabase, dbUser.id, venueId);
-          } else {
-            await addFavorite(supabase, dbUser.id, venueId);
-          }
-        } catch (err) {
-          console.error("Failed to toggle favorite:", err);
-          // Revert on error
-          setFavorites((prev) =>
-            isFav ? [...prev, venueId] : prev.filter((id) => id !== venueId)
-          );
-        }
-      };
-
-      persist();
+      setFavorites((prev) => {
+        const isFav = prev.includes(venueId);
+        const next = isFav ? prev.filter((id) => id !== venueId) : [...prev, venueId];
+        persist(next);
+        return next;
+      });
     },
-    [dbUser, favorites, supabase]
+    [persist]
   );
 
   const isFavorite = useCallback(

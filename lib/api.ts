@@ -87,56 +87,6 @@ export async function fetchVenuesByCategory(
   return (data ?? []) as DbVenue[];
 }
 
-// ─── Favorites ─────────────────────────────────────────────────────────────
-
-export async function fetchFavoriteVenueIds(
-  supabase: SupabaseClient,
-  userId: string
-): Promise<string[]> {
-  const { data, error } = await supabase
-    .from("favorites")
-    .select("venue_id")
-    .eq("user_id", userId);
-  if (error) throw error;
-  return (data ?? []).map((f) => f.venue_id);
-}
-
-export async function fetchFavoriteVenues(
-  supabase: SupabaseClient,
-  userId: string
-): Promise<DbVenue[]> {
-  const { data, error } = await supabase
-    .from("favorites")
-    .select("venue:venues(*, category:categories(*))")
-    .eq("user_id", userId);
-  if (error) throw error;
-  return (data ?? []).map((f: any) => f.venue).filter(Boolean) as DbVenue[];
-}
-
-export async function addFavorite(
-  supabase: SupabaseClient,
-  userId: string,
-  venueId: string
-): Promise<void> {
-  const { error } = await supabase
-    .from("favorites")
-    .insert({ user_id: userId, venue_id: venueId });
-  if (error && error.code !== "23505") throw error; // Ignore unique constraint
-}
-
-export async function removeFavorite(
-  supabase: SupabaseClient,
-  userId: string,
-  venueId: string
-): Promise<void> {
-  const { error } = await supabase
-    .from("favorites")
-    .delete()
-    .eq("user_id", userId)
-    .eq("venue_id", venueId);
-  if (error) throw error;
-}
-
 // ─── Bookings ──────────────────────────────────────────────────────────────
 
 export async function fetchBookings(

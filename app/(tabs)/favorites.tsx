@@ -14,12 +14,12 @@ import { useSafeAreaInsets } from "react-native-safe-area-context";
 import Colors from "@/constants/colors";
 import { useAuth } from "@/context/AuthContext";
 import { useFavorites } from "@/context/FavoritesContext";
-import { fetchFavoriteVenues } from "@/lib/api";
+import { fetchVenueById } from "@/lib/api";
 import type { DbVenue } from "@/lib/types";
 
 export default function FavoritesScreen() {
   const insets = useSafeAreaInsets();
-  const { supabase, dbUser } = useAuth();
+  const { supabase } = useAuth();
   const { favorites, toggleFavorite } = useFavorites();
 
   const [favoriteVenues, setFavoriteVenues] = useState<DbVenue[]>([]);
@@ -27,21 +27,22 @@ export default function FavoritesScreen() {
 
   useFocusEffect(
     useCallback(() => {
-      if (!dbUser) {
-        setFavoriteVenues([]);
-        setLoading(false);
-        return;
-      }
       loadFavorites();
-    }, [dbUser?.id, favorites.length])
+    }, [favorites.length])
   );
 
   const loadFavorites = async () => {
-    if (!dbUser) return;
+    if (favorites.length === 0) {
+      setFavoriteVenues([]);
+      setLoading(false);
+      return;
+    }
     try {
       setLoading(true);
-      const venues = await fetchFavoriteVenues(supabase, dbUser.id);
-      setFavoriteVenues(venues);
+      const results = await Promise.all(
+        favorites.map((id) => fetchVenueById(supabase, id))
+      );
+      setFavoriteVenues(results.filter(Boolean) as DbVenue[]);
     } catch (err) {
       console.error("Failed to load favorite venues:", err);
     } finally {

@@ -42,13 +42,6 @@ export interface DbVenue {
   category?: DbCategory;
 }
 
-export interface DbFavorite {
-  id: string;
-  user_id: string;
-  venue_id: string;
-  created_at: string;
-}
-
 export interface DbNotification {
   id: string;
   user_id: string;

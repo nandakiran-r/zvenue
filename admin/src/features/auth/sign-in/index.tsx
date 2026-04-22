@@ -1,58 +1,33 @@
-import { Link, useSearch } from '@tanstack/react-router'
-import {
-  Card,
-  CardContent,
-  CardDescription,
-  CardFooter,
-  CardHeader,
-  CardTitle,
-} from '@/components/ui/card'
-import { AuthLayout } from '../auth-layout'
-import { UserAuthForm } from './components/user-auth-form'
+import { SignIn as ClerkSignIn } from '@clerk/react'
 
 export function SignIn() {
-  const { redirect } = useSearch({ from: '/(auth)/sign-in' })
-
   return (
-    <AuthLayout>
-      <Card className='max-w-sm gap-4'>
-        <CardHeader>
-          <CardTitle className='text-lg tracking-tight'>Sign in</CardTitle>
-          <CardDescription>
-            Enter your email and password below to log into{' '}
-            <br className='max-sm:hidden' /> your account. Don't have an
-            account?{' '}
-            <Link
-              to='/sign-up'
-              className='text-nowrap underline underline-offset-4 hover:text-primary'
-            >
-              Sign Up
-            </Link>
-          </CardDescription>
-        </CardHeader>
-        <CardContent>
-          <UserAuthForm redirectTo={redirect} />
-        </CardContent>
-        <CardFooter>
-          <p className='px-8 text-center text-sm text-muted-foreground'>
-            By clicking sign in, you agree to our{' '}
-            <a
-              href='/terms'
-              className='underline underline-offset-4 hover:text-primary'
-            >
-              Terms of Service
-            </a>{' '}
-            and{' '}
-            <a
-              href='/privacy'
-              className='underline underline-offset-4 hover:text-primary'
-            >
-              Privacy Policy
-            </a>
-            .
+    <div className='flex min-h-svh items-center justify-center bg-muted/30 p-4'>
+      <div className='w-full max-w-md'>
+        <div className='mb-8 text-center'>
+          <h1 className='text-3xl font-bold tracking-tight' style={{ color: '#7a3317' }}>
+            ZVenue
+          </h1>
+          <p className='mt-1 text-sm text-muted-foreground'>
+            Admin Dashboard
           </p>
-        </CardFooter>
-      </Card>
-    </AuthLayout>
+        </div>
+        <ClerkSignIn
+          appearance={{
+            elements: {
+              formButtonPrimary: {
+                backgroundColor: '#7a3317',
+                '&:hover': { backgroundColor: '#5c2511' },
+              },
+              card: {
+                boxShadow: '0 4px 24px rgba(0,0,0,0.08)',
+                borderRadius: '16px',
+              },
+            },
+          }}
+          fallbackRedirectUrl='/'
+        />
+      </div>
+    </div>
   )
 }

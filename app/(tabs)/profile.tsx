@@ -52,7 +52,7 @@ export default function ProfileScreen() {
             </View>
           )}
           <Text style={styles.profileName}>{displayName}</Text>
-          <Text style={styles.profileEmail}>{displayEmail}</Text>
+          <Text style={styles.profileEmail}>{displayEmail || dbUser?.phone_number || ""}</Text>
         </View>
 
         <View style={styles.menuContainer}>

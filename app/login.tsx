@@ -1,13 +1,14 @@
 import { router, useFocusEffect } from "expo-router";
 import { useAuth } from "@/context/AuthContext";
 import { api } from "@/lib/api";
-import { Eye, EyeOff, Lock, Mail, Phone } from "lucide-react-native";
+import { Phone, UserPlus, X } from "lucide-react-native";
 import React, { useCallback, useState } from "react";
 import {
   ActivityIndicator,
   Alert,
   Image,
   KeyboardAvoidingView,
+  Modal,
   Platform,
   ScrollView,
   StyleSheet,
@@ -20,15 +21,12 @@ import { useSafeAreaInsets } from "react-native-safe-area-context";
 import Colors from "@/constants/colors";
 
 export default function LoginScreen() {
-  const [loginMethod, setLoginMethod] = useState<"email" | "phone">("phone");
-  const [email, setEmail] = useState<string>("");
-  const [password, setPassword] = useState<string>("");
   const [phone, setPhone] = useState<string>("");
-  const [showPassword, setShowPassword] = useState<boolean>(false);
   const [loading, setLoading] = useState<boolean>(false);
+  const [showSignupPrompt, setShowSignupPrompt] = useState<boolean>(false);
   const insets = useSafeAreaInsets();
 
-  const { isSignedIn, login } = useAuth();
+  const { isSignedIn } = useAuth();
 
   useFocusEffect(
     useCallback(() => {
@@ -37,28 +35,6 @@ export default function LoginScreen() {
       }
     }, [isSignedIn])
   );
-
-  const handleEmailLogin = async () => {
-    if (!email.trim() || !password.trim()) {
-      Alert.alert("Required", "Please enter your email and password.");
-      return;
-    }
-
-    setLoading(true);
-    try {
-      const response = await api.post("/api/auth/sign-in", {
-        email: email.trim(),
-        password,
-      });
-      await login(response.data.token, response.data.user);
-      router.replace("/(tabs)/home");
-    } catch (err: any) {
-      const message = err.response?.data?.error || "Login failed. Please check your credentials.";
-      Alert.alert("Login Failed", message);
-    } finally {
-      setLoading(false);
-    }
-  };
 
   const handlePhoneLogin = async () => {
     if (!phone.trim() || phone.length < 10) {
@@ -77,15 +53,32 @@ export default function LoginScreen() {
         params: { phone: formattedPhone },
       });
     } catch (err: any) {
-      const message = err.response?.data?.error || "Failed to send OTP.";
-      Alert.alert("Error", message);
+      if (err.response?.status === 404) {
+        setShowSignupPrompt(true);
+      } else {
+        const message = err.response?.data?.error || "Failed to send OTP.";
+        Alert.alert("Login Error", message);
+      }
     } finally {
       setLoading(false);
     }
   };
 
+  const navigateToSignup = () => {
+    setShowSignupPrompt(false);
+    router.push({
+      pathname: "/signup",
+      params: { phone: phone }
+    });
+  };
+
   return (
-    <View style={[styles.container, { paddingTop: insets.top }]}>
+    <View style={styles.container}>
+      <View style={styles.topSection}>
+        <View style={styles.circle1} />
+        <View style={styles.circle2} />
+      </View>
+      
       <KeyboardAvoidingView
         behavior={Platform.OS === "ios" ? "padding" : "height"}
         style={styles.flex}
@@ -95,39 +88,32 @@ export default function LoginScreen() {
           showsVerticalScrollIndicator={false}
           keyboardShouldPersistTaps="handled"
         >
-          <View style={styles.logoContainer}>
-            <Image
-              source={require("../assets/images/favicon.png")}
-              style={styles.logoImage}
-            />
+          <View style={styles.headerSection}>
+            <View style={styles.logoWrapper}>
+              <Image
+                source={require("../assets/images/favicon.png")}
+                style={styles.logoImage}
+              />
+            </View>
             <Text style={styles.brandText}>ZVENUE</Text>
+            <Text style={styles.title}>Welcome Back</Text>
+            <Text style={styles.subtitle}>Sign in with your mobile number to continue</Text>
           </View>
 
-          <Text style={styles.title}>Welcome Back!</Text>
-          <Text style={styles.subtitle}>Login to access your account</Text>
-
-          <View style={styles.toggleContainer}>
-            <TouchableOpacity
-              style={[styles.toggleBtn, loginMethod === "phone" && styles.toggleBtnActive]}
-              onPress={() => setLoginMethod("phone")}
-            >
-              <Text style={[styles.toggleText, loginMethod === "phone" && styles.toggleTextActive]}>Mobile</Text>
-            </TouchableOpacity>
-            <TouchableOpacity
-              style={[styles.toggleBtn, loginMethod === "email" && styles.toggleBtnActive]}
-              onPress={() => setLoginMethod("email")}
-            >
-              <Text style={[styles.toggleText, loginMethod === "email" && styles.toggleTextActive]}>Email</Text>
-            </TouchableOpacity>
-          </View>
-
-          {loginMethod === "phone" ? (
-            <>
+          <View style={styles.cardContainer}>
+            <View style={styles.formSection}>
+              <View style={styles.inputLabelContainer}>
+                <Text style={styles.inputLabel}>Phone Number</Text>
+              </View>
               <View style={styles.inputContainer}>
-                <Text style={styles.countryCode}>+91</Text>
+                <View style={styles.phoneIconWrapper}>
+                  <Phone size={18} color={Colors.primary} />
+                  <Text style={styles.countryCode}>+91</Text>
+                  <View style={styles.separator} />
+                </View>
                 <TextInput
                   style={styles.input}
-                  placeholder="Enter Mobile Number"
+                  placeholder="Enter 10-digit number"
                   placeholderTextColor={Colors.textTertiary}
                   value={phone}
                   onChangeText={setPhone}
@@ -145,102 +131,307 @@ export default function LoginScreen() {
                 {loading ? (
                   <ActivityIndicator color={Colors.white} />
                 ) : (
-                  <Text style={styles.primaryButtonText}>Get OTP</Text>
+                  <Text style={styles.primaryButtonText}>Send OTP</Text>
                 )}
               </TouchableOpacity>
-            </>
-          ) : (
-            <>
-              <View style={styles.inputContainer}>
-                <Mail size={20} color={Colors.textSecondary} />
-                <TextInput
-                  style={styles.input}
-                  placeholder="Enter Email Address"
-                  placeholderTextColor={Colors.textTertiary}
-                  value={email}
-                  onChangeText={setEmail}
-                  keyboardType="email-address"
-                  autoCapitalize="none"
-                  autoCorrect={false}
-                />
-              </View>
-
-              <View style={styles.inputContainer}>
-                <Lock size={20} color={Colors.textSecondary} />
-                <TextInput
-                  style={styles.input}
-                  placeholder="Enter Password"
-                  placeholderTextColor={Colors.textTertiary}
-                  value={password}
-                  onChangeText={setPassword}
-                  secureTextEntry={!showPassword}
-                />
-                <TouchableOpacity onPress={() => setShowPassword(!showPassword)}>
-                  {showPassword ? (
-                    <Eye size={20} color={Colors.textSecondary} />
-                  ) : (
-                    <EyeOff size={20} color={Colors.textSecondary} />
-                  )}
-                </TouchableOpacity>
-              </View>
-
-              <TouchableOpacity
-                onPress={() => router.push("/forgot-password")}
-                style={styles.forgotRow}
-              >
-                <Text style={styles.forgotText}>Forgot Password ?</Text>
-              </TouchableOpacity>
-
-              <TouchableOpacity
-                style={[styles.primaryButton, loading && styles.disabledButton]}
-                onPress={handleEmailLogin}
-                activeOpacity={0.8}
-                disabled={loading}
-              >
-                {loading ? (
-                  <ActivityIndicator color={Colors.white} />
-                ) : (
-                  <Text style={styles.primaryButtonText}>Login</Text>
-                )}
-              </TouchableOpacity>
-            </>
-          )}
+            </View>
+          </View>
 
           <View style={styles.bottomRow}>
-            <Text style={styles.bottomText}>Don&apos;t have an account? </Text>
+            <Text style={styles.bottomText}>New to Zvenue? </Text>
             <TouchableOpacity onPress={() => router.push("/signup")}>
-              <Text style={styles.linkText}>Signup</Text>
+              <Text style={styles.linkText}>Create Account</Text>
             </TouchableOpacity>
           </View>
         </ScrollView>
       </KeyboardAvoidingView>
+
+      {/* Registration Prompt Modal */}
+      <Modal
+        visible={showSignupPrompt}
+        transparent
+        animationType="slide"
+        onRequestClose={() => setShowSignupPrompt(false)}
+      >
+        <View style={styles.modalOverlay}>
+          <View style={[styles.modalContent, { paddingBottom: insets.bottom + 24 }]}>
+            <View style={styles.modalHeader}>
+              <View style={styles.modalIndicator} />
+              <TouchableOpacity 
+                onPress={() => setShowSignupPrompt(false)}
+                style={styles.closeButton}
+              >
+                <X size={20} color={Colors.textSecondary} />
+              </TouchableOpacity>
+            </View>
+
+            <View style={styles.modalBody}>
+              <View style={styles.iconCircle}>
+                <UserPlus size={32} color={Colors.primary} />
+              </View>
+              <Text style={styles.modalTitle}>User Not Found</Text>
+              <Text style={styles.modalSubtitle}>
+                The phone number <Text style={{fontWeight: '700', color: Colors.text}}>+91 {phone}</Text> is not registered with us yet.
+              </Text>
+              
+              <TouchableOpacity
+                style={styles.modalPrimaryButton}
+                onPress={navigateToSignup}
+                activeOpacity={0.8}
+              >
+                <Text style={styles.modalPrimaryButtonText}>Sign Up Now</Text>
+              </TouchableOpacity>
+
+              <TouchableOpacity
+                style={styles.modalSecondaryButton}
+                onPress={() => setShowSignupPrompt(false)}
+                activeOpacity={0.6}
+              >
+                <Text style={styles.modalSecondaryButtonText}>Try Another Number</Text>
+              </TouchableOpacity>
+            </View>
+          </View>
+        </View>
+      </Modal>
     </View>
   );
 }
 
 const styles = StyleSheet.create({
-  container: { flex: 1, backgroundColor: Colors.white },
+  container: { 
+    flex: 1, 
+    backgroundColor: '#FBFBFB' 
+  },
+  topSection: {
+    position: 'absolute',
+    top: -50,
+    right: -50,
+    left: -50,
+    height: 300,
+  },
+  circle1: {
+    position: 'absolute',
+    top: -20,
+    right: -20,
+    width: 200,
+    height: 200,
+    borderRadius: 100,
+    backgroundColor: '#7a331710',
+  },
+  circle2: {
+    position: 'absolute',
+    top: 40,
+    left: -40,
+    width: 150,
+    height: 150,
+    borderRadius: 75,
+    backgroundColor: '#7a331708',
+  },
   flex: { flex: 1 },
-  scrollContent: { paddingHorizontal: 24, paddingBottom: 32 },
-  logoContainer: { alignItems: "center", marginTop: 24, marginBottom: 24 },
-  logoImage: { width: 70, height: 70, borderRadius: 16 },
-  brandText: { fontSize: 14, fontWeight: "800", color: Colors.primary, marginTop: 6, letterSpacing: 2 },
-  title: { fontSize: 28, fontWeight: "700", color: Colors.text, textAlign: "center", marginBottom: 8 },
-  subtitle: { fontSize: 14, color: Colors.textSecondary, textAlign: "center", marginBottom: 32 },
-  toggleContainer: { flexDirection: "row", backgroundColor: Colors.background, borderRadius: 12, padding: 4, marginBottom: 24 },
-  toggleBtn: { flex: 1, paddingVertical: 10, alignItems: "center", borderRadius: 8 },
-  toggleBtnActive: { backgroundColor: Colors.white, shadowColor: "#000", shadowOffset: { width: 0, height: 1 }, shadowOpacity: 0.1, shadowRadius: 2, elevation: 2 },
-  toggleText: { fontSize: 14, fontWeight: "600", color: Colors.textSecondary },
-  toggleTextActive: { color: Colors.primary },
-  inputContainer: { flexDirection: "row", alignItems: "center", borderWidth: 1, borderColor: Colors.inputBorder, borderRadius: 16, paddingHorizontal: 16, paddingVertical: 14, marginBottom: 16, backgroundColor: Colors.white, gap: 12 },
-  countryCode: { fontSize: 15, fontWeight: "600", color: Colors.text },
-  input: { flex: 1, fontSize: 15, color: Colors.text },
-  forgotRow: { alignSelf: "flex-end", marginBottom: 24 },
-  forgotText: { fontSize: 13, color: Colors.text, fontWeight: "500" },
-  primaryButton: { backgroundColor: Colors.primary, borderRadius: 16, paddingVertical: 18, alignItems: "center", marginBottom: 20 },
-  disabledButton: { opacity: 0.6 },
-  primaryButtonText: { color: Colors.white, fontSize: 16, fontWeight: "700" },
-  bottomRow: { flexDirection: "row", justifyContent: "center", marginTop: 20 },
-  bottomText: { fontSize: 14, color: Colors.textSecondary },
-  linkText: { fontSize: 14, color: Colors.primary, fontWeight: "600" },
+  scrollContent: { 
+    paddingHorizontal: 28, 
+    paddingBottom: 40,
+    flexGrow: 1,
+    justifyContent: 'center',
+  },
+  headerSection: {
+    alignItems: "center",
+    marginBottom: 40,
+    marginTop: 40,
+  },
+  logoWrapper: {
+    width: 80,
+    height: 80,
+    borderRadius: 24,
+    backgroundColor: Colors.white,
+    alignItems: 'center',
+    justifyContent: 'center',
+    shadowColor: Colors.primary,
+    shadowOffset: { width: 0, height: 10 },
+    shadowOpacity: 0.1,
+    shadowRadius: 15,
+    elevation: 8,
+  },
+  logoImage: { width: 50, height: 50 },
+  brandText: { 
+    fontSize: 16, 
+    fontWeight: "800", 
+    color: Colors.primary, 
+    marginTop: 16, 
+    letterSpacing: 4 
+  },
+  title: { 
+    fontSize: 32, 
+    fontWeight: "800", 
+    color: Colors.text, 
+    textAlign: "center", 
+    marginTop: 12,
+    marginBottom: 8 
+  },
+  subtitle: { 
+    fontSize: 15, 
+    color: Colors.textSecondary, 
+    textAlign: "center",
+    fontWeight: '500',
+  },
+  cardContainer: {
+    backgroundColor: Colors.white,
+    borderRadius: 32,
+    padding: 24,
+    shadowColor: "#000",
+    shadowOffset: { width: 0, height: 20 },
+    shadowOpacity: 0.05,
+    shadowRadius: 30,
+    elevation: 10,
+  },
+  formSection: {
+    gap: 0,
+  },
+  inputLabelContainer: {
+    marginBottom: 8,
+    marginLeft: 4,
+  },
+  inputLabel: {
+    fontSize: 14,
+    fontWeight: '600',
+    color: Colors.text,
+  },
+  inputContainer: { 
+    flexDirection: "row", 
+    alignItems: "center", 
+    borderWidth: 1.5, 
+    borderColor: '#F0F0F0', 
+    borderRadius: 18, 
+    paddingHorizontal: 16, 
+    paddingVertical: 14, 
+    marginBottom: 20, 
+    backgroundColor: '#FBFBFB', 
+    gap: 12 
+  },
+  phoneIconWrapper: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+  },
+  separator: {
+    width: 1,
+    height: 20,
+    backgroundColor: '#E0E0E0',
+    marginHorizontal: 4,
+  },
+  countryCode: { fontSize: 16, fontWeight: "700", color: Colors.text },
+  input: { 
+    flex: 1, 
+    fontSize: 16, 
+    color: Colors.text,
+    fontWeight: '500',
+  },
+  primaryButton: { 
+    backgroundColor: Colors.primary, 
+    borderRadius: 20, 
+    paddingVertical: 20, 
+    alignItems: "center",
+    shadowColor: Colors.primary,
+    shadowOffset: { width: 0, height: 8 },
+    shadowOpacity: 0.3,
+    shadowRadius: 12,
+    elevation: 8,
+  },
+  disabledButton: { opacity: 0.7 },
+  primaryButtonText: { color: Colors.white, fontSize: 17, fontWeight: "700" },
+  bottomRow: { 
+    flexDirection: "row", 
+    justifyContent: "center", 
+    marginTop: 32 
+  },
+  bottomText: { fontSize: 15, color: Colors.textSecondary, fontWeight: '500' },
+  linkText: { fontSize: 15, color: Colors.primary, fontWeight: "700" },
+
+  // Modal Styles
+  modalOverlay: {
+    flex: 1,
+    backgroundColor: 'rgba(0,0,0,0.5)',
+    justifyContent: 'flex-end',
+  },
+  modalContent: {
+    backgroundColor: Colors.white,
+    borderTopLeftRadius: 32,
+    borderTopRightRadius: 32,
+    paddingHorizontal: 24,
+    paddingTop: 12,
+  },
+  modalHeader: {
+    alignItems: 'center',
+    marginBottom: 20,
+    flexDirection: 'row',
+    justifyContent: 'center',
+  },
+  modalIndicator: {
+    width: 40,
+    height: 4,
+    backgroundColor: '#E0E0E0',
+    borderRadius: 2,
+    position: 'absolute',
+  },
+  closeButton: {
+    position: 'absolute',
+    right: 0,
+    padding: 4,
+  },
+  modalBody: {
+    alignItems: 'center',
+    paddingVertical: 12,
+  },
+  iconCircle: {
+    width: 80,
+    height: 80,
+    borderRadius: 40,
+    backgroundColor: '#7a331710',
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginBottom: 20,
+  },
+  modalTitle: {
+    fontSize: 24,
+    fontWeight: '800',
+    color: Colors.text,
+    marginBottom: 12,
+  },
+  modalSubtitle: {
+    fontSize: 16,
+    color: Colors.textSecondary,
+    textAlign: 'center',
+    lineHeight: 24,
+    marginBottom: 32,
+    paddingHorizontal: 10,
+  },
+  modalPrimaryButton: {
+    backgroundColor: Colors.primary,
+    width: '100%',
+    paddingVertical: 18,
+    borderRadius: 18,
+    alignItems: 'center',
+    marginBottom: 12,
+    shadowColor: Colors.primary,
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.2,
+    shadowRadius: 8,
+    elevation: 4,
+  },
+  modalPrimaryButtonText: {
+    color: Colors.white,
+    fontSize: 16,
+    fontWeight: '700',
+  },
+  modalSecondaryButton: {
+    width: '100%',
+    paddingVertical: 16,
+    borderRadius: 18,
+    alignItems: 'center',
+  },
+  modalSecondaryButtonText: {
+    color: Colors.textSecondary,
+    fontSize: 15,
+    fontWeight: '600',
+  },
 });

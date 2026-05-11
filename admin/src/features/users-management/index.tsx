@@ -181,7 +181,7 @@ export function UsersManagementPage() {
                         <TableCell>
                           <div className='flex items-center gap-1'>
                             <Phone className='h-3 w-3 text-muted-foreground' />
-                            <span className='text-sm'>{user.phone || '—'}</span>
+                            <span className='text-sm'>{user.phone_number || '—'}</span>
                           </div>
                         </TableCell>
                         <TableCell className='text-sm'>
@@ -272,7 +272,7 @@ export function UsersManagementPage() {
                     <Phone className='h-3 w-3 text-muted-foreground' />
                     <p className='text-xs text-muted-foreground'>Phone</p>
                   </div>
-                  <p className='text-sm font-medium'>{userDetail.phone || '—'}</p>
+                  <p className='text-sm font-medium'>{userDetail.phone_number || '—'}</p>
                 </div>
                 <div className='rounded-lg bg-muted p-3'>
                   <div className='flex items-center gap-2 mb-1'>

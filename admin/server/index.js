@@ -5,7 +5,7 @@ import jwt from '@fastify/jwt';
 import argon2 from 'argon2';
 import { db } from './db/index.js';
 import { users, venues, categories, bookings, notifications, otps } from './db/schema.js';
-import { eq, ilike, or, desc, asc, count, sum, sql } from 'drizzle-orm';
+import { eq, and, ilike, or, desc, asc, count, sum, sql } from 'drizzle-orm';
 
 const fastify = Fastify({ logger: true });
 
@@ -29,29 +29,44 @@ fastify.decorate('authenticate', async function (request, reply) {
 
 // ─── AUTHENTICATION ────────────────────────────────────────────────────────
 fastify.post('/api/auth/sign-up', async (request, reply) => {
-  const { full_name, email, password } = request.body;
+  const { first_name, last_name, email, phone_number, password } = request.body;
   
-  if (!full_name || !email || !password) {
-    return reply.status(400).send({ error: 'Missing required fields' });
+  if (!first_name || !last_name || !email || !phone_number) {
+    return reply.status(400).send({ error: 'All fields are mandatory' });
   }
 
   try {
-    const existing = await db.query.users.findFirst({
+    const existingEmail = await db.query.users.findFirst({
       where: eq(users.email, email)
     });
-    if (existing) {
+    if (existingEmail) {
       return reply.status(400).send({ error: 'Email already exists' });
     }
 
-    const hashedPassword = await argon2.hash(password);
+    const existingPhone = await db.query.users.findFirst({
+      where: eq(users.phone_number, phone_number)
+    });
+    if (existingPhone) {
+      return reply.status(400).send({ error: 'Phone number already registered' });
+    }
+
+    const full_name = `${first_name} ${last_name}`;
+    let hashedPassword = null;
+    if (password) {
+      hashedPassword = await argon2.hash(password);
+    }
+
     const [newUser] = await db.insert(users).values({
+      first_name,
+      last_name,
       full_name,
       email,
+      phone_number,
       password: hashedPassword
     }).returning();
 
-    const token = fastify.jwt.sign({ id: newUser.id, email: newUser.email });
-    return { token, user: { id: newUser.id, full_name: newUser.full_name, email: newUser.email } };
+    const token = fastify.jwt.sign({ id: newUser.id, email: newUser.email, phone_number: newUser.phone_number });
+    return { token, user: { id: newUser.id, first_name: newUser.first_name, last_name: newUser.last_name, full_name: newUser.full_name, email: newUser.email, phone_number: newUser.phone_number } };
   } catch (err) {
     fastify.log.error(err);
     return reply.status(500).send({ error: 'Internal Server Error' });
@@ -88,7 +103,17 @@ fastify.post('/api/auth/send-otp', async (request, reply) => {
   if (!phone_number) return reply.status(400).send({ error: 'Phone number is required' });
 
   try {
-    const otp = "123456"; // Hardcoded for testing
+    // CHECK IF USER IS REGISTERED
+    const user = await db.query.users.findFirst({
+      where: eq(users.phone_number, phone_number)
+    });
+
+    if (!user) {
+      return reply.status(404).send({ error: 'User not registered. Please sign up first.' });
+    }
+
+    // Generate random 6-digit OTP
+    const otp = Math.floor(100000 + Math.random() * 900000).toString();
     const expires_at = new Date(Date.now() + 5 * 60000); // 5 mins
     
     await db.insert(otps).values({
@@ -97,15 +122,41 @@ fastify.post('/api/auth/send-otp', async (request, reply) => {
       expires_at
     });
 
-    // Mock sending SMS
-    console.log(`\n\n=== OTP for ${phone_number} is ${otp} ===\n\n`);
+    // Send via AOC WhatsApp API
+    const response = await fetch('https://api.aoc-portal.com/v1/whatsapp', {
+      method: 'POST',
+      headers: {
+        'apikey': process.env.AOC_API_KEY,
+        'Content-Type': 'application/json'
+      },
+      body: JSON.stringify({
+        from: process.env.AOC_WHATSAPP_NUMBER,
+        to: phone_number,
+        templateName: process.env.AOC_TEMPLATE_NAME,
+        otp: otp,
+        type: 'template',
+        language: {
+          code: 'en'
+        }
+      })
+    });
 
+    const result = await response.json();
+    
+    if (!response.ok || result.error) {
+      fastify.log.error('AOC API Error:', result);
+      return reply.status(500).send({ error: 'Failed to send WhatsApp OTP' });
+    }
+
+
+    fastify.log.info(`OTP sent to ${phone_number} via WhatsApp`);
     return { success: true, message: 'OTP sent successfully' };
   } catch (err) {
     fastify.log.error(err);
     return reply.status(500).send({ error: 'Internal Server Error' });
   }
 });
+
 
 fastify.post('/api/auth/verify-otp', async (request, reply) => {
   const { phone_number, otp } = request.body;
@@ -126,21 +177,11 @@ fastify.post('/api/auth/verify-otp', async (request, reply) => {
     });
 
     if (!user) {
-      // Create new user via phone login
-      [user] = await db.insert(users).values({
-        full_name: 'New User',
-        phone_number,
-        phone_verified: true
-      }).returning();
-    } else if (!user.phone_verified) {
-      [user] = await db.update(users)
-        .set({ phone_verified: true })
-        .where(eq(users.id, user.id))
-        .returning();
+      return reply.status(404).send({ error: 'User not found. Registration required.' });
     }
 
     const token = fastify.jwt.sign({ id: user.id, phone_number: user.phone_number });
-    return { token, user: { id: user.id, full_name: user.full_name, phone_number: user.phone_number, avatar_url: user.avatar_url } };
+    return { token, user: { id: user.id, first_name: user.first_name, last_name: user.last_name, full_name: user.full_name, email: user.email, phone_number: user.phone_number, avatar_url: user.avatar_url } };
   } catch (err) {
     fastify.log.error(err);
     return reply.status(500).send({ error: 'Internal Server Error' });
@@ -151,7 +192,7 @@ fastify.get('/api/auth/me', { onRequest: [fastify.authenticate] }, async (reques
   try {
     const user = await db.query.users.findFirst({
       where: eq(users.id, request.user.id),
-      columns: { id: true, full_name: true, email: true, avatar_url: true }
+      columns: { id: true, first_name: true, last_name: true, full_name: true, email: true, phone_number: true, avatar_url: true }
     });
     if (!user) {
       return reply.status(404).send({ error: 'User not found' });
@@ -438,6 +479,65 @@ fastify.delete('/api/bookings/:id', { onRequest: [fastify.authenticate] }, async
   }
 });
 
+fastify.post('/api/bookings', { onRequest: [fastify.authenticate] }, async (request, reply) => {
+  try {
+    const { venue_id, booking_date, start_time, end_time, guests, subtotal, service_fee, total, payment_method } = request.body;
+    const user_id = request.user.id;
+
+    // Check for conflicts
+    const conflicts = await db.query.bookings.findMany({
+      where: and(
+        eq(bookings.venue_id, venue_id),
+        eq(bookings.booking_date, booking_date),
+        eq(bookings.status, 'confirmed')
+      )
+    });
+
+    // Simple overlap check (for strings, this is basic; ideally use timestamps)
+    // But since we are using strings like "10:00 AM", we'll just check for exact matches or overlap if they use a standard format.
+    if (conflicts.length > 0) {
+      const firstConflict = conflicts[0];
+      return reply.status(400).send({ 
+        error: `Already booked! This venue is reserved on ${firstConflict.booking_date} from ${firstConflict.start_time} to ${firstConflict.end_time}. Please choose another time or date.` 
+      });
+    }
+
+    const [inserted] = await db.insert(bookings).values({
+      venue_id,
+      user_id,
+      booking_date,
+      start_time,
+      end_time,
+      guests,
+      subtotal,
+      service_fee,
+      total,
+      payment_method,
+      status: 'confirmed'
+    }).returning();
+
+    // Create Notification for the user
+    await db.insert(notifications).values({
+      user_id,
+      title: 'Booking Confirmed!',
+      body: `Your booking for venue on ${booking_date} has been confirmed.`,
+      type: 'booking',
+      is_read: false,
+      data: { booking_id: inserted.id }
+    });
+
+    // Create a System/Admin notification (just insert one without user_id or a dummy system user if needed)
+    // For now, we'll insert one with user_id null if the schema allows, or just broadcast it.
+    // Looking at schema, user_id is a reference. 
+    // We'll just create a notification for the booking user, and the admin panel fetches all notifications anyway.
+    
+    return inserted;
+  } catch (err) {
+    fastify.log.error(err);
+    return reply.status(500).send({ error: 'Internal Server Error' });
+  }
+});
+
 // ─── USERS ─────────────────────────────────────────────────────────────────
 fastify.get('/api/users', { onRequest: [fastify.authenticate] }, async (request, reply) => {
   try {
@@ -471,7 +571,7 @@ fastify.get('/api/users/:id', { onRequest: [fastify.authenticate] }, async (requ
   try {
     const data = await db.query.users.findFirst({
       where: eq(users.id, request.params.id),
-      columns: { id: true, full_name: true, email: true, avatar_url: true, created_at: true },
+      columns: { id: true, full_name: true, email: true, phone_number: true, avatar_url: true, dob: true, created_at: true },
       with: {
         bookings: {
           with: { venue: { columns: { name: true, city: true, image_url: true } } },
@@ -480,6 +580,19 @@ fastify.get('/api/users/:id', { onRequest: [fastify.authenticate] }, async (requ
       }
     });
     return data;
+  } catch (err) {
+    return reply.status(500).send({ error: 'Internal Server Error' });
+  }
+});
+
+fastify.put('/api/users/:id', { onRequest: [fastify.authenticate] }, async (request, reply) => {
+  try {
+    const { full_name, email, phone_number, dob, avatar_url } = request.body;
+    const [updated] = await db.update(users)
+      .set({ full_name, email, phone_number, dob, avatar_url })
+      .where(eq(users.id, request.params.id))
+      .returning();
+    return updated;
   } catch (err) {
     return reply.status(500).send({ error: 'Internal Server Error' });
   }

@@ -2,10 +2,11 @@
 
 export interface DbUser {
   id: string;
-  clerk_id: string;
+  first_name: string | null;
+  last_name: string | null;
   full_name: string | null;
   email: string | null;
-  phone: string | null;
+  phone_number: string | null;
   avatar_url: string | null;
   dob: string | null;
   created_at: string;

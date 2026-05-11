@@ -21,7 +21,7 @@ import { useSafeAreaInsets } from "react-native-safe-area-context";
 import Colors from "@/constants/colors";
 
 export default function EnterOtpScreen() {
-  const { phone } = useLocalSearchParams<{ phone: string }>();
+  const { phone, full_name } = useLocalSearchParams<{ phone: string; full_name?: string }>();
   const [otp, setOtp] = useState<string[]>(["", "", "", "", "", ""]);
   const [timer, setTimer] = useState<number>(52);
   const [loading, setLoading] = useState<boolean>(false);
@@ -90,7 +90,8 @@ export default function EnterOtpScreen() {
     try {
       const response = await api.post("/api/auth/verify-otp", {
         phone_number: phone,
-        otp: code
+        otp: code,
+        full_name: full_name
       });
       await login(response.data.token, response.data.user);
       router.replace("/(tabs)/home");
@@ -100,7 +101,8 @@ export default function EnterOtpScreen() {
     } finally {
       setLoading(false);
     }
-  }, [otp, phone, login]);
+  }, [otp, phone, full_name, login]);
+
 
   return (
     <KeyboardAvoidingView

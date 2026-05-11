@@ -3,9 +3,11 @@ import { relations } from 'drizzle-orm';
 
 export const users = pgTable('users', {
   id: uuid('id').primaryKey().defaultRandom(),
-  full_name: varchar('full_name', { length: 255 }).notNull(),
-  email: varchar('email', { length: 255 }).unique(),
-  phone_number: varchar('phone_number', { length: 20 }).unique(),
+  first_name: varchar('first_name', { length: 255 }).notNull().default(''),
+  last_name: varchar('last_name', { length: 255 }).notNull().default(''),
+  full_name: varchar('full_name', { length: 255 }),
+  email: varchar('email', { length: 255 }).unique().notNull().default(''),
+  phone_number: varchar('phone_number', { length: 20 }).unique().notNull().default(''),
   password: text('password'),
   phone_verified: boolean('phone_verified').default(false),
   avatar_url: text('avatar_url'),
@@ -53,8 +55,15 @@ export const bookings = pgTable('bookings', {
   id: uuid('id').primaryKey().defaultRandom(),
   venue_id: uuid('venue_id').references(() => venues.id),
   user_id: uuid('user_id').references(() => users.id),
-  total: integer('total').notNull(),
+  booking_date: varchar('booking_date', { length: 50 }).notNull().default(''),
+  start_time: varchar('start_time', { length: 50 }),
+  end_time: varchar('end_time', { length: 50 }),
+  guests: integer('guests').default(1),
   status: varchar('status', { length: 50 }).notNull().default('pending'),
+  subtotal: integer('subtotal').notNull().default(0),
+  service_fee: integer('service_fee').notNull().default(0),
+  total: integer('total').notNull(),
+  payment_method: varchar('payment_method', { length: 50 }).default('UPI'),
   created_at: timestamp('created_at').defaultNow(),
 });
 

@@ -23,17 +23,19 @@ export default function EditProfileScreen() {
     const insets = useSafeAreaInsets();
     const { dbUser, userId, refreshProfile } = useAuth();
 
-    const [name, setName] = useState("");
+    const [firstName, setFirstName] = useState("");
+    const [lastName, setLastName] = useState("");
     const [email, setEmail] = useState("");
-    const [phone, setPhone] = useState("");
+    const [phoneNumber, setPhoneNumber] = useState("");
     const [dob, setDob] = useState("");
     const [saving, setSaving] = useState(false);
 
     useEffect(() => {
         if (dbUser) {
-            setName(dbUser.full_name ?? "");
+            setFirstName(dbUser.first_name ?? "");
+            setLastName(dbUser.last_name ?? "");
             setEmail(dbUser.email ?? "");
-            setPhone(dbUser.phone ?? "");
+            setPhoneNumber(dbUser.phone_number ?? "");
             setDob(dbUser.dob ?? "");
         }
     }, [dbUser]);
@@ -43,9 +45,11 @@ export default function EditProfileScreen() {
         try {
             setSaving(true);
             await updateUser(userId, {
-                full_name: name,
+                first_name: firstName,
+                last_name: lastName,
+                full_name: `${firstName} ${lastName}`,
                 email,
-                phone,
+                phone_number: phoneNumber,
                 dob,
             });
             await refreshProfile();
@@ -95,17 +99,32 @@ export default function EditProfileScreen() {
                     </View>
 
                     <View style={styles.form}>
-                        <View style={styles.inputGroup}>
-                            <Text style={styles.label}>Full Name</Text>
-                            <View style={styles.inputContainer}>
-                                <User size={20} color={Colors.textSecondary} />
-                                <TextInput
-                                    style={styles.input}
-                                    value={name}
-                                    onChangeText={setName}
-                                    placeholder="Enter your name"
-                                    placeholderTextColor={Colors.textTertiary}
-                                />
+                        <View style={{ flexDirection: 'row', gap: 12 }}>
+                            <View style={[styles.inputGroup, { flex: 1 }]}>
+                                <Text style={styles.label}>First Name</Text>
+                                <View style={styles.inputContainer}>
+                                    <User size={18} color={Colors.textSecondary} />
+                                    <TextInput
+                                        style={styles.input}
+                                        value={firstName}
+                                        onChangeText={setFirstName}
+                                        placeholder="First name"
+                                        placeholderTextColor={Colors.textTertiary}
+                                    />
+                                </View>
+                            </View>
+                            <View style={[styles.inputGroup, { flex: 1 }]}>
+                                <Text style={styles.label}>Last Name</Text>
+                                <View style={styles.inputContainer}>
+                                    <User size={18} color={Colors.textSecondary} />
+                                    <TextInput
+                                        style={styles.input}
+                                        value={lastName}
+                                        onChangeText={setLastName}
+                                        placeholder="Last name"
+                                        placeholderTextColor={Colors.textTertiary}
+                                    />
+                                </View>
                             </View>
                         </View>
 
@@ -131,8 +150,8 @@ export default function EditProfileScreen() {
                                 <Phone size={20} color={Colors.textSecondary} />
                                 <TextInput
                                     style={styles.input}
-                                    value={phone}
-                                    onChangeText={setPhone}
+                                    value={phoneNumber}
+                                    onChangeText={setPhoneNumber}
                                     placeholder="Enter your phone number"
                                     placeholderTextColor={Colors.textTertiary}
                                     keyboardType="phone-pad"

@@ -1,14 +1,15 @@
-import { router } from "expo-router";
+import { router, useLocalSearchParams } from "expo-router";
 import { useAuth } from "@/context/AuthContext";
 import { safeBack } from "@/constants/navigation";
 import { api } from "@/lib/api";
-import { ChevronLeft, Eye, EyeOff, Lock, Mail, User } from "lucide-react-native";
-import React, { useCallback, useState } from "react";
+import { ChevronLeft, Mail, User, Phone, Lock, CheckCircle2, XCircle } from "lucide-react-native";
+import React, { useState } from "react";
 import {
   ActivityIndicator,
   Alert,
   Image,
   KeyboardAvoidingView,
+  Modal,
   Platform,
   ScrollView,
   StyleSheet,
@@ -21,40 +22,53 @@ import { useSafeAreaInsets } from "react-native-safe-area-context";
 import Colors from "@/constants/colors";
 
 export default function SignupScreen() {
-  const [name, setName] = useState<string>("");
+  const params = useLocalSearchParams();
+  const initialPhone = params.phone ? (params.phone as string).replace("+91", "") : "";
+
+  const [firstName, setFirstName] = useState<string>("");
+  const [lastName, setLastName] = useState<string>("");
   const [email, setEmail] = useState<string>("");
-  const [password, setPassword] = useState<string>("");
-  const [showPassword, setShowPassword] = useState<boolean>(false);
-  const [loading, setLoading] = useState<boolean>(false);
+  const [phone, setPhone] = useState<string>(initialPhone);
+  const [loading, setLoading] = useState(false);
+  const [showSuccessModal, setShowSuccessModal] = useState(false);
+  const [errorMsg, setErrorMsg] = useState<string | null>(null);
   const insets = useSafeAreaInsets();
 
   const { login } = useAuth();
 
   const handleSignup = async () => {
-    if (!name.trim() || !email.trim() || !password.trim()) {
-      Alert.alert("Required", "Please fill in all fields.");
+    if (!firstName.trim() || !lastName.trim() || !email.trim() || !phone.trim() || phone.length < 10) {
+      Alert.alert("Required", "Please fill in all mandatory fields with a valid phone number.");
       return;
     }
 
     setLoading(true);
     try {
+      const formattedPhone = phone.startsWith("+91") ? phone : `+91${phone}`;
       const response = await api.post("/api/auth/sign-up", {
-        full_name: name.trim(),
+        first_name: firstName.trim(),
+        last_name: lastName.trim(),
         email: email.trim(),
-        password,
+        phone_number: formattedPhone,
       });
-      await login(response.data.token, response.data.user);
-      router.replace("/(tabs)/home");
+      
+      // Show custom success modal
+      setShowSuccessModal(true);
     } catch (err: any) {
       const message = err.response?.data?.error || "Signup failed. Please try again.";
-      Alert.alert("Signup Failed", message);
+      setErrorMsg(message);
     } finally {
       setLoading(false);
     }
   };
 
   return (
-    <View style={[styles.container, { paddingTop: insets.top }]}>
+    <View style={styles.container}>
+      <View style={styles.topSection}>
+        <View style={styles.circle1} />
+        <View style={styles.circle2} />
+      </View>
+
       <KeyboardAvoidingView
         behavior={Platform.OS === "ios" ? "padding" : "height"}
         style={styles.flex}
@@ -65,185 +79,375 @@ export default function SignupScreen() {
           keyboardShouldPersistTaps="handled"
         >
           <TouchableOpacity onPress={() => safeBack("/login")} style={styles.backButton}>
-            <ChevronLeft size={24} color={Colors.text} />
+            <View style={styles.backButtonInner}>
+              <ChevronLeft size={20} color={Colors.text} />
+            </View>
           </TouchableOpacity>
 
-          <View style={styles.logoContainer}>
-            <Image
-              source={require("../assets/images/favicon.png")}
-              style={styles.logoImage}
-            />
+          <View style={styles.headerSection}>
+            <View style={styles.logoWrapper}>
+              <Image
+                source={require("../assets/images/favicon.png")}
+                style={styles.logoImage}
+              />
+            </View>
             <Text style={styles.brandText}>ZVENUE</Text>
+            <Text style={styles.title}>Join Zvenue</Text>
+            <Text style={styles.subtitle}>Create your professional account</Text>
           </View>
 
-          <Text style={styles.title}>Create an Account</Text>
-          <Text style={styles.subtitle}>Please fill this detail to create an account</Text>
+          <View style={styles.cardContainer}>
+            <View style={styles.formSection}>
+              
+              <View style={styles.row}>
+                <View style={{ flex: 1 }}>
+                  <View style={styles.inputLabelContainer}>
+                    <Text style={styles.inputLabel}>First Name *</Text>
+                  </View>
+                  <View style={styles.inputContainer}>
+                    <User size={16} color={Colors.textSecondary} />
+                    <TextInput
+                      style={styles.input}
+                      placeholder="John"
+                      placeholderTextColor={Colors.textTertiary}
+                      value={firstName}
+                      onChangeText={setFirstName}
+                    />
+                  </View>
+                </View>
+                <View style={{ width: 12 }} />
+                <View style={{ flex: 1 }}>
+                  <View style={styles.inputLabelContainer}>
+                    <Text style={styles.inputLabel}>Last Name *</Text>
+                  </View>
+                  <View style={styles.inputContainer}>
+                    <User size={16} color={Colors.textSecondary} />
+                    <TextInput
+                      style={styles.input}
+                      placeholder="Doe"
+                      placeholderTextColor={Colors.textTertiary}
+                      value={lastName}
+                      onChangeText={setLastName}
+                    />
+                  </View>
+                </View>
+              </View>
 
-          <View style={styles.inputContainer}>
-            <User size={20} color={Colors.textSecondary} />
-            <TextInput
-              style={styles.input}
-              placeholder="Full Name"
-              placeholderTextColor={Colors.textTertiary}
-              value={name}
-              onChangeText={setName}
-              testID="signup-name"
-            />
+              <View style={styles.inputLabelContainer}>
+                <Text style={styles.inputLabel}>Email Address *</Text>
+              </View>
+              <View style={styles.inputContainer}>
+                <Mail size={18} color={Colors.textSecondary} />
+                <TextInput
+                  style={styles.input}
+                  placeholder="name@example.com"
+                  placeholderTextColor={Colors.textTertiary}
+                  value={email}
+                  onChangeText={setEmail}
+                  keyboardType="email-address"
+                  autoCapitalize="none"
+                />
+              </View>
+
+              <View style={styles.inputLabelContainer}>
+                <Text style={styles.inputLabel}>Phone Number *</Text>
+              </View>
+              <View style={styles.inputContainer}>
+                <View style={styles.phoneIconWrapper}>
+                  <Phone size={18} color={Colors.primary} />
+                  <Text style={styles.countryCode}>+91</Text>
+                  <View style={styles.separator} />
+                </View>
+                <TextInput
+                  style={styles.input}
+                  placeholder="10-digit number"
+                  placeholderTextColor={Colors.textTertiary}
+                  value={phone}
+                  onChangeText={setPhone}
+                  keyboardType="phone-pad"
+                  maxLength={10}
+                />
+              </View>
+
+              <TouchableOpacity
+                style={[styles.primaryButton, loading && styles.disabledButton]}
+                onPress={handleSignup}
+                activeOpacity={0.8}
+                disabled={loading}
+              >
+                {loading ? (
+                  <ActivityIndicator color={Colors.white} />
+                ) : (
+                  <Text style={styles.primaryButtonText}>Create Account</Text>
+                )}
+              </TouchableOpacity>
+            </View>
           </View>
-
-          <View style={styles.inputContainer}>
-            <Mail size={20} color={Colors.textSecondary} />
-            <TextInput
-              style={styles.input}
-              placeholder="Email Address"
-              placeholderTextColor={Colors.textTertiary}
-              value={email}
-              onChangeText={setEmail}
-              keyboardType="email-address"
-              autoCapitalize="none"
-              testID="signup-email"
-            />
-          </View>
-
-          <View style={styles.inputContainer}>
-            <Lock size={20} color={Colors.textSecondary} />
-            <TextInput
-              style={styles.input}
-              placeholder="Password"
-              placeholderTextColor={Colors.textTertiary}
-              value={password}
-              onChangeText={setPassword}
-              secureTextEntry={!showPassword}
-              testID="signup-password"
-            />
-            <TouchableOpacity onPress={() => setShowPassword(!showPassword)}>
-              {showPassword ? (
-                <Eye size={20} color={Colors.textSecondary} />
-              ) : (
-                <EyeOff size={20} color={Colors.textSecondary} />
-              )}
-            </TouchableOpacity>
-          </View>
-
-          <TouchableOpacity
-            style={[styles.primaryButton, loading && styles.disabledButton]}
-            onPress={handleSignup}
-            activeOpacity={0.8}
-            disabled={loading}
-            testID="signup-button"
-          >
-            {loading ? (
-              <ActivityIndicator color={Colors.white} />
-            ) : (
-              <Text style={styles.primaryButtonText}>Signup</Text>
-            )}
-          </TouchableOpacity>
 
           <View style={styles.bottomRow}>
             <Text style={styles.bottomText}>Already have an account? </Text>
             <TouchableOpacity onPress={() => safeBack("/login")}>
-              <Text style={styles.linkText}>Login</Text>
+              <Text style={styles.linkText}>Sign In</Text>
             </TouchableOpacity>
           </View>
+
         </ScrollView>
       </KeyboardAvoidingView>
+
+      {/* Success Modal */}
+      <Modal
+        visible={showSuccessModal}
+        transparent
+        animationType="fade"
+      >
+        <View style={styles.modalOverlay}>
+          <View style={styles.modalContent}>
+            <View style={[styles.iconCircle, { backgroundColor: '#E8F5E9' }]}>
+              <CheckCircle2 size={48} color="#4CAF50" />
+            </View>
+            <Text style={styles.modalTitle}>Signup Successful!</Text>
+            <Text style={styles.modalSubtitle}>
+              Your account has been created. Please log in with your mobile number to start booking.
+            </Text>
+            <TouchableOpacity
+              style={[styles.primaryButton, { width: '100%' }]}
+              onPress={() => {
+                setShowSuccessModal(false);
+                router.replace("/login");
+              }}
+            >
+              <Text style={styles.primaryButtonText}>Go to Login</Text>
+            </TouchableOpacity>
+          </View>
+        </View>
+      </Modal>
+
+      {/* Error Modal */}
+      <Modal
+        visible={!!errorMsg}
+        transparent
+        animationType="fade"
+        onRequestClose={() => setErrorMsg(null)}
+      >
+        <View style={styles.modalOverlay}>
+          <View style={styles.modalContent}>
+            <View style={[styles.iconCircle, { backgroundColor: '#FFEBEE' }]}>
+              <XCircle size={48} color="#F44336" />
+            </View>
+            <Text style={styles.modalTitle}>Signup Failed</Text>
+            <Text style={styles.modalSubtitle}>{errorMsg}</Text>
+            <TouchableOpacity
+              style={[styles.primaryButton, { width: '100%', backgroundColor: '#F44336' }]}
+              onPress={() => setErrorMsg(null)}
+            >
+              <Text style={styles.primaryButtonText}>Try Again</Text>
+            </TouchableOpacity>
+          </View>
+        </View>
+      </Modal>
     </View>
   );
 }
 
 const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-    backgroundColor: Colors.white,
+  container: { 
+    flex: 1, 
+    backgroundColor: '#FBFBFB' 
   },
-  flex: {
-    flex: 1,
+  topSection: {
+    position: 'absolute',
+    top: -50,
+    right: -50,
+    left: -50,
+    height: 300,
   },
-  scrollContent: {
-    paddingHorizontal: 24,
-    paddingBottom: 32,
+  circle1: {
+    position: 'absolute',
+    top: -20,
+    right: -20,
+    width: 200,
+    height: 200,
+    borderRadius: 100,
+    backgroundColor: '#7a331710',
+  },
+  circle2: {
+    position: 'absolute',
+    top: 40,
+    left: -40,
+    width: 150,
+    height: 150,
+    borderRadius: 75,
+    backgroundColor: '#7a331708',
+  },
+  flex: { flex: 1 },
+  scrollContent: { 
+    paddingHorizontal: 28, 
+    paddingBottom: 40,
+    flexGrow: 1,
   },
   backButton: {
-    marginTop: 8,
-    marginBottom: 8,
-    width: 40,
-    height: 40,
-    justifyContent: "center",
-  },
-  logoContainer: {
-    alignItems: "center",
+    marginTop: 20,
     marginBottom: 20,
   },
-  logoImage: {
+  backButtonInner: {
+    width: 44,
+    height: 44,
+    borderRadius: 15,
+    backgroundColor: Colors.white,
+    alignItems: 'center',
+    justifyContent: 'center',
+    shadowColor: "#000",
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.05,
+    shadowRadius: 8,
+    elevation: 3,
+  },
+  headerSection: {
+    alignItems: "center",
+    marginBottom: 24,
+  },
+  logoWrapper: {
     width: 70,
     height: 70,
-    borderRadius: 16,
-  },
-  brandText: {
-    fontSize: 14,
-    fontWeight: "800" as const,
-    color: Colors.primary,
-    marginTop: 6,
-    letterSpacing: 2,
-  },
-  title: {
-    fontSize: 26,
-    fontWeight: "700" as const,
-    color: Colors.text,
-    textAlign: "center",
-    marginBottom: 8,
-  },
-  subtitle: {
-    fontSize: 14,
-    color: Colors.textSecondary,
-    textAlign: "center",
-    marginBottom: 28,
-  },
-  inputContainer: {
-    flexDirection: "row",
-    alignItems: "center",
-    borderWidth: 1,
-    borderColor: Colors.inputBorder,
-    borderRadius: 16,
-    paddingHorizontal: 16,
-    paddingVertical: 14,
-    marginBottom: 16,
+    borderRadius: 22,
     backgroundColor: Colors.white,
-    gap: 12,
+    alignItems: 'center',
+    justifyContent: 'center',
+    shadowColor: Colors.primary,
+    shadowOffset: { width: 0, height: 8 },
+    shadowOpacity: 0.1,
+    shadowRadius: 12,
+    elevation: 6,
   },
-  input: {
-    flex: 1,
-    fontSize: 15,
+  logoImage: { width: 44, height: 44 },
+  brandText: { 
+    fontSize: 14, 
+    fontWeight: "800", 
+    color: Colors.primary, 
+    marginTop: 12, 
+    letterSpacing: 4 
+  },
+  title: { 
+    fontSize: 28, 
+    fontWeight: "800", 
+    color: Colors.text, 
+    textAlign: "center", 
+    marginTop: 8,
+    marginBottom: 6 
+  },
+  subtitle: { 
+    fontSize: 14, 
+    color: Colors.textSecondary, 
+    textAlign: "center",
+    fontWeight: '500',
+    paddingHorizontal: 20,
+  },
+  cardContainer: {
+    backgroundColor: Colors.white,
+    borderRadius: 32,
+    padding: 24,
+    shadowColor: "#000",
+    shadowOffset: { width: 0, height: 20 },
+    shadowOpacity: 0.05,
+    shadowRadius: 30,
+    elevation: 10,
+  },
+  row: {
+    flexDirection: 'row',
+  },
+  formSection: {
+    gap: 0,
+  },
+  inputLabelContainer: {
+    marginBottom: 6,
+    marginLeft: 4,
+  },
+  inputLabel: {
+    fontSize: 13,
+    fontWeight: '600',
     color: Colors.text,
   },
-  primaryButton: {
-    backgroundColor: Colors.primary,
-    borderRadius: 16,
-    paddingVertical: 18,
+  inputContainer: { 
+    flexDirection: "row", 
+    alignItems: "center", 
+    borderWidth: 1.5, 
+    borderColor: '#F0F0F0', 
+    borderRadius: 18, 
+    paddingHorizontal: 14, 
+    paddingVertical: 12, 
+    marginBottom: 16, 
+    backgroundColor: '#FBFBFB', 
+    gap: 10 
+  },
+  phoneIconWrapper: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+  },
+  separator: {
+    width: 1,
+    height: 18,
+    backgroundColor: '#E0E0E0',
+    marginHorizontal: 2,
+  },
+  countryCode: { fontSize: 15, fontWeight: "700", color: Colors.text },
+  input: { 
+    flex: 1, 
+    fontSize: 15, 
+    color: Colors.text,
+    fontWeight: '500',
+  },
+  primaryButton: { 
+    backgroundColor: Colors.primary, 
+    borderRadius: 20, 
+    paddingVertical: 18, 
     alignItems: "center",
     marginTop: 8,
+    shadowColor: Colors.primary,
+    shadowOffset: { width: 0, height: 8 },
+    shadowOpacity: 0.3,
+    shadowRadius: 12,
+    elevation: 8,
+  },
+  disabledButton: { opacity: 0.7 },
+  primaryButtonText: { color: Colors.white, fontSize: 16, fontWeight: "700" },
+  bottomRow: { flexDirection: "row", justifyContent: "center", marginTop: 24, marginBottom: 20 },
+  bottomText: { fontSize: 15, color: Colors.textSecondary },
+  linkText: { fontSize: 15, color: Colors.primary, fontWeight: "700" },
+  modalOverlay: {
+    flex: 1,
+    backgroundColor: 'rgba(0,0,0,0.5)',
+    justifyContent: 'center',
+    alignItems: 'center',
+    padding: 24,
+  },
+  modalContent: {
+    backgroundColor: Colors.white,
+    borderRadius: 32,
+    padding: 32,
+    width: '100%',
+    alignItems: 'center',
+  },
+  iconCircle: {
+    width: 80,
+    height: 80,
+    borderRadius: 40,
+    alignItems: 'center',
+    justifyContent: 'center',
     marginBottom: 20,
   },
-  disabledButton: {
-    opacity: 0.6,
+  modalTitle: {
+    fontSize: 22,
+    fontWeight: '800',
+    color: Colors.text,
+    marginBottom: 12,
+    textAlign: 'center',
   },
-  primaryButtonText: {
-    color: Colors.white,
+  modalSubtitle: {
     fontSize: 16,
-    fontWeight: "700" as const,
-  },
-  bottomRow: {
-    flexDirection: "row",
-    justifyContent: "center",
-    marginTop: 16,
-  },
-  bottomText: {
-    fontSize: 14,
     color: Colors.textSecondary,
-  },
-  linkText: {
-    fontSize: 14,
-    color: Colors.primary,
-    fontWeight: "600" as const,
+    textAlign: 'center',
+    lineHeight: 24,
+    marginBottom: 24,
   },
 });

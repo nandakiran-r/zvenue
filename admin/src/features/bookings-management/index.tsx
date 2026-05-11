@@ -99,6 +99,7 @@ export function BookingsPage() {
         status: statusFilter !== 'all' ? statusFilter : undefined,
         search: search || undefined,
       }),
+    refetchInterval: 5000, // Sync lively every 5 seconds
   })
 
   const updateMutation = useMutation({

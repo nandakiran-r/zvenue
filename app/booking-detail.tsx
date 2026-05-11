@@ -1,13 +1,16 @@
 import { router, useLocalSearchParams } from "expo-router";
 import { safeBack } from "@/constants/navigation";
-import { Calendar, ChevronLeft, Clock, MapPin, Users } from "lucide-react-native";
+import { Calendar, ChevronLeft, Clock, MapPin, Users, XCircle } from "lucide-react-native";
 import React, { useEffect, useState } from "react";
 import {
     ActivityIndicator,
+    Alert,
     Image,
+    Modal,
     ScrollView,
     StyleSheet,
     Text,
+    TextInput,
     TouchableOpacity,
     View,
 } from "react-native";
@@ -26,6 +29,13 @@ export default function BookingDetailScreen() {
     const [loading, setLoading] = useState(true);
     const [submitting, setSubmitting] = useState(false);
     const [paymentMethod, setPaymentMethod] = useState<"card" | "paypal">("card");
+    
+    // New states for selection
+    const [bookingDate, setBookingDate] = useState(new Date().toISOString().split("T")[0]);
+    const [startTime, setStartTime] = useState("10:00 AM");
+    const [endTime, setEndTime] = useState("02:00 PM");
+    const [guests, setGuests] = useState("200");
+    const [errorMsg, setErrorMsg] = useState<string | null>(null);
 
     useEffect(() => {
         if (!id) return;
@@ -67,18 +77,20 @@ export default function BookingDetailScreen() {
             const booking = await createBooking({
                 user_id: dbUser.id,
                 venue_id: venue.id,
-                booking_date: new Date().toISOString().split("T")[0],
-                start_time: "10:00 AM",
-                end_time: "02:00 PM",
+                booking_date: bookingDate,
+                start_time: startTime,
+                end_time: endTime,
                 duration_hours: hoursBooked,
-                guests: 200,
+                guests: parseInt(guests),
                 subtotal,
                 service_fee: serviceFee,
                 total,
                 payment_method: paymentMethod,
             });
             router.push({ pathname: "/booking-confirmed", params: { id: booking.id, venueId: venue.id } });
-        } catch (err) {
+        } catch (err: any) {
+            const errorMsg = err.response?.data?.error || "Failed to create booking.";
+            setErrorMsg(errorMsg);
             console.error("Failed to create booking:", err);
         } finally {
             setSubmitting(false);
@@ -113,24 +125,48 @@ export default function BookingDetailScreen() {
 
                 <View style={styles.bookingInfoCard}>
                     <Text style={styles.sectionTitle}>Booking Info</Text>
-                    <View style={styles.infoRow}>
-                        <View style={styles.infoItem}>
-                            <Calendar size={16} color={Colors.primary} />
-                            <Text style={styles.infoLabel}>Date</Text>
-                            <Text style={styles.infoValue}>{new Date().toLocaleDateString("en-IN", { month: "short", day: "numeric", year: "numeric" })}</Text>
+                    
+                    <View style={styles.inputRow}>
+                        <Text style={styles.inputLabel}>Date (YYYY-MM-DD)</Text>
+                        <TextInput 
+                          style={styles.textInput}
+                          value={bookingDate}
+                          onChangeText={setBookingDate}
+                          placeholder="2024-05-20"
+                        />
+                    </View>
+
+                    <View style={styles.timeRow}>
+                        <View style={{ flex: 1 }}>
+                            <Text style={styles.inputLabel}>Start Time</Text>
+                            <TextInput 
+                              style={styles.textInput}
+                              value={startTime}
+                              onChangeText={setStartTime}
+                              placeholder="10:00 AM"
+                            />
                         </View>
-                        <View style={styles.infoDivider} />
-                        <View style={styles.infoItem}>
-                            <Clock size={16} color={Colors.primary} />
-                            <Text style={styles.infoLabel}>Duration</Text>
-                            <Text style={styles.infoValue}>{hoursBooked} Hours</Text>
+                        <View style={{ width: 16 }} />
+                        <View style={{ flex: 1 }}>
+                            <Text style={styles.inputLabel}>End Time</Text>
+                            <TextInput 
+                              style={styles.textInput}
+                              value={endTime}
+                              onChangeText={setEndTime}
+                              placeholder="02:00 PM"
+                            />
                         </View>
-                        <View style={styles.infoDivider} />
-                        <View style={styles.infoItem}>
-                            <Users size={16} color={Colors.primary} />
-                            <Text style={styles.infoLabel}>Guests</Text>
-                            <Text style={styles.infoValue}>200</Text>
-                        </View>
+                    </View>
+
+                    <View style={[styles.inputRow, { marginTop: 12 }]}>
+                        <Text style={styles.inputLabel}>Number of Guests</Text>
+                        <TextInput 
+                          style={styles.textInput}
+                          value={guests}
+                          onChangeText={setGuests}
+                          keyboardType="numeric"
+                          placeholder="200"
+                        />
                     </View>
                 </View>
 
@@ -201,6 +237,30 @@ export default function BookingDetailScreen() {
                     <Text style={styles.confirmText}>{submitting ? "Booking..." : "Confirm Booking"}</Text>
                 </TouchableOpacity>
             </View>
+
+            {/* Error Modal */}
+            <Modal
+                visible={!!errorMsg}
+                transparent
+                animationType="fade"
+                onRequestClose={() => setErrorMsg(null)}
+            >
+                <View style={styles.modalOverlay}>
+                    <View style={styles.modalContent}>
+                        <View style={[styles.iconCircle, { backgroundColor: '#FFEBEE' }]}>
+                            <XCircle size={48} color="#F44336" />
+                        </View>
+                        <Text style={styles.modalTitle}>Booking Error</Text>
+                        <Text style={styles.modalSubtitle}>{errorMsg}</Text>
+                        <TouchableOpacity
+                            style={[styles.primaryButton, { width: '100%', backgroundColor: '#F44336' }]}
+                            onPress={() => setErrorMsg(null)}
+                        >
+                            <Text style={styles.primaryButtonText}>Try Again</Text>
+                        </TouchableOpacity>
+                    </View>
+                </View>
+            </Modal>
         </View>
     );
 }
@@ -214,14 +274,13 @@ const styles = StyleSheet.create({
         flexDirection: "row",
         alignItems: "center",
         justifyContent: "space-between",
-        paddingHorizontal: 16,
-        paddingVertical: 12,
+        paddingHorizontal: 20,
+        paddingVertical: 15,
+        borderBottomWidth: 1,
+        borderBottomColor: Colors.border,
     },
     backButton: {
-        width: 40,
-        height: 40,
-        justifyContent: "center",
-        alignItems: "center",
+        padding: 8,
     },
     headerTitle: {
         fontSize: 18,
@@ -229,31 +288,35 @@ const styles = StyleSheet.create({
         color: Colors.text,
     },
     scrollContent: {
-        paddingHorizontal: 20,
-        paddingBottom: 120,
+        padding: 20,
     },
     venueCard: {
         flexDirection: "row",
-        backgroundColor: Colors.surface,
-        borderRadius: 16,
+        backgroundColor: Colors.white,
+        borderRadius: 20,
         padding: 12,
-        gap: 12,
-        marginBottom: 20,
+        marginBottom: 24,
+        shadowColor: "#000",
+        shadowOffset: { width: 0, height: 4 },
+        shadowOpacity: 0.05,
+        shadowRadius: 10,
+        elevation: 2,
     },
     venueImage: {
-        width: 90,
-        height: 90,
-        borderRadius: 12,
+        width: 100,
+        height: 100,
+        borderRadius: 16,
     },
     venueInfo: {
         flex: 1,
+        marginLeft: 16,
         justifyContent: "center",
     },
     venueTitle: {
-        fontSize: 15,
+        fontSize: 18,
         fontWeight: "700" as const,
         color: Colors.text,
-        marginBottom: 6,
+        marginBottom: 8,
     },
     metaRow: {
         flexDirection: "row",
@@ -426,5 +489,28 @@ const styles = StyleSheet.create({
         color: Colors.white,
         fontSize: 15,
         fontWeight: "700" as const,
+    },
+    inputRow: {
+        marginBottom: 12,
+    },
+    inputLabel: {
+        fontSize: 12,
+        color: Colors.textSecondary,
+        marginBottom: 4,
+        marginLeft: 4,
+    },
+    textInput: {
+        backgroundColor: Colors.white,
+        borderRadius: 12,
+        paddingHorizontal: 12,
+        paddingVertical: 10,
+        fontSize: 14,
+        color: Colors.text,
+        borderWidth: 1,
+        borderColor: Colors.border,
+    },
+    timeRow: {
+        flexDirection: "row",
+        alignItems: "center",
     },
 });

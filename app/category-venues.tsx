@@ -21,7 +21,7 @@ import type { DbVenue } from "@/lib/types";
 export default function CategoryVenuesScreen() {
   const insets = useSafeAreaInsets();
   const { category } = useLocalSearchParams<{ category: string }>();
-  const { supabase } = useAuth();
+  
   const { isFavorite, toggleFavorite } = useFavorites();
 
   const [searchQuery, setSearchQuery] = useState("");
@@ -36,7 +36,7 @@ export default function CategoryVenuesScreen() {
   const loadVenues = async () => {
     try {
       setLoading(true);
-      const data = await fetchVenuesByCategory(supabase, category!);
+      const data = await fetchVenuesByCategory(category!);
       setVenues(data);
     } catch (err) {
       console.error("Failed to load category venues:", err);

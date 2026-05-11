@@ -1,0 +1,972 @@
+admin/src/assets/brand-icons/icon-discord.tsx(2,20): error TS2307: Cannot find module '@/lib/utils' or its corresponding type declarations.
+admin/src/assets/brand-icons/icon-discord.tsx(6,6): error TS2322: Type '{ children: Element[]; suppressHydrationWarning?: boolean | undefined; color?: string | undefined; height: string | number; id?: string | undefined; lang?: string | undefined; ... 481 more ...; className: any; }' is not assignable to type 'SVGProps<SVGSVGElement>'.
+  Types of property 'style' are incompatible.
+    Type 'import("/home/jerytom33/Downloads/Zvenue-main/zvenue/admin/node_modules/@types/react/index").CSSProperties | undefined' is not assignable to type 'React.CSSProperties | undefined'.
+      Type 'CSSProperties' is not assignable to type 'Properties<string | number, string & {}>'.
+        Types of property 'borderBlockStyle' are incompatible.
+          Type 'import("/home/jerytom33/Downloads/Zvenue-main/zvenue/admin/node_modules/csstype/index").Property.BorderBlockStyle | undefined' is not assignable to type 'import("/home/jerytom33/Downloads/Zvenue-main/zvenue/node_modules/csstype/index").Property.BorderBlockStyle | undefined'.
+            Type 'string & {}' is not assignable to type 'BorderBlockStyle | undefined'.
+admin/src/assets/brand-icons/icon-docker.tsx(2,20): error TS2307: Cannot find module '@/lib/utils' or its corresponding type declarations.
+admin/src/assets/brand-icons/icon-docker.tsx(6,6): error TS2322: Type '{ children: Element[]; suppressHydrationWarning?: boolean | undefined; color?: string | undefined; height: string | number; id?: string | undefined; lang?: string | undefined; ... 481 more ...; className: any; }' is not assignable to type 'SVGProps<SVGSVGElement>'.
+  Types of property 'style' are incompatible.
+    Type 'import("/home/jerytom33/Downloads/Zvenue-main/zvenue/admin/node_modules/@types/react/index").CSSProperties | undefined' is not assignable to type 'React.CSSProperties | undefined'.
+      Type 'CSSProperties' is not assignable to type 'Properties<string | number, string & {}>'.
+        Types of property 'borderBlockStyle' are incompatible.
+          Type 'import("/home/jerytom33/Downloads/Zvenue-main/zvenue/admin/node_modules/csstype/index").Property.BorderBlockStyle | undefined' is not assignable to type 'import("/home/jerytom33/Downloads/Zvenue-main/zvenue/node_modules/csstype/index").Property.BorderBlockStyle | undefined'.
+            Type 'string & {}' is not assignable to type 'BorderBlockStyle | undefined'.
+admin/src/assets/brand-icons/icon-facebook.tsx(2,20): error TS2307: Cannot find module '@/lib/utils' or its corresponding type declarations.
+admin/src/assets/brand-icons/icon-facebook.tsx(6,6): error TS2322: Type '{ children: Element[]; suppressHydrationWarning?: boolean | undefined; color?: string | undefined; height: string | number; id?: string | undefined; lang?: string | undefined; ... 481 more ...; className: any; }' is not assignable to type 'SVGProps<SVGSVGElement>'.
+  Types of property 'style' are incompatible.
+    Type 'import("/home/jerytom33/Downloads/Zvenue-main/zvenue/admin/node_modules/@types/react/index").CSSProperties | undefined' is not assignable to type 'React.CSSProperties | undefined'.
+      Type 'CSSProperties' is not assignable to type 'Properties<string | number, string & {}>'.
+        Types of property 'borderBlockStyle' are incompatible.
+          Type 'import("/home/jerytom33/Downloads/Zvenue-main/zvenue/admin/node_modules/csstype/index").Property.BorderBlockStyle | undefined' is not assignable to type 'import("/home/jerytom33/Downloads/Zvenue-main/zvenue/node_modules/csstype/index").Property.BorderBlockStyle | undefined'.
+            Type 'string & {}' is not assignable to type 'BorderBlockStyle | undefined'.
+admin/src/assets/brand-icons/icon-figma.tsx(2,20): error TS2307: Cannot find module '@/lib/utils' or its corresponding type declarations.
+admin/src/assets/brand-icons/icon-figma.tsx(6,6): error TS2322: Type '{ children: Element[]; suppressHydrationWarning?: boolean | undefined; color?: string | undefined; height: string | number; id?: string | undefined; lang?: string | undefined; ... 481 more ...; className: any; }' is not assignable to type 'SVGProps<SVGSVGElement>'.
+  Types of property 'style' are incompatible.
+    Type 'import("/home/jerytom33/Downloads/Zvenue-main/zvenue/admin/node_modules/@types/react/index").CSSProperties | undefined' is not assignable to type 'React.CSSProperties | undefined'.
+      Type 'CSSProperties' is not assignable to type 'Properties<string | number, string & {}>'.
+        Types of property 'borderBlockStyle' are incompatible.
+          Type 'import("/home/jerytom33/Downloads/Zvenue-main/zvenue/admin/node_modules/csstype/index").Property.BorderBlockStyle | undefined' is not assignable to type 'import("/home/jerytom33/Downloads/Zvenue-main/zvenue/node_modules/csstype/index").Property.BorderBlockStyle | undefined'.
+            Type 'string & {}' is not assignable to type 'BorderBlockStyle | undefined'.
+admin/src/assets/brand-icons/icon-github.tsx(2,20): error TS2307: Cannot find module '@/lib/utils' or its corresponding type declarations.
+admin/src/assets/brand-icons/icon-github.tsx(6,6): error TS2322: Type '{ children: Element[]; suppressHydrationWarning?: boolean | undefined; color?: string | undefined; height: string | number; id?: string | undefined; lang?: string | undefined; ... 481 more ...; className: any; }' is not assignable to type 'SVGProps<SVGSVGElement>'.
+  Types of property 'style' are incompatible.
+    Type 'import("/home/jerytom33/Downloads/Zvenue-main/zvenue/admin/node_modules/@types/react/index").CSSProperties | undefined' is not assignable to type 'React.CSSProperties | undefined'.
+      Type 'CSSProperties' is not assignable to type 'Properties<string | number, string & {}>'.
+        Types of property 'borderBlockStyle' are incompatible.
+          Type 'import("/home/jerytom33/Downloads/Zvenue-main/zvenue/admin/node_modules/csstype/index").Property.BorderBlockStyle | undefined' is not assignable to type 'import("/home/jerytom33/Downloads/Zvenue-main/zvenue/node_modules/csstype/index").Property.BorderBlockStyle | undefined'.
+            Type 'string & {}' is not assignable to type 'BorderBlockStyle | undefined'.
+admin/src/assets/brand-icons/icon-gitlab.tsx(2,20): error TS2307: Cannot find module '@/lib/utils' or its corresponding type declarations.
+admin/src/assets/brand-icons/icon-gitlab.tsx(6,6): error TS2322: Type '{ children: Element[]; suppressHydrationWarning?: boolean | undefined; color?: string | undefined; height: string | number; id?: string | undefined; lang?: string | undefined; ... 481 more ...; className: any; }' is not assignable to type 'SVGProps<SVGSVGElement>'.
+  Types of property 'style' are incompatible.
+    Type 'import("/home/jerytom33/Downloads/Zvenue-main/zvenue/admin/node_modules/@types/react/index").CSSProperties | undefined' is not assignable to type 'React.CSSProperties | undefined'.
+      Type 'CSSProperties' is not assignable to type 'Properties<string | number, string & {}>'.
+        Types of property 'borderBlockStyle' are incompatible.
+          Type 'import("/home/jerytom33/Downloads/Zvenue-main/zvenue/admin/node_modules/csstype/index").Property.BorderBlockStyle | undefined' is not assignable to type 'import("/home/jerytom33/Downloads/Zvenue-main/zvenue/node_modules/csstype/index").Property.BorderBlockStyle | undefined'.
+            Type 'string & {}' is not assignable to type 'BorderBlockStyle | undefined'.
+admin/src/assets/brand-icons/icon-gmail.tsx(2,20): error TS2307: Cannot find module '@/lib/utils' or its corresponding type declarations.
+admin/src/assets/brand-icons/icon-gmail.tsx(6,6): error TS2322: Type '{ children: Element[]; suppressHydrationWarning?: boolean | undefined; color?: string | undefined; height: string | number; id?: string | undefined; lang?: string | undefined; ... 481 more ...; className: any; }' is not assignable to type 'SVGProps<SVGSVGElement>'.
+  Types of property 'style' are incompatible.
+    Type 'import("/home/jerytom33/Downloads/Zvenue-main/zvenue/admin/node_modules/@types/react/index").CSSProperties | undefined' is not assignable to type 'React.CSSProperties | undefined'.
+      Type 'CSSProperties' is not assignable to type 'Properties<string | number, string & {}>'.
+        Types of property 'borderBlockStyle' are incompatible.
+          Type 'import("/home/jerytom33/Downloads/Zvenue-main/zvenue/admin/node_modules/csstype/index").Property.BorderBlockStyle | undefined' is not assignable to type 'import("/home/jerytom33/Downloads/Zvenue-main/zvenue/node_modules/csstype/index").Property.BorderBlockStyle | undefined'.
+            Type 'string & {}' is not assignable to type 'BorderBlockStyle | undefined'.
+admin/src/assets/brand-icons/icon-medium.tsx(2,20): error TS2307: Cannot find module '@/lib/utils' or its corresponding type declarations.
+admin/src/assets/brand-icons/icon-medium.tsx(6,6): error TS2322: Type '{ children: Element[]; suppressHydrationWarning?: boolean | undefined; color?: string | undefined; height: string | number; id?: string | undefined; lang?: string | undefined; ... 481 more ...; className: any; }' is not assignable to type 'SVGProps<SVGSVGElement>'.
+  Types of property 'style' are incompatible.
+    Type 'import("/home/jerytom33/Downloads/Zvenue-main/zvenue/admin/node_modules/@types/react/index").CSSProperties | undefined' is not assignable to type 'React.CSSProperties | undefined'.
+      Type 'CSSProperties' is not assignable to type 'Properties<string | number, string & {}>'.
+        Types of property 'borderBlockStyle' are incompatible.
+          Type 'import("/home/jerytom33/Downloads/Zvenue-main/zvenue/admin/node_modules/csstype/index").Property.BorderBlockStyle | undefined' is not assignable to type 'import("/home/jerytom33/Downloads/Zvenue-main/zvenue/node_modules/csstype/index").Property.BorderBlockStyle | undefined'.
+            Type 'string & {}' is not assignable to type 'BorderBlockStyle | undefined'.
+admin/src/assets/brand-icons/icon-notion.tsx(2,20): error TS2307: Cannot find module '@/lib/utils' or its corresponding type declarations.
+admin/src/assets/brand-icons/icon-notion.tsx(6,6): error TS2322: Type '{ children: Element[]; suppressHydrationWarning?: boolean | undefined; color?: string | undefined; height: string | number; id?: string | undefined; lang?: string | undefined; ... 481 more ...; className: any; }' is not assignable to type 'SVGProps<SVGSVGElement>'.
+  Types of property 'style' are incompatible.
+    Type 'import("/home/jerytom33/Downloads/Zvenue-main/zvenue/admin/node_modules/@types/react/index").CSSProperties | undefined' is not assignable to type 'React.CSSProperties | undefined'.
+      Type 'CSSProperties' is not assignable to type 'Properties<string | number, string & {}>'.
+        Types of property 'borderBlockStyle' are incompatible.
+          Type 'import("/home/jerytom33/Downloads/Zvenue-main/zvenue/admin/node_modules/csstype/index").Property.BorderBlockStyle | undefined' is not assignable to type 'import("/home/jerytom33/Downloads/Zvenue-main/zvenue/node_modules/csstype/index").Property.BorderBlockStyle | undefined'.
+            Type 'string & {}' is not assignable to type 'BorderBlockStyle | undefined'.
+admin/src/assets/brand-icons/icon-skype.tsx(2,20): error TS2307: Cannot find module '@/lib/utils' or its corresponding type declarations.
+admin/src/assets/brand-icons/icon-skype.tsx(6,6): error TS2322: Type '{ children: Element[]; suppressHydrationWarning?: boolean | undefined; color?: string | undefined; height: string | number; id?: string | undefined; lang?: string | undefined; ... 481 more ...; className: any; }' is not assignable to type 'SVGProps<SVGSVGElement>'.
+  Types of property 'style' are incompatible.
+    Type 'import("/home/jerytom33/Downloads/Zvenue-main/zvenue/admin/node_modules/@types/react/index").CSSProperties | undefined' is not assignable to type 'React.CSSProperties | undefined'.
+      Type 'CSSProperties' is not assignable to type 'Properties<string | number, string & {}>'.
+        Types of property 'borderBlockStyle' are incompatible.
+          Type 'import("/home/jerytom33/Downloads/Zvenue-main/zvenue/admin/node_modules/csstype/index").Property.BorderBlockStyle | undefined' is not assignable to type 'import("/home/jerytom33/Downloads/Zvenue-main/zvenue/node_modules/csstype/index").Property.BorderBlockStyle | undefined'.
+            Type 'string & {}' is not assignable to type 'BorderBlockStyle | undefined'.
+admin/src/assets/brand-icons/icon-slack.tsx(2,20): error TS2307: Cannot find module '@/lib/utils' or its corresponding type declarations.
+admin/src/assets/brand-icons/icon-slack.tsx(6,6): error TS2322: Type '{ children: Element[]; suppressHydrationWarning?: boolean | undefined; color?: string | undefined; height: string | number; id?: string | undefined; lang?: string | undefined; ... 481 more ...; className: any; }' is not assignable to type 'SVGProps<SVGSVGElement>'.
+  Types of property 'style' are incompatible.
+    Type 'import("/home/jerytom33/Downloads/Zvenue-main/zvenue/admin/node_modules/@types/react/index").CSSProperties | undefined' is not assignable to type 'React.CSSProperties | undefined'.
+      Type 'CSSProperties' is not assignable to type 'Properties<string | number, string & {}>'.
+        Types of property 'borderBlockStyle' are incompatible.
+          Type 'import("/home/jerytom33/Downloads/Zvenue-main/zvenue/admin/node_modules/csstype/index").Property.BorderBlockStyle | undefined' is not assignable to type 'import("/home/jerytom33/Downloads/Zvenue-main/zvenue/node_modules/csstype/index").Property.BorderBlockStyle | undefined'.
+            Type 'string & {}' is not assignable to type 'BorderBlockStyle | undefined'.
+admin/src/assets/brand-icons/icon-stripe.tsx(2,20): error TS2307: Cannot find module '@/lib/utils' or its corresponding type declarations.
+admin/src/assets/brand-icons/icon-stripe.tsx(6,6): error TS2322: Type '{ children: Element[]; suppressHydrationWarning?: boolean | undefined; color?: string | undefined; height: string | number; id?: string | undefined; lang?: string | undefined; ... 481 more ...; className: any; }' is not assignable to type 'SVGProps<SVGSVGElement>'.
+  Types of property 'style' are incompatible.
+    Type 'import("/home/jerytom33/Downloads/Zvenue-main/zvenue/admin/node_modules/@types/react/index").CSSProperties | undefined' is not assignable to type 'React.CSSProperties | undefined'.
+      Type 'CSSProperties' is not assignable to type 'Properties<string | number, string & {}>'.
+        Types of property 'borderBlockStyle' are incompatible.
+          Type 'import("/home/jerytom33/Downloads/Zvenue-main/zvenue/admin/node_modules/csstype/index").Property.BorderBlockStyle | undefined' is not assignable to type 'import("/home/jerytom33/Downloads/Zvenue-main/zvenue/node_modules/csstype/index").Property.BorderBlockStyle | undefined'.
+            Type 'string & {}' is not assignable to type 'BorderBlockStyle | undefined'.
+admin/src/assets/brand-icons/icon-telegram.tsx(2,20): error TS2307: Cannot find module '@/lib/utils' or its corresponding type declarations.
+admin/src/assets/brand-icons/icon-telegram.tsx(6,6): error TS2322: Type '{ children: Element[]; suppressHydrationWarning?: boolean | undefined; color?: string | undefined; height: string | number; id?: string | undefined; lang?: string | undefined; ... 481 more ...; className: any; }' is not assignable to type 'SVGProps<SVGSVGElement>'.
+  Types of property 'style' are incompatible.
+    Type 'import("/home/jerytom33/Downloads/Zvenue-main/zvenue/admin/node_modules/@types/react/index").CSSProperties | undefined' is not assignable to type 'React.CSSProperties | undefined'.
+      Type 'CSSProperties' is not assignable to type 'Properties<string | number, string & {}>'.
+        Types of property 'borderBlockStyle' are incompatible.
+          Type 'import("/home/jerytom33/Downloads/Zvenue-main/zvenue/admin/node_modules/csstype/index").Property.BorderBlockStyle | undefined' is not assignable to type 'import("/home/jerytom33/Downloads/Zvenue-main/zvenue/node_modules/csstype/index").Property.BorderBlockStyle | undefined'.
+            Type 'string & {}' is not assignable to type 'BorderBlockStyle | undefined'.
+admin/src/assets/brand-icons/icon-trello.tsx(2,20): error TS2307: Cannot find module '@/lib/utils' or its corresponding type declarations.
+admin/src/assets/brand-icons/icon-trello.tsx(6,6): error TS2322: Type '{ children: Element[]; suppressHydrationWarning?: boolean | undefined; color?: string | undefined; height: string | number; id?: string | undefined; lang?: string | undefined; ... 481 more ...; className: any; }' is not assignable to type 'SVGProps<SVGSVGElement>'.
+  Types of property 'style' are incompatible.
+    Type 'import("/home/jerytom33/Downloads/Zvenue-main/zvenue/admin/node_modules/@types/react/index").CSSProperties | undefined' is not assignable to type 'React.CSSProperties | undefined'.
+      Type 'CSSProperties' is not assignable to type 'Properties<string | number, string & {}>'.
+        Types of property 'borderBlockStyle' are incompatible.
+          Type 'import("/home/jerytom33/Downloads/Zvenue-main/zvenue/admin/node_modules/csstype/index").Property.BorderBlockStyle | undefined' is not assignable to type 'import("/home/jerytom33/Downloads/Zvenue-main/zvenue/node_modules/csstype/index").Property.BorderBlockStyle | undefined'.
+            Type 'string & {}' is not assignable to type 'BorderBlockStyle | undefined'.
+admin/src/assets/brand-icons/icon-whatsapp.tsx(2,20): error TS2307: Cannot find module '@/lib/utils' or its corresponding type declarations.
+admin/src/assets/brand-icons/icon-whatsapp.tsx(6,6): error TS2322: Type '{ children: Element[]; suppressHydrationWarning?: boolean | undefined; color?: string | undefined; height: string | number; id?: string | undefined; lang?: string | undefined; ... 481 more ...; className: any; }' is not assignable to type 'SVGProps<SVGSVGElement>'.
+  Types of property 'style' are incompatible.
+    Type 'import("/home/jerytom33/Downloads/Zvenue-main/zvenue/admin/node_modules/@types/react/index").CSSProperties | undefined' is not assignable to type 'React.CSSProperties | undefined'.
+      Type 'CSSProperties' is not assignable to type 'Properties<string | number, string & {}>'.
+        Types of property 'borderBlockStyle' are incompatible.
+          Type 'import("/home/jerytom33/Downloads/Zvenue-main/zvenue/admin/node_modules/csstype/index").Property.BorderBlockStyle | undefined' is not assignable to type 'import("/home/jerytom33/Downloads/Zvenue-main/zvenue/node_modules/csstype/index").Property.BorderBlockStyle | undefined'.
+            Type 'string & {}' is not assignable to type 'BorderBlockStyle | undefined'.
+admin/src/assets/brand-icons/icon-zoom.tsx(2,20): error TS2307: Cannot find module '@/lib/utils' or its corresponding type declarations.
+admin/src/assets/brand-icons/icon-zoom.tsx(6,6): error TS2322: Type '{ children: Element[]; suppressHydrationWarning?: boolean | undefined; color?: string | undefined; height: string | number; id?: string | undefined; lang?: string | undefined; ... 481 more ...; className: any; }' is not assignable to type 'SVGProps<SVGSVGElement>'.
+  Types of property 'style' are incompatible.
+    Type 'import("/home/jerytom33/Downloads/Zvenue-main/zvenue/admin/node_modules/@types/react/index").CSSProperties | undefined' is not assignable to type 'React.CSSProperties | undefined'.
+      Type 'CSSProperties' is not assignable to type 'Properties<string | number, string & {}>'.
+        Types of property 'borderBlockStyle' are incompatible.
+          Type 'import("/home/jerytom33/Downloads/Zvenue-main/zvenue/admin/node_modules/csstype/index").Property.BorderBlockStyle | undefined' is not assignable to type 'import("/home/jerytom33/Downloads/Zvenue-main/zvenue/node_modules/csstype/index").Property.BorderBlockStyle | undefined'.
+            Type 'string & {}' is not assignable to type 'BorderBlockStyle | undefined'.
+admin/src/assets/clerk-full-logo.tsx(5,6): error TS2322: Type '{ children: Element[]; suppressHydrationWarning?: boolean | undefined; className?: string | undefined; color?: string | undefined; height: string | number; id?: string | undefined; ... 481 more ...; key?: Key | ... 1 more ... | undefined; }' is not assignable to type 'SVGProps<SVGSVGElement>'.
+  Types of property 'style' are incompatible.
+    Type 'import("/home/jerytom33/Downloads/Zvenue-main/zvenue/admin/node_modules/@types/react/index").CSSProperties | undefined' is not assignable to type 'React.CSSProperties | undefined'.
+      Type 'CSSProperties' is not assignable to type 'Properties<string | number, string & {}>'.
+        Types of property 'borderBlockStyle' are incompatible.
+          Type 'import("/home/jerytom33/Downloads/Zvenue-main/zvenue/admin/node_modules/csstype/index").Property.BorderBlockStyle | undefined' is not assignable to type 'import("/home/jerytom33/Downloads/Zvenue-main/zvenue/node_modules/csstype/index").Property.BorderBlockStyle | undefined'.
+            Type 'string & {}' is not assignable to type 'BorderBlockStyle | undefined'.
+admin/src/assets/clerk-logo.tsx(2,20): error TS2307: Cannot find module '@/lib/utils' or its corresponding type declarations.
+admin/src/assets/clerk-logo.tsx(6,6): error TS2322: Type '{ children: Element[]; suppressHydrationWarning?: boolean | undefined; color?: string | undefined; height: string | number; id: string; lang?: string | undefined; max?: string | number | undefined; ... 480 more ...; className: any; }' is not assignable to type 'SVGProps<SVGSVGElement>'.
+  Types of property 'style' are incompatible.
+    Type 'import("/home/jerytom33/Downloads/Zvenue-main/zvenue/admin/node_modules/@types/react/index").CSSProperties | undefined' is not assignable to type 'React.CSSProperties | undefined'.
+      Type 'CSSProperties' is not assignable to type 'Properties<string | number, string & {}>'.
+        Types of property 'borderBlockStyle' are incompatible.
+          Type 'import("/home/jerytom33/Downloads/Zvenue-main/zvenue/admin/node_modules/csstype/index").Property.BorderBlockStyle | undefined' is not assignable to type 'import("/home/jerytom33/Downloads/Zvenue-main/zvenue/node_modules/csstype/index").Property.BorderBlockStyle | undefined'.
+            Type 'string & {}' is not assignable to type 'BorderBlockStyle | undefined'.
+admin/src/assets/custom/icon-dir.tsx(2,20): error TS2307: Cannot find module '@/lib/utils' or its corresponding type declarations.
+admin/src/assets/custom/icon-dir.tsx(3,32): error TS2307: Cannot find module '@/context/direction-provider' or its corresponding type declarations.
+admin/src/assets/custom/icon-dir.tsx(11,6): error TS2322: Type '{ children: Element[]; suppressHydrationWarning?: boolean | undefined; color?: string | undefined; height?: string | number | undefined; id?: string | undefined; lang?: string | undefined; ... 482 more ...; className: any; }' is not assignable to type 'SVGProps<SVGSVGElement>'.
+  Types of property 'style' are incompatible.
+    Type 'import("/home/jerytom33/Downloads/Zvenue-main/zvenue/admin/node_modules/@types/react/index").CSSProperties | undefined' is not assignable to type 'React.CSSProperties | undefined'.
+      Type 'CSSProperties' is not assignable to type 'Properties<string | number, string & {}>'.
+        Types of property 'borderBlockStyle' are incompatible.
+          Type 'import("/home/jerytom33/Downloads/Zvenue-main/zvenue/admin/node_modules/csstype/index").Property.BorderBlockStyle | undefined' is not assignable to type 'import("/home/jerytom33/Downloads/Zvenue-main/zvenue/node_modules/csstype/index").Property.BorderBlockStyle | undefined'.
+            Type 'string & {}' is not assignable to type 'BorderBlockStyle | undefined'.
+admin/src/assets/custom/icon-layout-compact.tsx(5,6): error TS2322: Type '{ children: Element[]; suppressHydrationWarning?: boolean | undefined; className?: string | undefined; color?: string | undefined; height?: string | number | undefined; id?: string | undefined; ... 482 more ...; "data-name": string; }' is not assignable to type 'SVGProps<SVGSVGElement>'.
+  Types of property 'style' are incompatible.
+    Type 'import("/home/jerytom33/Downloads/Zvenue-main/zvenue/admin/node_modules/@types/react/index").CSSProperties | undefined' is not assignable to type 'React.CSSProperties | undefined'.
+      Type 'CSSProperties' is not assignable to type 'Properties<string | number, string & {}>'.
+        Types of property 'borderBlockStyle' are incompatible.
+          Type 'import("/home/jerytom33/Downloads/Zvenue-main/zvenue/admin/node_modules/csstype/index").Property.BorderBlockStyle | undefined' is not assignable to type 'import("/home/jerytom33/Downloads/Zvenue-main/zvenue/node_modules/csstype/index").Property.BorderBlockStyle | undefined'.
+            Type 'string & {}' is not assignable to type 'BorderBlockStyle | undefined'.
+admin/src/assets/custom/icon-layout-default.tsx(5,6): error TS2322: Type '{ children: Element[]; suppressHydrationWarning?: boolean | undefined; className?: string | undefined; color?: string | undefined; height?: string | number | undefined; id?: string | undefined; ... 482 more ...; "data-name": string; }' is not assignable to type 'SVGProps<SVGSVGElement>'.
+  Types of property 'style' are incompatible.
+    Type 'import("/home/jerytom33/Downloads/Zvenue-main/zvenue/admin/node_modules/@types/react/index").CSSProperties | undefined' is not assignable to type 'React.CSSProperties | undefined'.
+      Type 'CSSProperties' is not assignable to type 'Properties<string | number, string & {}>'.
+        Types of property 'borderBlockStyle' are incompatible.
+          Type 'import("/home/jerytom33/Downloads/Zvenue-main/zvenue/admin/node_modules/csstype/index").Property.BorderBlockStyle | undefined' is not assignable to type 'import("/home/jerytom33/Downloads/Zvenue-main/zvenue/node_modules/csstype/index").Property.BorderBlockStyle | undefined'.
+            Type 'string & {}' is not assignable to type 'BorderBlockStyle | undefined'.
+admin/src/assets/custom/icon-layout-full.tsx(5,6): error TS2322: Type '{ children: Element[]; suppressHydrationWarning?: boolean | undefined; className?: string | undefined; color?: string | undefined; height?: string | number | undefined; id?: string | undefined; ... 482 more ...; "data-name": string; }' is not assignable to type 'SVGProps<SVGSVGElement>'.
+  Types of property 'style' are incompatible.
+    Type 'import("/home/jerytom33/Downloads/Zvenue-main/zvenue/admin/node_modules/@types/react/index").CSSProperties | undefined' is not assignable to type 'React.CSSProperties | undefined'.
+      Type 'CSSProperties' is not assignable to type 'Properties<string | number, string & {}>'.
+        Types of property 'borderBlockStyle' are incompatible.
+          Type 'import("/home/jerytom33/Downloads/Zvenue-main/zvenue/admin/node_modules/csstype/index").Property.BorderBlockStyle | undefined' is not assignable to type 'import("/home/jerytom33/Downloads/Zvenue-main/zvenue/node_modules/csstype/index").Property.BorderBlockStyle | undefined'.
+            Type 'string & {}' is not assignable to type 'BorderBlockStyle | undefined'.
+admin/src/assets/custom/icon-sidebar-floating.tsx(5,6): error TS2322: Type '{ children: Element[]; suppressHydrationWarning?: boolean | undefined; className?: string | undefined; color?: string | undefined; height?: string | number | undefined; id?: string | undefined; ... 482 more ...; "data-name": string; }' is not assignable to type 'SVGProps<SVGSVGElement>'.
+  Types of property 'style' are incompatible.
+    Type 'import("/home/jerytom33/Downloads/Zvenue-main/zvenue/admin/node_modules/@types/react/index").CSSProperties | undefined' is not assignable to type 'React.CSSProperties | undefined'.
+      Type 'CSSProperties' is not assignable to type 'Properties<string | number, string & {}>'.
+        Types of property 'borderBlockStyle' are incompatible.
+          Type 'import("/home/jerytom33/Downloads/Zvenue-main/zvenue/admin/node_modules/csstype/index").Property.BorderBlockStyle | undefined' is not assignable to type 'import("/home/jerytom33/Downloads/Zvenue-main/zvenue/node_modules/csstype/index").Property.BorderBlockStyle | undefined'.
+            Type 'string & {}' is not assignable to type 'BorderBlockStyle | undefined'.
+admin/src/assets/custom/icon-sidebar-inset.tsx(5,6): error TS2322: Type '{ children: Element[]; suppressHydrationWarning?: boolean | undefined; className?: string | undefined; color?: string | undefined; height?: string | number | undefined; id?: string | undefined; ... 482 more ...; "data-name": string; }' is not assignable to type 'SVGProps<SVGSVGElement>'.
+  Types of property 'style' are incompatible.
+    Type 'import("/home/jerytom33/Downloads/Zvenue-main/zvenue/admin/node_modules/@types/react/index").CSSProperties | undefined' is not assignable to type 'React.CSSProperties | undefined'.
+      Type 'CSSProperties' is not assignable to type 'Properties<string | number, string & {}>'.
+        Types of property 'borderBlockStyle' are incompatible.
+          Type 'import("/home/jerytom33/Downloads/Zvenue-main/zvenue/admin/node_modules/csstype/index").Property.BorderBlockStyle | undefined' is not assignable to type 'import("/home/jerytom33/Downloads/Zvenue-main/zvenue/node_modules/csstype/index").Property.BorderBlockStyle | undefined'.
+            Type 'string & {}' is not assignable to type 'BorderBlockStyle | undefined'.
+admin/src/assets/custom/icon-sidebar-sidebar.tsx(5,6): error TS2322: Type '{ children: Element[]; suppressHydrationWarning?: boolean | undefined; className?: string | undefined; color?: string | undefined; height?: string | number | undefined; id?: string | undefined; ... 482 more ...; "data-name": string; }' is not assignable to type 'SVGProps<SVGSVGElement>'.
+  Types of property 'style' are incompatible.
+    Type 'import("/home/jerytom33/Downloads/Zvenue-main/zvenue/admin/node_modules/@types/react/index").CSSProperties | undefined' is not assignable to type 'React.CSSProperties | undefined'.
+      Type 'CSSProperties' is not assignable to type 'Properties<string | number, string & {}>'.
+        Types of property 'borderBlockStyle' are incompatible.
+          Type 'import("/home/jerytom33/Downloads/Zvenue-main/zvenue/admin/node_modules/csstype/index").Property.BorderBlockStyle | undefined' is not assignable to type 'import("/home/jerytom33/Downloads/Zvenue-main/zvenue/node_modules/csstype/index").Property.BorderBlockStyle | undefined'.
+            Type 'string & {}' is not assignable to type 'BorderBlockStyle | undefined'.
+admin/src/assets/custom/icon-theme-dark.tsx(5,6): error TS2322: Type '{ children: Element[]; suppressHydrationWarning?: boolean | undefined; className?: string | undefined; color?: string | undefined; height?: string | number | undefined; id?: string | undefined; ... 482 more ...; "data-name": string; }' is not assignable to type 'SVGProps<SVGSVGElement>'.
+  Types of property 'style' are incompatible.
+    Type 'import("/home/jerytom33/Downloads/Zvenue-main/zvenue/admin/node_modules/@types/react/index").CSSProperties | undefined' is not assignable to type 'React.CSSProperties | undefined'.
+      Type 'CSSProperties' is not assignable to type 'Properties<string | number, string & {}>'.
+        Types of property 'borderBlockStyle' are incompatible.
+          Type 'import("/home/jerytom33/Downloads/Zvenue-main/zvenue/admin/node_modules/csstype/index").Property.BorderBlockStyle | undefined' is not assignable to type 'import("/home/jerytom33/Downloads/Zvenue-main/zvenue/node_modules/csstype/index").Property.BorderBlockStyle | undefined'.
+            Type 'string & {}' is not assignable to type 'BorderBlockStyle | undefined'.
+admin/src/assets/custom/icon-theme-light.tsx(5,6): error TS2322: Type '{ children: Element[]; suppressHydrationWarning?: boolean | undefined; className?: string | undefined; color?: string | undefined; height?: string | number | undefined; id?: string | undefined; ... 482 more ...; "data-name": string; }' is not assignable to type 'SVGProps<SVGSVGElement>'.
+  Types of property 'style' are incompatible.
+    Type 'import("/home/jerytom33/Downloads/Zvenue-main/zvenue/admin/node_modules/@types/react/index").CSSProperties | undefined' is not assignable to type 'React.CSSProperties | undefined'.
+      Type 'CSSProperties' is not assignable to type 'Properties<string | number, string & {}>'.
+        Types of property 'borderBlockStyle' are incompatible.
+          Type 'import("/home/jerytom33/Downloads/Zvenue-main/zvenue/admin/node_modules/csstype/index").Property.BorderBlockStyle | undefined' is not assignable to type 'import("/home/jerytom33/Downloads/Zvenue-main/zvenue/node_modules/csstype/index").Property.BorderBlockStyle | undefined'.
+            Type 'string & {}' is not assignable to type 'BorderBlockStyle | undefined'.
+admin/src/assets/custom/icon-theme-system.tsx(2,20): error TS2307: Cannot find module '@/lib/utils' or its corresponding type declarations.
+admin/src/assets/custom/icon-theme-system.tsx(9,6): error TS2322: Type '{ children: Element[]; suppressHydrationWarning?: boolean | undefined; color?: string | undefined; height?: string | number | undefined; id?: string | undefined; lang?: string | undefined; ... 482 more ...; className: any; }' is not assignable to type 'SVGProps<SVGSVGElement>'.
+  Types of property 'style' are incompatible.
+    Type 'import("/home/jerytom33/Downloads/Zvenue-main/zvenue/admin/node_modules/@types/react/index").CSSProperties | undefined' is not assignable to type 'React.CSSProperties | undefined'.
+      Type 'CSSProperties' is not assignable to type 'Properties<string | number, string & {}>'.
+        Types of property 'borderBlockStyle' are incompatible.
+          Type 'import("/home/jerytom33/Downloads/Zvenue-main/zvenue/admin/node_modules/csstype/index").Property.BorderBlockStyle | undefined' is not assignable to type 'import("/home/jerytom33/Downloads/Zvenue-main/zvenue/node_modules/csstype/index").Property.BorderBlockStyle | undefined'.
+            Type 'string & {}' is not assignable to type 'BorderBlockStyle | undefined'.
+admin/src/assets/logo.tsx(2,20): error TS2307: Cannot find module '@/lib/utils' or its corresponding type declarations.
+admin/src/assets/logo.tsx(6,6): error TS2322: Type '{ children: Element[]; suppressHydrationWarning?: boolean | undefined; color?: string | undefined; height: string | number; id: string; lang?: string | undefined; max?: string | number | undefined; ... 480 more ...; className: any; }' is not assignable to type 'SVGProps<SVGSVGElement>'.
+  Types of property 'style' are incompatible.
+    Type 'import("/home/jerytom33/Downloads/Zvenue-main/zvenue/admin/node_modules/@types/react/index").CSSProperties | undefined' is not assignable to type 'React.CSSProperties | undefined'.
+      Type 'CSSProperties' is not assignable to type 'Properties<string | number, string & {}>'.
+        Types of property 'borderBlockStyle' are incompatible.
+          Type 'import("/home/jerytom33/Downloads/Zvenue-main/zvenue/admin/node_modules/csstype/index").Property.BorderBlockStyle | undefined' is not assignable to type 'import("/home/jerytom33/Downloads/Zvenue-main/zvenue/node_modules/csstype/index").Property.BorderBlockStyle | undefined'.
+            Type 'string & {}' is not assignable to type 'BorderBlockStyle | undefined'.
+admin/src/components/command-menu.tsx(4,27): error TS2307: Cannot find module '@/context/search-provider' or its corresponding type declarations.
+admin/src/components/command-menu.tsx(5,26): error TS2307: Cannot find module '@/context/theme-provider' or its corresponding type declarations.
+admin/src/components/command-menu.tsx(14,8): error TS2307: Cannot find module '@/components/ui/command' or its corresponding type declarations.
+admin/src/components/config-drawer.test.tsx(1,30): error TS2307: Cannot find module '@/test-utils/cookies' or its corresponding type declarations.
+admin/src/components/config-drawer.test.tsx(5,38): error TS2307: Cannot find module '@/lib/cookies' or its corresponding type declarations.
+admin/src/components/config-drawer.test.tsx(6,35): error TS2307: Cannot find module '@/context/direction-provider' or its corresponding type declarations.
+admin/src/components/config-drawer.test.tsx(7,32): error TS2307: Cannot find module '@/context/layout-provider' or its corresponding type declarations.
+admin/src/components/config-drawer.test.tsx(8,31): error TS2307: Cannot find module '@/context/theme-provider' or its corresponding type declarations.
+admin/src/components/config-drawer.test.tsx(9,33): error TS2307: Cannot find module '@/components/ui/sidebar' or its corresponding type declarations.
+admin/src/components/config-drawer.tsx(4,25): error TS2307: Cannot find module '@/assets/custom/icon-dir' or its corresponding type declarations.
+admin/src/components/config-drawer.tsx(5,35): error TS2307: Cannot find module '@/assets/custom/icon-layout-compact' or its corresponding type declarations.
+admin/src/components/config-drawer.tsx(6,35): error TS2307: Cannot find module '@/assets/custom/icon-layout-default' or its corresponding type declarations.
+admin/src/components/config-drawer.tsx(7,32): error TS2307: Cannot find module '@/assets/custom/icon-layout-full' or its corresponding type declarations.
+admin/src/components/config-drawer.tsx(8,37): error TS2307: Cannot find module '@/assets/custom/icon-sidebar-floating' or its corresponding type declarations.
+admin/src/components/config-drawer.tsx(9,34): error TS2307: Cannot find module '@/assets/custom/icon-sidebar-inset' or its corresponding type declarations.
+admin/src/components/config-drawer.tsx(10,36): error TS2307: Cannot find module '@/assets/custom/icon-sidebar-sidebar' or its corresponding type declarations.
+admin/src/components/config-drawer.tsx(11,31): error TS2307: Cannot find module '@/assets/custom/icon-theme-dark' or its corresponding type declarations.
+admin/src/components/config-drawer.tsx(12,32): error TS2307: Cannot find module '@/assets/custom/icon-theme-light' or its corresponding type declarations.
+admin/src/components/config-drawer.tsx(13,33): error TS2307: Cannot find module '@/assets/custom/icon-theme-system' or its corresponding type declarations.
+admin/src/components/config-drawer.tsx(14,20): error TS2307: Cannot find module '@/lib/utils' or its corresponding type declarations.
+admin/src/components/config-drawer.tsx(15,30): error TS2307: Cannot find module '@/context/direction-provider' or its corresponding type declarations.
+admin/src/components/config-drawer.tsx(16,45): error TS2307: Cannot find module '@/context/layout-provider' or its corresponding type declarations.
+admin/src/components/config-drawer.tsx(17,26): error TS2307: Cannot find module '@/context/theme-provider' or its corresponding type declarations.
+admin/src/components/config-drawer.tsx(18,24): error TS2307: Cannot find module '@/components/ui/button' or its corresponding type declarations.
+admin/src/components/config-drawer.tsx(27,8): error TS2307: Cannot find module '@/components/ui/sheet' or its corresponding type declarations.
+admin/src/components/confirm-dialog.tsx(1,20): error TS2307: Cannot find module '@/lib/utils' or its corresponding type declarations.
+admin/src/components/confirm-dialog.tsx(10,8): error TS2307: Cannot find module '@/components/ui/alert-dialog' or its corresponding type declarations.
+admin/src/components/confirm-dialog.tsx(11,24): error TS2307: Cannot find module '@/components/ui/button' or its corresponding type declarations.
+admin/src/components/data-table/bulk-actions.tsx(4,20): error TS2307: Cannot find module '@/lib/utils' or its corresponding type declarations.
+admin/src/components/data-table/bulk-actions.tsx(5,23): error TS2307: Cannot find module '@/components/ui/badge' or its corresponding type declarations.
+admin/src/components/data-table/bulk-actions.tsx(6,24): error TS2307: Cannot find module '@/components/ui/button' or its corresponding type declarations.
+admin/src/components/data-table/bulk-actions.tsx(7,27): error TS2307: Cannot find module '@/components/ui/separator' or its corresponding type declarations.
+admin/src/components/data-table/bulk-actions.tsx(12,8): error TS2307: Cannot find module '@/components/ui/tooltip' or its corresponding type declarations.
+admin/src/components/data-table/column-header.tsx(8,20): error TS2307: Cannot find module '@/lib/utils' or its corresponding type declarations.
+admin/src/components/data-table/column-header.tsx(9,24): error TS2307: Cannot find module '@/components/ui/button' or its corresponding type declarations.
+admin/src/components/data-table/column-header.tsx(16,8): error TS2307: Cannot find module '@/components/ui/dropdown-menu' or its corresponding type declarations.
+admin/src/components/data-table/faceted-filter.tsx(4,20): error TS2307: Cannot find module '@/lib/utils' or its corresponding type declarations.
+admin/src/components/data-table/faceted-filter.tsx(5,23): error TS2307: Cannot find module '@/components/ui/badge' or its corresponding type declarations.
+admin/src/components/data-table/faceted-filter.tsx(6,24): error TS2307: Cannot find module '@/components/ui/button' or its corresponding type declarations.
+admin/src/components/data-table/faceted-filter.tsx(15,8): error TS2307: Cannot find module '@/components/ui/command' or its corresponding type declarations.
+admin/src/components/data-table/faceted-filter.tsx(20,8): error TS2307: Cannot find module '@/components/ui/popover' or its corresponding type declarations.
+admin/src/components/data-table/faceted-filter.tsx(21,27): error TS2307: Cannot find module '@/components/ui/separator' or its corresponding type declarations.
+admin/src/components/data-table/pagination.tsx(8,36): error TS2307: Cannot find module '@/lib/utils' or its corresponding type declarations.
+admin/src/components/data-table/pagination.tsx(9,24): error TS2307: Cannot find module '@/components/ui/button' or its corresponding type declarations.
+admin/src/components/data-table/pagination.tsx(16,8): error TS2307: Cannot find module '@/components/ui/select' or its corresponding type declarations.
+admin/src/components/data-table/pagination.tsx(47,29): error TS7006: Parameter 'value' implicitly has an 'any' type.
+admin/src/components/data-table/pagination.tsx(91,29): error TS7006: Parameter 'pageNumber' implicitly has an 'any' type.
+admin/src/components/data-table/pagination.tsx(91,41): error TS7006: Parameter 'index' implicitly has an 'any' type.
+admin/src/components/data-table/toolbar.tsx(3,24): error TS2307: Cannot find module '@/components/ui/button' or its corresponding type declarations.
+admin/src/components/data-table/toolbar.tsx(4,23): error TS2307: Cannot find module '@/components/ui/input' or its corresponding type declarations.
+admin/src/components/data-table/toolbar.tsx(41,24): error TS7006: Parameter 'event' implicitly has an 'any' type.
+admin/src/components/data-table/toolbar.tsx(50,24): error TS7006: Parameter 'event' implicitly has an 'any' type.
+admin/src/components/data-table/view-options.tsx(4,24): error TS2307: Cannot find module '@/components/ui/button' or its corresponding type declarations.
+admin/src/components/data-table/view-options.tsx(11,8): error TS2307: Cannot find module '@/components/ui/dropdown-menu' or its corresponding type declarations.
+admin/src/components/data-table/view-options.tsx(47,35): error TS7006: Parameter 'value' implicitly has an 'any' type.
+admin/src/components/date-picker.tsx(3,24): error TS2307: Cannot find module '@/components/ui/button' or its corresponding type declarations.
+admin/src/components/date-picker.tsx(4,26): error TS2307: Cannot find module '@/components/ui/calendar' or its corresponding type declarations.
+admin/src/components/date-picker.tsx(9,8): error TS2307: Cannot find module '@/components/ui/popover' or its corresponding type declarations.
+admin/src/components/layout/app-sidebar.tsx(1,27): error TS2307: Cannot find module '@/context/layout-provider' or its corresponding type declarations.
+admin/src/components/layout/app-sidebar.tsx(8,8): error TS2307: Cannot find module '@/components/ui/sidebar' or its corresponding type declarations.
+admin/src/components/layout/app-title.tsx(3,20): error TS2307: Cannot find module '@/lib/utils' or its corresponding type declarations.
+admin/src/components/layout/app-title.tsx(9,8): error TS2307: Cannot find module '@/components/ui/sidebar' or its corresponding type declarations.
+admin/src/components/layout/authenticated-layout.tsx(2,27): error TS2307: Cannot find module '@/lib/cookies' or its corresponding type declarations.
+admin/src/components/layout/authenticated-layout.tsx(3,20): error TS2307: Cannot find module '@/lib/utils' or its corresponding type declarations.
+admin/src/components/layout/authenticated-layout.tsx(4,32): error TS2307: Cannot find module '@/context/layout-provider' or its corresponding type declarations.
+admin/src/components/layout/authenticated-layout.tsx(5,32): error TS2307: Cannot find module '@/context/search-provider' or its corresponding type declarations.
+admin/src/components/layout/authenticated-layout.tsx(6,47): error TS2307: Cannot find module '@/components/ui/sidebar' or its corresponding type declarations.
+admin/src/components/layout/authenticated-layout.tsx(7,28): error TS2307: Cannot find module '@/components/layout/app-sidebar' or its corresponding type declarations.
+admin/src/components/layout/authenticated-layout.tsx(8,28): error TS2307: Cannot find module '@/components/skip-to-main' or its corresponding type declarations.
+admin/src/components/layout/authenticated-layout.tsx(9,25): error TS2307: Cannot find module '@/context/auth-provider' or its corresponding type declarations.
+admin/src/components/layout/header.tsx(2,20): error TS2307: Cannot find module '@/lib/utils' or its corresponding type declarations.
+admin/src/components/layout/header.tsx(3,27): error TS2307: Cannot find module '@/components/ui/separator' or its corresponding type declarations.
+admin/src/components/layout/header.tsx(4,32): error TS2307: Cannot find module '@/components/ui/sidebar' or its corresponding type declarations.
+admin/src/components/layout/main.tsx(1,20): error TS2307: Cannot find module '@/lib/utils' or its corresponding type declarations.
+admin/src/components/layout/nav-group.tsx(8,8): error TS2307: Cannot find module '@/components/ui/collapsible' or its corresponding type declarations.
+admin/src/components/layout/nav-group.tsx(19,8): error TS2307: Cannot find module '@/components/ui/sidebar' or its corresponding type declarations.
+admin/src/components/layout/nav-user.tsx(2,25): error TS2307: Cannot find module '@/context/auth-provider' or its corresponding type declarations.
+admin/src/components/layout/nav-user.tsx(9,53): error TS2307: Cannot find module '@/components/ui/avatar' or its corresponding type declarations.
+admin/src/components/layout/nav-user.tsx(18,8): error TS2307: Cannot find module '@/components/ui/dropdown-menu' or its corresponding type declarations.
+admin/src/components/layout/nav-user.tsx(24,8): error TS2307: Cannot find module '@/components/ui/sidebar' or its corresponding type declarations.
+admin/src/components/layout/team-switcher.tsx(7,8): error TS2307: Cannot find module '@/components/ui/sidebar' or its corresponding type declarations.
+admin/src/components/layout/top-nav.tsx(3,20): error TS2307: Cannot find module '@/lib/utils' or its corresponding type declarations.
+admin/src/components/layout/top-nav.tsx(4,24): error TS2307: Cannot find module '@/components/ui/button' or its corresponding type declarations.
+admin/src/components/layout/top-nav.tsx(10,8): error TS2307: Cannot find module '@/components/ui/dropdown-menu' or its corresponding type declarations.
+admin/src/components/learn-more.tsx(3,20): error TS2307: Cannot find module '@/lib/utils' or its corresponding type declarations.
+admin/src/components/learn-more.tsx(4,24): error TS2307: Cannot find module '@/components/ui/button' or its corresponding type declarations.
+admin/src/components/learn-more.tsx(9,8): error TS2307: Cannot find module '@/components/ui/popover' or its corresponding type declarations.
+admin/src/components/long-text.tsx(2,20): error TS2307: Cannot find module '@/lib/utils' or its corresponding type declarations.
+admin/src/components/long-text.tsx(7,8): error TS2307: Cannot find module '@/components/ui/popover' or its corresponding type declarations.
+admin/src/components/long-text.tsx(13,8): error TS2307: Cannot find module '@/components/ui/tooltip' or its corresponding type declarations.
+admin/src/components/password-input.test.tsx(11,8): error TS2307: Cannot find module '@/components/ui/form' or its corresponding type declarations.
+admin/src/components/password-input.test.tsx(76,26): error TS7031: Binding element 'field' implicitly has an 'any' type.
+admin/src/components/password-input.tsx(3,20): error TS2307: Cannot find module '@/lib/utils' or its corresponding type declarations.
+admin/src/components/profile-dropdown.tsx(2,35): error TS2307: Cannot find module '@clerk/react' or its corresponding type declarations.
+admin/src/components/profile-dropdown.tsx(3,53): error TS2307: Cannot find module '@/components/ui/avatar' or its corresponding type declarations.
+admin/src/components/profile-dropdown.tsx(4,24): error TS2307: Cannot find module '@/components/ui/button' or its corresponding type declarations.
+admin/src/components/profile-dropdown.tsx(14,8): error TS2307: Cannot find module '@/components/ui/dropdown-menu' or its corresponding type declarations.
+admin/src/components/search.tsx(2,20): error TS2307: Cannot find module '@/lib/utils' or its corresponding type declarations.
+admin/src/components/search.tsx(3,27): error TS2307: Cannot find module '@/context/search-provider' or its corresponding type declarations.
+admin/src/components/search.tsx(13,6): error TS2322: Type '{ children: Element[]; variant: "outline"; className: any; "aria-keyshortcuts": string; onClick: () => any; ref?: Ref<HTMLButtonElement> | undefined; key?: Key | null | undefined; ... 283 more ...; onTransitionStartCapture?: TransitionEventHandler<...> | undefined; }' is not assignable to type 'ClassAttributes<HTMLButtonElement>'.
+  Types of property 'ref' are incompatible.
+    Type 'React.Ref<HTMLButtonElement> | undefined' is not assignable to type 'import("/home/jerytom33/Downloads/Zvenue-main/zvenue/admin/node_modules/@types/react/index").Ref<HTMLButtonElement> | undefined'.
+      Type '(instance: HTMLButtonElement | null) => void | (() => VoidOrUndefinedOnly)' is not assignable to type 'Ref<HTMLButtonElement> | undefined'.
+        Type '(instance: HTMLButtonElement | null) => void | (() => VoidOrUndefinedOnly)' is not assignable to type '(instance: HTMLButtonElement | null) => void | (() => VoidOrUndefinedOnly)'. Two different types with this name exist, but they are unrelated.
+          Type 'void | (() => VoidOrUndefinedOnly)' is not assignable to type 'void | (() => VoidOrUndefinedOnly)'. Two different types with this name exist, but they are unrelated.
+            Type '() => VoidOrUndefinedOnly' is not assignable to type 'void | (() => VoidOrUndefinedOnly)'.
+              Type '() => VoidOrUndefinedOnly' is not assignable to type '() => VoidOrUndefinedOnly'. Two different types with this name exist, but they are unrelated.
+                Type 'VoidOrUndefinedOnly' is not assignable to type 'VoidOrUndefinedOnly'. Two different types with this name exist, but they are unrelated.
+                  Type '{ [UNDEFINED_VOID_ONLY]: never; }' is not assignable to type 'VoidOrUndefinedOnly'.
+admin/src/components/select-dropdown.tsx(2,20): error TS2307: Cannot find module '@/lib/utils' or its corresponding type declarations.
+admin/src/components/select-dropdown.tsx(3,29): error TS2307: Cannot find module '@/components/ui/form' or its corresponding type declarations.
+admin/src/components/select-dropdown.tsx(10,8): error TS2307: Cannot find module '@/components/ui/select' or its corresponding type declarations.
+admin/src/components/sign-out-dialog.tsx(1,26): error TS2307: Cannot find module '@clerk/react' or its corresponding type declarations.
+admin/src/components/sign-out-dialog.tsx(2,31): error TS2307: Cannot find module '@/components/confirm-dialog' or its corresponding type declarations.
+admin/src/components/theme-switch.tsx(3,20): error TS2307: Cannot find module '@/lib/utils' or its corresponding type declarations.
+admin/src/components/theme-switch.tsx(4,26): error TS2307: Cannot find module '@/context/theme-provider' or its corresponding type declarations.
+admin/src/components/theme-switch.tsx(5,24): error TS2307: Cannot find module '@/components/ui/button' or its corresponding type declarations.
+admin/src/components/theme-switch.tsx(11,8): error TS2307: Cannot find module '@/components/ui/dropdown-menu' or its corresponding type declarations.
+admin/src/components/ui/alert-dialog.tsx(3,20): error TS2307: Cannot find module '@/lib/utils' or its corresponding type declarations.
+admin/src/components/ui/alert-dialog.tsx(4,32): error TS2307: Cannot find module '@/components/ui/button' or its corresponding type declarations.
+admin/src/components/ui/alert.tsx(3,20): error TS2307: Cannot find module '@/lib/utils' or its corresponding type declarations.
+admin/src/components/ui/avatar.tsx(3,20): error TS2307: Cannot find module '@/lib/utils' or its corresponding type declarations.
+admin/src/components/ui/badge.tsx(4,20): error TS2307: Cannot find module '@/lib/utils' or its corresponding type declarations.
+admin/src/components/ui/button.tsx(4,20): error TS2307: Cannot find module '@/lib/utils' or its corresponding type declarations.
+admin/src/components/ui/calendar.tsx(8,20): error TS2307: Cannot find module '@/lib/utils' or its corresponding type declarations.
+admin/src/components/ui/calendar.tsx(9,40): error TS2307: Cannot find module '@/components/ui/button' or its corresponding type declarations.
+admin/src/components/ui/card.tsx(2,20): error TS2307: Cannot find module '@/lib/utils' or its corresponding type declarations.
+admin/src/components/ui/checkbox.tsx(4,20): error TS2307: Cannot find module '@/lib/utils' or its corresponding type declarations.
+admin/src/components/ui/command.tsx(4,20): error TS2307: Cannot find module '@/lib/utils' or its corresponding type declarations.
+admin/src/components/ui/command.tsx(11,8): error TS2307: Cannot find module '@/components/ui/dialog' or its corresponding type declarations.
+admin/src/components/ui/dialog.tsx(6,20): error TS2307: Cannot find module '@/lib/utils' or its corresponding type declarations.
+admin/src/components/ui/dropdown-menu.tsx(4,20): error TS2307: Cannot find module '@/lib/utils' or its corresponding type declarations.
+admin/src/components/ui/form.tsx(13,20): error TS2307: Cannot find module '@/lib/utils' or its corresponding type declarations.
+admin/src/components/ui/form.tsx(14,23): error TS2307: Cannot find module '@/components/ui/label' or its corresponding type declarations.
+admin/src/components/ui/input-otp.tsx(4,20): error TS2307: Cannot find module '@/lib/utils' or its corresponding type declarations.
+admin/src/components/ui/input.tsx(2,20): error TS2307: Cannot find module '@/lib/utils' or its corresponding type declarations.
+admin/src/components/ui/label.tsx(5,20): error TS2307: Cannot find module '@/lib/utils' or its corresponding type declarations.
+admin/src/components/ui/popover.tsx(3,20): error TS2307: Cannot find module '@/lib/utils' or its corresponding type declarations.
+admin/src/components/ui/radio-group.tsx(4,20): error TS2307: Cannot find module '@/lib/utils' or its corresponding type declarations.
+admin/src/components/ui/scroll-area.tsx(3,20): error TS2307: Cannot find module '@/lib/utils' or its corresponding type declarations.
+admin/src/components/ui/select.tsx(4,20): error TS2307: Cannot find module '@/lib/utils' or its corresponding type declarations.
+admin/src/components/ui/separator.tsx(3,20): error TS2307: Cannot find module '@/lib/utils' or its corresponding type declarations.
+admin/src/components/ui/sheet.tsx(4,20): error TS2307: Cannot find module '@/lib/utils' or its corresponding type declarations.
+admin/src/components/ui/sidebar.tsx(5,20): error TS2307: Cannot find module '@/lib/utils' or its corresponding type declarations.
+admin/src/components/ui/sidebar.tsx(6,29): error TS2307: Cannot find module '@/hooks/use-mobile' or its corresponding type declarations.
+admin/src/components/ui/sidebar.tsx(7,24): error TS2307: Cannot find module '@/components/ui/button' or its corresponding type declarations.
+admin/src/components/ui/sidebar.tsx(8,23): error TS2307: Cannot find module '@/components/ui/input' or its corresponding type declarations.
+admin/src/components/ui/sidebar.tsx(9,27): error TS2307: Cannot find module '@/components/ui/separator' or its corresponding type declarations.
+admin/src/components/ui/sidebar.tsx(16,8): error TS2307: Cannot find module '@/components/ui/sheet' or its corresponding type declarations.
+admin/src/components/ui/sidebar.tsx(17,26): error TS2307: Cannot find module '@/components/ui/skeleton' or its corresponding type declarations.
+admin/src/components/ui/sidebar.tsx(23,8): error TS2307: Cannot find module '@/components/ui/tooltip' or its corresponding type declarations.
+admin/src/components/ui/sidebar.tsx(267,17): error TS7006: Parameter 'event' implicitly has an 'any' type.
+admin/src/components/ui/skeleton.tsx(1,20): error TS2307: Cannot find module '@/lib/utils' or its corresponding type declarations.
+admin/src/components/ui/sonner.tsx(2,26): error TS2307: Cannot find module '@/context/theme-provider' or its corresponding type declarations.
+admin/src/components/ui/sonner.tsx(11,7): error TS2322: Type 'CSSProperties' is not assignable to type 'Properties<string | number, string & {}>'.
+  Types of property 'alignmentBaseline' are incompatible.
+    Type 'import("/home/jerytom33/Downloads/Zvenue-main/zvenue/node_modules/csstype/index").Property.AlignmentBaseline | undefined' is not assignable to type 'import("/home/jerytom33/Downloads/Zvenue-main/zvenue/admin/node_modules/csstype/index").Property.AlignmentBaseline | undefined'.
+      Type '"hanging"' is not assignable to type 'AlignmentBaseline | undefined'.
+admin/src/components/ui/switch.tsx(3,20): error TS2307: Cannot find module '@/lib/utils' or its corresponding type declarations.
+admin/src/components/ui/table.tsx(2,20): error TS2307: Cannot find module '@/lib/utils' or its corresponding type declarations.
+admin/src/components/ui/tabs.tsx(3,20): error TS2307: Cannot find module '@/lib/utils' or its corresponding type declarations.
+admin/src/components/ui/textarea.tsx(2,20): error TS2307: Cannot find module '@/lib/utils' or its corresponding type declarations.
+admin/src/components/ui/tooltip.tsx(5,20): error TS2307: Cannot find module '@/lib/utils' or its corresponding type declarations.
+admin/src/context/auth-provider.tsx(3,21): error TS2307: Cannot find module '@/lib/axios' or its corresponding type declarations.
+admin/src/context/auth-provider.tsx(30,16): error TS7006: Parameter 'response' implicitly has an 'any' type.
+admin/src/context/direction-provider.tsx(3,52): error TS2307: Cannot find module '@/lib/cookies' or its corresponding type declarations.
+admin/src/context/font-provider.tsx(2,23): error TS2307: Cannot find module '@/config/fonts' or its corresponding type declarations.
+admin/src/context/font-provider.tsx(3,52): error TS2307: Cannot find module '@/lib/cookies' or its corresponding type declarations.
+admin/src/context/layout-provider.tsx(2,38): error TS2307: Cannot find module '@/lib/cookies' or its corresponding type declarations.
+admin/src/context/search-provider.test.tsx(4,32): error TS2307: Cannot find module '@/context/search-provider' or its corresponding type declarations.
+admin/src/context/search-provider.tsx(2,29): error TS2307: Cannot find module '@/components/command-menu' or its corresponding type declarations.
+admin/src/context/theme-provider.tsx(2,52): error TS2307: Cannot find module '@/lib/cookies' or its corresponding type declarations.
+admin/src/features/analytics/index.tsx(23,8): error TS2307: Cannot find module '@/components/ui/card' or its corresponding type declarations.
+admin/src/features/analytics/index.tsx(24,26): error TS2307: Cannot find module '@/components/ui/skeleton' or its corresponding type declarations.
+admin/src/features/analytics/index.tsx(25,30): error TS2307: Cannot find module '@/components/config-drawer' or its corresponding type declarations.
+admin/src/features/analytics/index.tsx(26,24): error TS2307: Cannot find module '@/components/layout/header' or its corresponding type declarations.
+admin/src/features/analytics/index.tsx(27,22): error TS2307: Cannot find module '@/components/layout/main' or its corresponding type declarations.
+admin/src/features/analytics/index.tsx(28,33): error TS2307: Cannot find module '@/components/profile-dropdown' or its corresponding type declarations.
+admin/src/features/analytics/index.tsx(29,24): error TS2307: Cannot find module '@/components/search' or its corresponding type declarations.
+admin/src/features/analytics/index.tsx(30,29): error TS2307: Cannot find module '@/components/theme-switch' or its corresponding type declarations.
+admin/src/features/analytics/index.tsx(32,3): error TS2305: Module '"@/lib/api"' has no exported member 'fetchRevenueChart'.
+admin/src/features/analytics/index.tsx(33,3): error TS2305: Module '"@/lib/api"' has no exported member 'fetchBookingsByCategory'.
+admin/src/features/analytics/index.tsx(34,3): error TS2305: Module '"@/lib/api"' has no exported member 'fetchCityDistribution'.
+admin/src/features/analytics/index.tsx(35,3): error TS2305: Module '"@/lib/api"' has no exported member 'fetchDashboardStats'.
+admin/src/features/analytics/index.tsx(94,30): error TS2740: Type '{}' is missing the following properties from type 'readonly any[]': length, concat, join, slice, and 26 more.
+admin/src/features/analytics/index.tsx(104,30): error TS2322: Type '(value: number) => [string, string]' is not assignable to type 'Formatter<ValueType, NameType> & ((value: ValueType, name: NameType, item: TooltipPayloadEntry, index: number, payload: TooltipPayload) => ReactNode | [...])'.
+  Type '(value: number) => [string, string]' is not assignable to type 'Formatter<ValueType, NameType>'.
+    Types of parameters 'value' and 'value' are incompatible.
+      Type 'ValueType | undefined' is not assignable to type 'number'.
+        Type 'undefined' is not assignable to type 'number'.
+admin/src/features/analytics/index.tsx(132,23): error TS2769: No overload matches this call.
+  Overload 1 of 2, '(outsideProps: Props<{ name: any; } & { name: any; } & { name: any; } & { count: any; } & { count: any; } & { count: any; }, any>): ReactElement<unknown, string | JSXElementConstructor<any>>', gave the following error.
+    Type '{}' is missing the following properties from type 'readonly ({ name: any; } & { name: any; } & { name: any; } & { count: any; } & { count: any; } & { count: any; })[]': length, concat, join, slice, and 26 more.
+  Overload 2 of 2, '(outsideProps: Props<any, any>): ReactElement<unknown, string | JSXElementConstructor<any>>', gave the following error.
+    Type '{}' is missing the following properties from type 'readonly any[]': length, concat, join, slice, and 26 more.
+admin/src/features/analytics/index.tsx(139,65): error TS18048: 'percent' is possibly 'undefined'.
+admin/src/features/analytics/index.tsx(141,45): error TS2339: Property 'map' does not exist on type '{}'.
+admin/src/features/analytics/index.tsx(164,52): error TS2339: Property 'slice' does not exist on type '{}'.
+admin/src/features/analytics/index.tsx(188,78): error TS2339: Property 'pendingBookings' does not exist on type '{}'.
+admin/src/features/analytics/index.tsx(192,80): error TS2339: Property 'confirmedBookings' does not exist on type '{}'.
+admin/src/features/analytics/index.tsx(196,76): error TS2339: Property 'cancelledBookings' does not exist on type '{}'.
+admin/src/features/apps/data/apps.tsx(17,8): error TS2307: Cannot find module '@/assets/brand-icons' or its corresponding type declarations.
+admin/src/features/apps/index.tsx(4,24): error TS2307: Cannot find module '@/components/ui/button' or its corresponding type declarations.
+admin/src/features/apps/index.tsx(5,23): error TS2307: Cannot find module '@/components/ui/input' or its corresponding type declarations.
+admin/src/features/apps/index.tsx(12,8): error TS2307: Cannot find module '@/components/ui/select' or its corresponding type declarations.
+admin/src/features/apps/index.tsx(13,27): error TS2307: Cannot find module '@/components/ui/separator' or its corresponding type declarations.
+admin/src/features/apps/index.tsx(14,30): error TS2307: Cannot find module '@/components/config-drawer' or its corresponding type declarations.
+admin/src/features/apps/index.tsx(15,24): error TS2307: Cannot find module '@/components/layout/header' or its corresponding type declarations.
+admin/src/features/apps/index.tsx(16,22): error TS2307: Cannot find module '@/components/layout/main' or its corresponding type declarations.
+admin/src/features/apps/index.tsx(17,33): error TS2307: Cannot find module '@/components/profile-dropdown' or its corresponding type declarations.
+admin/src/features/apps/index.tsx(18,24): error TS2307: Cannot find module '@/components/search' or its corresponding type declarations.
+admin/src/features/apps/index.tsx(19,29): error TS2307: Cannot find module '@/components/theme-switch' or its corresponding type declarations.
+admin/src/features/auth/auth-layout.tsx(1,22): error TS2307: Cannot find module '@/assets/logo' or its corresponding type declarations.
+admin/src/features/auth/forgot-password/components/forgot-password-form.tsx(8,27): error TS2307: Cannot find module '@/lib/utils' or its corresponding type declarations.
+admin/src/features/auth/forgot-password/components/forgot-password-form.tsx(9,24): error TS2307: Cannot find module '@/components/ui/button' or its corresponding type declarations.
+admin/src/features/auth/forgot-password/components/forgot-password-form.tsx(17,8): error TS2307: Cannot find module '@/components/ui/form' or its corresponding type declarations.
+admin/src/features/auth/forgot-password/components/forgot-password-form.tsx(18,23): error TS2307: Cannot find module '@/components/ui/input' or its corresponding type declarations.
+admin/src/features/auth/forgot-password/components/forgot-password-form.tsx(63,22): error TS7031: Binding element 'field' implicitly has an 'any' type.
+admin/src/features/auth/forgot-password/index.tsx(9,8): error TS2307: Cannot find module '@/components/ui/card' or its corresponding type declarations.
+admin/src/features/auth/otp/components/otp-form.test.tsx(4,35): error TS2307: Cannot find module '@/lib/show-submitted-data' or its corresponding type declarations.
+admin/src/features/auth/otp/components/otp-form.tsx(6,35): error TS2307: Cannot find module '@/lib/show-submitted-data' or its corresponding type declarations.
+admin/src/features/auth/otp/components/otp-form.tsx(7,20): error TS2307: Cannot find module '@/lib/utils' or its corresponding type declarations.
+admin/src/features/auth/otp/components/otp-form.tsx(8,24): error TS2307: Cannot find module '@/components/ui/button' or its corresponding type declarations.
+admin/src/features/auth/otp/components/otp-form.tsx(16,8): error TS2307: Cannot find module '@/components/ui/form' or its corresponding type declarations.
+admin/src/features/auth/otp/components/otp-form.tsx(22,8): error TS2307: Cannot find module '@/components/ui/input-otp' or its corresponding type declarations.
+admin/src/features/auth/otp/components/otp-form.tsx(65,22): error TS7031: Binding element 'field' implicitly has an 'any' type.
+admin/src/features/auth/otp/index.tsx(9,8): error TS2307: Cannot find module '@/components/ui/card' or its corresponding type declarations.
+admin/src/features/auth/sign-in/components/user-auth-form.tsx(8,42): error TS2307: Cannot find module '@/assets/brand-icons' or its corresponding type declarations.
+admin/src/features/auth/sign-in/components/user-auth-form.tsx(9,30): error TS2307: Cannot find module '@/stores/auth-store' or its corresponding type declarations.
+admin/src/features/auth/sign-in/components/user-auth-form.tsx(10,27): error TS2307: Cannot find module '@/lib/utils' or its corresponding type declarations.
+admin/src/features/auth/sign-in/components/user-auth-form.tsx(11,24): error TS2307: Cannot find module '@/components/ui/button' or its corresponding type declarations.
+admin/src/features/auth/sign-in/components/user-auth-form.tsx(19,8): error TS2307: Cannot find module '@/components/ui/form' or its corresponding type declarations.
+admin/src/features/auth/sign-in/components/user-auth-form.tsx(20,23): error TS2307: Cannot find module '@/components/ui/input' or its corresponding type declarations.
+admin/src/features/auth/sign-in/components/user-auth-form.tsx(21,31): error TS2307: Cannot find module '@/components/password-input' or its corresponding type declarations.
+admin/src/features/auth/sign-in/components/user-auth-form.tsx(94,22): error TS7031: Binding element 'field' implicitly has an 'any' type.
+admin/src/features/auth/sign-in/components/user-auth-form.tsx(107,22): error TS7031: Binding element 'field' implicitly has an 'any' type.
+admin/src/features/auth/sign-in/index.tsx(7,25): error TS2307: Cannot find module '@/context/auth-provider' or its corresponding type declarations.
+admin/src/features/auth/sign-in/index.tsx(8,21): error TS2307: Cannot find module '@/lib/axios' or its corresponding type declarations.
+admin/src/features/auth/sign-in/sign-in-2.tsx(2,22): error TS2307: Cannot find module '@/assets/logo' or its corresponding type declarations.
+admin/src/features/auth/sign-in/sign-in-2.tsx(3,20): error TS2307: Cannot find module '@/lib/utils' or its corresponding type declarations.
+admin/src/features/auth/sign-up/components/sign-up-form.tsx(8,21): error TS2307: Cannot find module '@/lib/axios' or its corresponding type declarations.
+admin/src/features/auth/sign-up/components/sign-up-form.tsx(9,25): error TS2307: Cannot find module '@/context/auth-provider' or its corresponding type declarations.
+admin/src/features/auth/sign-up/components/sign-up-form.tsx(10,20): error TS2307: Cannot find module '@/lib/utils' or its corresponding type declarations.
+admin/src/features/auth/sign-up/components/sign-up-form.tsx(11,24): error TS2307: Cannot find module '@/components/ui/button' or its corresponding type declarations.
+admin/src/features/auth/sign-up/components/sign-up-form.tsx(19,8): error TS2307: Cannot find module '@/components/ui/form' or its corresponding type declarations.
+admin/src/features/auth/sign-up/components/sign-up-form.tsx(20,23): error TS2307: Cannot find module '@/components/ui/input' or its corresponding type declarations.
+admin/src/features/auth/sign-up/components/sign-up-form.tsx(21,31): error TS2307: Cannot find module '@/components/password-input' or its corresponding type declarations.
+admin/src/features/auth/sign-up/components/sign-up-form.tsx(90,22): error TS7031: Binding element 'field' implicitly has an 'any' type.
+admin/src/features/auth/sign-up/components/sign-up-form.tsx(103,22): error TS7031: Binding element 'field' implicitly has an 'any' type.
+admin/src/features/auth/sign-up/components/sign-up-form.tsx(116,22): error TS7031: Binding element 'field' implicitly has an 'any' type.
+admin/src/features/auth/sign-up/components/sign-up-form.tsx(129,22): error TS7031: Binding element 'field' implicitly has an 'any' type.
+admin/src/features/auth/sign-up/index.tsx(9,8): error TS2307: Cannot find module '@/components/ui/card' or its corresponding type declarations.
+admin/src/features/bookings-management/index.tsx(17,24): error TS2307: Cannot find module '@/components/ui/button' or its corresponding type declarations.
+admin/src/features/bookings-management/index.tsx(18,23): error TS2307: Cannot find module '@/components/ui/input' or its corresponding type declarations.
+admin/src/features/bookings-management/index.tsx(22,8): error TS2307: Cannot find module '@/components/ui/card' or its corresponding type declarations.
+admin/src/features/bookings-management/index.tsx(30,8): error TS2307: Cannot find module '@/components/ui/dialog' or its corresponding type declarations.
+admin/src/features/bookings-management/index.tsx(37,8): error TS2307: Cannot find module '@/components/ui/select' or its corresponding type declarations.
+admin/src/features/bookings-management/index.tsx(38,23): error TS2307: Cannot find module '@/components/ui/badge' or its corresponding type declarations.
+admin/src/features/bookings-management/index.tsx(39,26): error TS2307: Cannot find module '@/components/ui/skeleton' or its corresponding type declarations.
+admin/src/features/bookings-management/index.tsx(40,53): error TS2307: Cannot find module '@/components/ui/avatar' or its corresponding type declarations.
+admin/src/features/bookings-management/index.tsx(48,8): error TS2307: Cannot find module '@/components/ui/table' or its corresponding type declarations.
+admin/src/features/bookings-management/index.tsx(49,30): error TS2307: Cannot find module '@/components/config-drawer' or its corresponding type declarations.
+admin/src/features/bookings-management/index.tsx(50,24): error TS2307: Cannot find module '@/components/layout/header' or its corresponding type declarations.
+admin/src/features/bookings-management/index.tsx(51,22): error TS2307: Cannot find module '@/components/layout/main' or its corresponding type declarations.
+admin/src/features/bookings-management/index.tsx(52,33): error TS2307: Cannot find module '@/components/profile-dropdown' or its corresponding type declarations.
+admin/src/features/bookings-management/index.tsx(53,24): error TS2307: Cannot find module '@/components/search' or its corresponding type declarations.
+admin/src/features/bookings-management/index.tsx(54,29): error TS2307: Cannot find module '@/components/theme-switch' or its corresponding type declarations.
+admin/src/features/bookings-management/index.tsx(55,25): error TS2305: Module '"@/lib/api"' has no exported member 'updateBooking'.
+admin/src/features/bookings-management/index.tsx(55,40): error TS2305: Module '"@/lib/api"' has no exported member 'deleteBooking'.
+admin/src/features/bookings-management/index.tsx(98,21): error TS2345: Argument of type '{ status: string | undefined; search: string | undefined; }' is not assignable to parameter of type 'string'.
+admin/src/features/bookings-management/index.tsx(157,26): error TS7006: Parameter 'e' implicitly has an 'any' type.
+admin/src/features/categories/index.tsx(11,24): error TS2307: Cannot find module '@/components/ui/button' or its corresponding type declarations.
+admin/src/features/categories/index.tsx(12,23): error TS2307: Cannot find module '@/components/ui/input' or its corresponding type declarations.
+admin/src/features/categories/index.tsx(16,8): error TS2307: Cannot find module '@/components/ui/card' or its corresponding type declarations.
+admin/src/features/categories/index.tsx(24,8): error TS2307: Cannot find module '@/components/ui/dialog' or its corresponding type declarations.
+admin/src/features/categories/index.tsx(25,23): error TS2307: Cannot find module '@/components/ui/badge' or its corresponding type declarations.
+admin/src/features/categories/index.tsx(26,26): error TS2307: Cannot find module '@/components/ui/skeleton' or its corresponding type declarations.
+admin/src/features/categories/index.tsx(27,23): error TS2307: Cannot find module '@/components/ui/label' or its corresponding type declarations.
+admin/src/features/categories/index.tsx(35,8): error TS2307: Cannot find module '@/components/ui/table' or its corresponding type declarations.
+admin/src/features/categories/index.tsx(36,30): error TS2307: Cannot find module '@/components/config-drawer' or its corresponding type declarations.
+admin/src/features/categories/index.tsx(37,24): error TS2307: Cannot find module '@/components/layout/header' or its corresponding type declarations.
+admin/src/features/categories/index.tsx(38,22): error TS2307: Cannot find module '@/components/layout/main' or its corresponding type declarations.
+admin/src/features/categories/index.tsx(39,33): error TS2307: Cannot find module '@/components/profile-dropdown' or its corresponding type declarations.
+admin/src/features/categories/index.tsx(40,24): error TS2307: Cannot find module '@/components/search' or its corresponding type declarations.
+admin/src/features/categories/index.tsx(41,29): error TS2307: Cannot find module '@/components/theme-switch' or its corresponding type declarations.
+admin/src/features/categories/index.tsx(44,3): error TS2305: Module '"@/lib/api"' has no exported member 'createCategory'.
+admin/src/features/categories/index.tsx(45,3): error TS2305: Module '"@/lib/api"' has no exported member 'updateCategory'.
+admin/src/features/categories/index.tsx(46,3): error TS2305: Module '"@/lib/api"' has no exported member 'deleteCategory'.
+admin/src/features/categories/index.tsx(246,28): error TS7006: Parameter 'e' implicitly has an 'any' type.
+admin/src/features/categories/index.tsx(254,28): error TS7006: Parameter 'e' implicitly has an 'any' type.
+admin/src/features/categories/index.tsx(279,28): error TS7006: Parameter 'e' implicitly has an 'any' type.
+admin/src/features/chats/components/new-chat.tsx(3,35): error TS2307: Cannot find module '@/lib/show-submitted-data' or its corresponding type declarations.
+admin/src/features/chats/components/new-chat.tsx(4,23): error TS2307: Cannot find module '@/components/ui/badge' or its corresponding type declarations.
+admin/src/features/chats/components/new-chat.tsx(5,24): error TS2307: Cannot find module '@/components/ui/button' or its corresponding type declarations.
+admin/src/features/chats/components/new-chat.tsx(13,8): error TS2307: Cannot find module '@/components/ui/command' or its corresponding type declarations.
+admin/src/features/chats/components/new-chat.tsx(19,8): error TS2307: Cannot find module '@/components/ui/dialog' or its corresponding type declarations.
+admin/src/features/chats/index.tsx(17,44): error TS2307: Cannot find module '@/lib/utils' or its corresponding type declarations.
+admin/src/features/chats/index.tsx(18,53): error TS2307: Cannot find module '@/components/ui/avatar' or its corresponding type declarations.
+admin/src/features/chats/index.tsx(19,24): error TS2307: Cannot find module '@/components/ui/button' or its corresponding type declarations.
+admin/src/features/chats/index.tsx(20,28): error TS2307: Cannot find module '@/components/ui/scroll-area' or its corresponding type declarations.
+admin/src/features/chats/index.tsx(21,27): error TS2307: Cannot find module '@/components/ui/separator' or its corresponding type declarations.
+admin/src/features/chats/index.tsx(22,30): error TS2307: Cannot find module '@/components/config-drawer' or its corresponding type declarations.
+admin/src/features/chats/index.tsx(23,24): error TS2307: Cannot find module '@/components/layout/header' or its corresponding type declarations.
+admin/src/features/chats/index.tsx(24,22): error TS2307: Cannot find module '@/components/layout/main' or its corresponding type declarations.
+admin/src/features/chats/index.tsx(25,33): error TS2307: Cannot find module '@/components/profile-dropdown' or its corresponding type declarations.
+admin/src/features/chats/index.tsx(26,24): error TS2307: Cannot find module '@/components/search' or its corresponding type declarations.
+admin/src/features/chats/index.tsx(27,29): error TS2307: Cannot find module '@/components/theme-switch' or its corresponding type declarations.
+admin/src/features/dashboard/components/analytics.tsx(7,8): error TS2307: Cannot find module '@/components/ui/card' or its corresponding type declarations.
+admin/src/features/dashboard/components/recent-sales.tsx(1,53): error TS2307: Cannot find module '@/components/ui/avatar' or its corresponding type declarations.
+admin/src/features/dashboard/index.tsx(18,8): error TS2307: Cannot find module '@/components/ui/card' or its corresponding type declarations.
+admin/src/features/dashboard/index.tsx(19,58): error TS2307: Cannot find module '@/components/ui/tabs' or its corresponding type declarations.
+admin/src/features/dashboard/index.tsx(20,30): error TS2307: Cannot find module '@/components/config-drawer' or its corresponding type declarations.
+admin/src/features/dashboard/index.tsx(21,24): error TS2307: Cannot find module '@/components/layout/header' or its corresponding type declarations.
+admin/src/features/dashboard/index.tsx(22,22): error TS2307: Cannot find module '@/components/layout/main' or its corresponding type declarations.
+admin/src/features/dashboard/index.tsx(23,33): error TS2307: Cannot find module '@/components/profile-dropdown' or its corresponding type declarations.
+admin/src/features/dashboard/index.tsx(24,24): error TS2307: Cannot find module '@/components/search' or its corresponding type declarations.
+admin/src/features/dashboard/index.tsx(25,29): error TS2307: Cannot find module '@/components/theme-switch' or its corresponding type declarations.
+admin/src/features/dashboard/index.tsx(26,26): error TS2307: Cannot find module '@/components/ui/skeleton' or its corresponding type declarations.
+admin/src/features/dashboard/index.tsx(27,53): error TS2307: Cannot find module '@/components/ui/avatar' or its corresponding type declarations.
+admin/src/features/dashboard/index.tsx(28,23): error TS2307: Cannot find module '@/components/ui/badge' or its corresponding type declarations.
+admin/src/features/dashboard/index.tsx(30,3): error TS2305: Module '"@/lib/api"' has no exported member 'fetchDashboardStats'.
+admin/src/features/dashboard/index.tsx(31,3): error TS2724: '"@/lib/api"' has no exported member named 'fetchRecentBookings'. Did you mean 'fetchBookings'?
+admin/src/features/dashboard/index.tsx(32,3): error TS2305: Module '"@/lib/api"' has no exported member 'fetchRevenueChart'.
+admin/src/features/dashboard/index.tsx(33,3): error TS2305: Module '"@/lib/api"' has no exported member 'fetchBookingsByCategory'.
+admin/src/features/dashboard/index.tsx(34,3): error TS2724: '"@/lib/api"' has no exported member named 'fetchTopVenues'. Did you mean 'fetchVenues'?
+admin/src/features/dashboard/index.tsx(35,3): error TS2305: Module '"@/lib/api"' has no exported member 'fetchCityDistribution'.
+admin/src/features/dashboard/index.tsx(159,41): error TS2339: Property 'totalRevenue' does not exist on type '{}'.
+admin/src/features/dashboard/index.tsx(161,45): error TS2339: Property 'totalBookings' does not exist on type '{}'.
+admin/src/features/dashboard/index.tsx(166,31): error TS2339: Property 'totalBookings' does not exist on type '{}'.
+admin/src/features/dashboard/index.tsx(168,40): error TS2339: Property 'pendingBookings' does not exist on type '{}'.
+admin/src/features/dashboard/index.tsx(173,31): error TS2339: Property 'totalVenues' does not exist on type '{}'.
+admin/src/features/dashboard/index.tsx(175,47): error TS2339: Property 'totalCategories' does not exist on type '{}'.
+admin/src/features/dashboard/index.tsx(180,31): error TS2339: Property 'totalUsers' does not exist on type '{}'.
+admin/src/features/dashboard/index.tsx(182,69): error TS2339: Property 'avgBookingValue' does not exist on type '{}'.
+admin/src/features/dashboard/index.tsx(199,65): error TS2339: Property 'pendingBookings' does not exist on type '{}'.
+admin/src/features/dashboard/index.tsx(214,65): error TS2339: Property 'confirmedBookings' does not exist on type '{}'.
+admin/src/features/dashboard/index.tsx(229,65): error TS2339: Property 'cancelledBookings' does not exist on type '{}'.
+admin/src/features/dashboard/index.tsx(245,31): error TS2740: Type '{}' is missing the following properties from type 'readonly any[]': length, concat, join, slice, and 26 more.
+admin/src/features/dashboard/index.tsx(250,25): error TS2322: Type '(value: number) => [string, string]' is not assignable to type 'Formatter<ValueType, NameType> & ((value: ValueType, name: NameType, item: TooltipPayloadEntry, index: number, payload: TooltipPayload) => ReactNode | [...])'.
+  Type '(value: number) => [string, string]' is not assignable to type 'Formatter<ValueType, NameType>'.
+    Types of parameters 'value' and 'value' are incompatible.
+      Type 'ValueType | undefined' is not assignable to type 'number'.
+        Type 'undefined' is not assignable to type 'number'.
+admin/src/features/dashboard/index.tsx(277,48): error TS2339: Property 'slice' does not exist on type '{}'.
+admin/src/features/dashboard/index.tsx(326,40): error TS2339: Property 'map' does not exist on type '{}'.
+admin/src/features/dashboard/index.tsx(362,39): error TS2339: Property 'slice' does not exist on type '{}'.
+admin/src/features/dashboard/index.tsx(370,86): error TS2339: Property 'map' does not exist on type '{}'.
+admin/src/features/dashboard/index.tsx(396,25): error TS2769: No overload matches this call.
+  Overload 1 of 2, '(outsideProps: Props<{ name: any; } & { name: any; } & { name: any; } & { count: any; } & { count: any; } & { count: any; }, any>): ReactElement<unknown, string | JSXElementConstructor<any>>', gave the following error.
+    Type '{}' is missing the following properties from type 'readonly ({ name: any; } & { name: any; } & { name: any; } & { count: any; } & { count: any; } & { count: any; })[]': length, concat, join, slice, and 26 more.
+  Overload 2 of 2, '(outsideProps: Props<any, any>): ReactElement<unknown, string | JSXElementConstructor<any>>', gave the following error.
+    Type '{}' is missing the following properties from type 'readonly any[]': length, concat, join, slice, and 26 more.
+admin/src/features/dashboard/index.tsx(402,67): error TS18048: 'percent' is possibly 'undefined'.
+admin/src/features/dashboard/index.tsx(404,47): error TS2339: Property 'map' does not exist on type '{}'.
+admin/src/features/dashboard/index.tsx(422,31): error TS2740: Type '{}' is missing the following properties from type 'readonly any[]': length, concat, join, slice, and 26 more.
+admin/src/features/dashboard/index.tsx(426,32): error TS2322: Type '(value: number) => [string, string]' is not assignable to type 'Formatter<ValueType, NameType> & ((value: ValueType, name: NameType, item: TooltipPayloadEntry, index: number, payload: TooltipPayload) => ReactNode | [...])'.
+  Type '(value: number) => [string, string]' is not assignable to type 'Formatter<ValueType, NameType>'.
+    Types of parameters 'value' and 'value' are incompatible.
+      Type 'ValueType | undefined' is not assignable to type 'number'.
+        Type 'undefined' is not assignable to type 'number'.
+admin/src/features/errors/forbidden.tsx(2,24): error TS2307: Cannot find module '@/components/ui/button' or its corresponding type declarations.
+admin/src/features/errors/general-error.tsx(2,20): error TS2307: Cannot find module '@/lib/utils' or its corresponding type declarations.
+admin/src/features/errors/general-error.tsx(3,24): error TS2307: Cannot find module '@/components/ui/button' or its corresponding type declarations.
+admin/src/features/errors/maintenance-error.tsx(1,24): error TS2307: Cannot find module '@/components/ui/button' or its corresponding type declarations.
+admin/src/features/errors/not-found-error.tsx(2,24): error TS2307: Cannot find module '@/components/ui/button' or its corresponding type declarations.
+admin/src/features/errors/unauthorized-error.tsx(2,24): error TS2307: Cannot find module '@/components/ui/button' or its corresponding type declarations.
+admin/src/features/notifications-management/index.tsx(12,24): error TS2307: Cannot find module '@/components/ui/button' or its corresponding type declarations.
+admin/src/features/notifications-management/index.tsx(13,23): error TS2307: Cannot find module '@/components/ui/input' or its corresponding type declarations.
+admin/src/features/notifications-management/index.tsx(14,26): error TS2307: Cannot find module '@/components/ui/textarea' or its corresponding type declarations.
+admin/src/features/notifications-management/index.tsx(18,8): error TS2307: Cannot find module '@/components/ui/card' or its corresponding type declarations.
+admin/src/features/notifications-management/index.tsx(26,8): error TS2307: Cannot find module '@/components/ui/dialog' or its corresponding type declarations.
+admin/src/features/notifications-management/index.tsx(33,8): error TS2307: Cannot find module '@/components/ui/select' or its corresponding type declarations.
+admin/src/features/notifications-management/index.tsx(34,23): error TS2307: Cannot find module '@/components/ui/badge' or its corresponding type declarations.
+admin/src/features/notifications-management/index.tsx(35,26): error TS2307: Cannot find module '@/components/ui/skeleton' or its corresponding type declarations.
+admin/src/features/notifications-management/index.tsx(36,53): error TS2307: Cannot find module '@/components/ui/avatar' or its corresponding type declarations.
+admin/src/features/notifications-management/index.tsx(37,23): error TS2307: Cannot find module '@/components/ui/label' or its corresponding type declarations.
+admin/src/features/notifications-management/index.tsx(45,8): error TS2307: Cannot find module '@/components/ui/table' or its corresponding type declarations.
+admin/src/features/notifications-management/index.tsx(46,30): error TS2307: Cannot find module '@/components/config-drawer' or its corresponding type declarations.
+admin/src/features/notifications-management/index.tsx(47,24): error TS2307: Cannot find module '@/components/layout/header' or its corresponding type declarations.
+admin/src/features/notifications-management/index.tsx(48,22): error TS2307: Cannot find module '@/components/layout/main' or its corresponding type declarations.
+admin/src/features/notifications-management/index.tsx(49,33): error TS2307: Cannot find module '@/components/profile-dropdown' or its corresponding type declarations.
+admin/src/features/notifications-management/index.tsx(50,24): error TS2307: Cannot find module '@/components/search' or its corresponding type declarations.
+admin/src/features/notifications-management/index.tsx(51,29): error TS2307: Cannot find module '@/components/theme-switch' or its corresponding type declarations.
+admin/src/features/notifications-management/index.tsx(54,3): error TS2724: '"@/lib/api"' has no exported member named 'fetchUsers'. Did you mean 'fetchUser'?
+admin/src/features/notifications-management/index.tsx(55,3): error TS2305: Module '"@/lib/api"' has no exported member 'createNotification'.
+admin/src/features/notifications-management/index.tsx(56,3): error TS2305: Module '"@/lib/api"' has no exported member 'broadcastNotification'.
+admin/src/features/notifications-management/index.tsx(57,3): error TS2305: Module '"@/lib/api"' has no exported member 'deleteNotification'.
+admin/src/features/notifications-management/index.tsx(88,20): error TS2554: Expected 1 arguments, but got 0.
+admin/src/features/notifications-management/index.tsx(296,33): error TS7006: Parameter 'val' implicitly has an 'any' type.
+admin/src/features/notifications-management/index.tsx(314,28): error TS7006: Parameter 'e' implicitly has an 'any' type.
+admin/src/features/notifications-management/index.tsx(322,28): error TS7006: Parameter 'e' implicitly has an 'any' type.
+admin/src/features/notifications-management/index.tsx(331,33): error TS7006: Parameter 'val' implicitly has an 'any' type.
+admin/src/features/notifications-management/index.tsx(383,28): error TS7006: Parameter 'e' implicitly has an 'any' type.
+admin/src/features/notifications-management/index.tsx(393,28): error TS7006: Parameter 'e' implicitly has an 'any' type.
+admin/src/features/notifications-management/index.tsx(404,33): error TS7006: Parameter 'val' implicitly has an 'any' type.
+admin/src/features/settings/account/account-form.tsx(5,35): error TS2307: Cannot find module '@/lib/show-submitted-data' or its corresponding type declarations.
+admin/src/features/settings/account/account-form.tsx(6,20): error TS2307: Cannot find module '@/lib/utils' or its corresponding type declarations.
+admin/src/features/settings/account/account-form.tsx(7,24): error TS2307: Cannot find module '@/components/ui/button' or its corresponding type declarations.
+admin/src/features/settings/account/account-form.tsx(15,8): error TS2307: Cannot find module '@/components/ui/command' or its corresponding type declarations.
+admin/src/features/settings/account/account-form.tsx(24,8): error TS2307: Cannot find module '@/components/ui/form' or its corresponding type declarations.
+admin/src/features/settings/account/account-form.tsx(25,23): error TS2307: Cannot find module '@/components/ui/input' or its corresponding type declarations.
+admin/src/features/settings/account/account-form.tsx(30,8): error TS2307: Cannot find module '@/components/ui/popover' or its corresponding type declarations.
+admin/src/features/settings/account/account-form.tsx(31,28): error TS2307: Cannot find module '@/components/date-picker' or its corresponding type declarations.
+admin/src/features/settings/account/account-form.tsx(78,22): error TS7031: Binding element 'field' implicitly has an 'any' type.
+admin/src/features/settings/account/account-form.tsx(95,22): error TS7031: Binding element 'field' implicitly has an 'any' type.
+admin/src/features/settings/account/account-form.tsx(109,22): error TS7031: Binding element 'field' implicitly has an 'any' type.
+admin/src/features/settings/appearance/appearance-form.tsx(5,23): error TS2307: Cannot find module '@/config/fonts' or its corresponding type declarations.
+admin/src/features/settings/appearance/appearance-form.tsx(6,35): error TS2307: Cannot find module '@/lib/show-submitted-data' or its corresponding type declarations.
+admin/src/features/settings/appearance/appearance-form.tsx(7,20): error TS2307: Cannot find module '@/lib/utils' or its corresponding type declarations.
+admin/src/features/settings/appearance/appearance-form.tsx(8,25): error TS2307: Cannot find module '@/context/font-provider' or its corresponding type declarations.
+admin/src/features/settings/appearance/appearance-form.tsx(9,26): error TS2307: Cannot find module '@/context/theme-provider' or its corresponding type declarations.
+admin/src/features/settings/appearance/appearance-form.tsx(10,40): error TS2307: Cannot find module '@/components/ui/button' or its corresponding type declarations.
+admin/src/features/settings/appearance/appearance-form.tsx(19,8): error TS2307: Cannot find module '@/components/ui/form' or its corresponding type declarations.
+admin/src/features/settings/appearance/appearance-form.tsx(20,44): error TS2307: Cannot find module '@/components/ui/radio-group' or its corresponding type declarations.
+admin/src/features/settings/appearance/appearance-form.tsx(57,22): error TS7031: Binding element 'field' implicitly has an 'any' type.
+admin/src/features/settings/appearance/appearance-form.tsx(70,33): error TS7006: Parameter 'font' implicitly has an 'any' type.
+admin/src/features/settings/appearance/appearance-form.tsx(89,22): error TS7031: Binding element 'field' implicitly has an 'any' type.
+admin/src/features/settings/components/content-section.tsx(1,27): error TS2307: Cannot find module '@/components/ui/separator' or its corresponding type declarations.
+admin/src/features/settings/components/sidebar-nav.tsx(3,20): error TS2307: Cannot find module '@/lib/utils' or its corresponding type declarations.
+admin/src/features/settings/components/sidebar-nav.tsx(4,32): error TS2307: Cannot find module '@/components/ui/button' or its corresponding type declarations.
+admin/src/features/settings/components/sidebar-nav.tsx(5,28): error TS2307: Cannot find module '@/components/ui/scroll-area' or its corresponding type declarations.
+admin/src/features/settings/components/sidebar-nav.tsx(12,8): error TS2307: Cannot find module '@/components/ui/select' or its corresponding type declarations.
+admin/src/features/settings/display/display-form.tsx(4,35): error TS2307: Cannot find module '@/lib/show-submitted-data' or its corresponding type declarations.
+admin/src/features/settings/display/display-form.tsx(5,24): error TS2307: Cannot find module '@/components/ui/button' or its corresponding type declarations.
+admin/src/features/settings/display/display-form.tsx(6,26): error TS2307: Cannot find module '@/components/ui/checkbox' or its corresponding type declarations.
+admin/src/features/settings/display/display-form.tsx(15,8): error TS2307: Cannot find module '@/components/ui/form' or its corresponding type declarations.
+admin/src/features/settings/display/display-form.tsx(85,30): error TS7031: Binding element 'field' implicitly has an 'any' type.
+admin/src/features/settings/display/display-form.tsx(94,47): error TS7006: Parameter 'checked' implicitly has an 'any' type.
+admin/src/features/settings/display/display-form.tsx(99,40): error TS7006: Parameter 'value' implicitly has an 'any' type.
+admin/src/features/settings/index.tsx(3,27): error TS2307: Cannot find module '@/components/ui/separator' or its corresponding type declarations.
+admin/src/features/settings/index.tsx(4,30): error TS2307: Cannot find module '@/components/config-drawer' or its corresponding type declarations.
+admin/src/features/settings/index.tsx(5,24): error TS2307: Cannot find module '@/components/layout/header' or its corresponding type declarations.
+admin/src/features/settings/index.tsx(6,22): error TS2307: Cannot find module '@/components/layout/main' or its corresponding type declarations.
+admin/src/features/settings/index.tsx(7,33): error TS2307: Cannot find module '@/components/profile-dropdown' or its corresponding type declarations.
+admin/src/features/settings/index.tsx(8,24): error TS2307: Cannot find module '@/components/search' or its corresponding type declarations.
+admin/src/features/settings/index.tsx(9,29): error TS2307: Cannot find module '@/components/theme-switch' or its corresponding type declarations.
+admin/src/features/settings/notifications/notifications-form.tsx(5,35): error TS2307: Cannot find module '@/lib/show-submitted-data' or its corresponding type declarations.
+admin/src/features/settings/notifications/notifications-form.tsx(6,24): error TS2307: Cannot find module '@/components/ui/button' or its corresponding type declarations.
+admin/src/features/settings/notifications/notifications-form.tsx(7,26): error TS2307: Cannot find module '@/components/ui/checkbox' or its corresponding type declarations.
+admin/src/features/settings/notifications/notifications-form.tsx(16,8): error TS2307: Cannot find module '@/components/ui/form' or its corresponding type declarations.
+admin/src/features/settings/notifications/notifications-form.tsx(17,44): error TS2307: Cannot find module '@/components/ui/radio-group' or its corresponding type declarations.
+admin/src/features/settings/notifications/notifications-form.tsx(18,24): error TS2307: Cannot find module '@/components/ui/switch' or its corresponding type declarations.
+admin/src/features/settings/notifications/notifications-form.tsx(59,22): error TS7031: Binding element 'field' implicitly has an 'any' type.
+admin/src/features/settings/notifications/notifications-form.tsx(102,26): error TS7031: Binding element 'field' implicitly has an 'any' type.
+admin/src/features/settings/notifications/notifications-form.tsx(124,26): error TS7031: Binding element 'field' implicitly has an 'any' type.
+admin/src/features/settings/notifications/notifications-form.tsx(146,26): error TS7031: Binding element 'field' implicitly has an 'any' type.
+admin/src/features/settings/notifications/notifications-form.tsx(166,26): error TS7031: Binding element 'field' implicitly has an 'any' type.
+admin/src/features/settings/notifications/notifications-form.tsx(190,22): error TS7031: Binding element 'field' implicitly has an 'any' type.
+admin/src/features/settings/profile/profile-form.tsx(5,35): error TS2307: Cannot find module '@/lib/show-submitted-data' or its corresponding type declarations.
+admin/src/features/settings/profile/profile-form.tsx(6,20): error TS2307: Cannot find module '@/lib/utils' or its corresponding type declarations.
+admin/src/features/settings/profile/profile-form.tsx(7,24): error TS2307: Cannot find module '@/components/ui/button' or its corresponding type declarations.
+admin/src/features/settings/profile/profile-form.tsx(16,8): error TS2307: Cannot find module '@/components/ui/form' or its corresponding type declarations.
+admin/src/features/settings/profile/profile-form.tsx(17,23): error TS2307: Cannot find module '@/components/ui/input' or its corresponding type declarations.
+admin/src/features/settings/profile/profile-form.tsx(24,8): error TS2307: Cannot find module '@/components/ui/select' or its corresponding type declarations.
+admin/src/features/settings/profile/profile-form.tsx(25,26): error TS2307: Cannot find module '@/components/ui/textarea' or its corresponding type declarations.
+admin/src/features/settings/profile/profile-form.tsx(80,22): error TS7031: Binding element 'field' implicitly has an 'any' type.
+admin/src/features/settings/profile/profile-form.tsx(97,22): error TS7031: Binding element 'field' implicitly has an 'any' type.
+admin/src/features/settings/profile/profile-form.tsx(123,22): error TS7031: Binding element 'field' implicitly has an 'any' type.
+admin/src/features/settings/profile/profile-form.tsx(147,26): error TS7031: Binding element 'field' implicitly has an 'any' type.
+admin/src/features/tasks/components/data-table-bulk-actions.tsx(5,23): error TS2307: Cannot find module '@/lib/utils' or its corresponding type declarations.
+admin/src/features/tasks/components/data-table-bulk-actions.tsx(6,24): error TS2307: Cannot find module '@/components/ui/button' or its corresponding type declarations.
+admin/src/features/tasks/components/data-table-bulk-actions.tsx(12,8): error TS2307: Cannot find module '@/components/ui/dropdown-menu' or its corresponding type declarations.
+admin/src/features/tasks/components/data-table-bulk-actions.tsx(17,8): error TS2307: Cannot find module '@/components/ui/tooltip' or its corresponding type declarations.
+admin/src/features/tasks/components/data-table-bulk-actions.tsx(18,60): error TS2307: Cannot find module '@/components/data-table' or its corresponding type declarations.
+admin/src/features/tasks/components/data-table-row-actions.tsx(4,24): error TS2307: Cannot find module '@/components/ui/button' or its corresponding type declarations.
+admin/src/features/tasks/components/data-table-row-actions.tsx(17,8): error TS2307: Cannot find module '@/components/ui/dropdown-menu' or its corresponding type declarations.
+admin/src/features/tasks/components/tasks-columns.tsx(2,23): error TS2307: Cannot find module '@/components/ui/badge' or its corresponding type declarations.
+admin/src/features/tasks/components/tasks-columns.tsx(3,26): error TS2307: Cannot find module '@/components/ui/checkbox' or its corresponding type declarations.
+admin/src/features/tasks/components/tasks-columns.tsx(4,39): error TS2307: Cannot find module '@/components/data-table' or its corresponding type declarations.
+admin/src/features/tasks/components/tasks-columns.tsx(18,27): error TS7006: Parameter 'value' implicitly has an 'any' type.
+admin/src/features/tasks/components/tasks-columns.tsx(26,27): error TS7006: Parameter 'value' implicitly has an 'any' type.
+admin/src/features/tasks/components/tasks-dialogs.tsx(1,35): error TS2307: Cannot find module '@/lib/show-submitted-data' or its corresponding type declarations.
+admin/src/features/tasks/components/tasks-dialogs.tsx(2,31): error TS2307: Cannot find module '@/components/confirm-dialog' or its corresponding type declarations.
+admin/src/features/tasks/components/tasks-import-dialog.test.tsx(5,35): error TS2307: Cannot find module '@/lib/show-submitted-data' or its corresponding type declarations.
+admin/src/features/tasks/components/tasks-import-dialog.tsx(4,35): error TS2307: Cannot find module '@/lib/show-submitted-data' or its corresponding type declarations.
+admin/src/features/tasks/components/tasks-import-dialog.tsx(5,24): error TS2307: Cannot find module '@/components/ui/button' or its corresponding type declarations.
+admin/src/features/tasks/components/tasks-import-dialog.tsx(14,8): error TS2307: Cannot find module '@/components/ui/dialog' or its corresponding type declarations.
+admin/src/features/tasks/components/tasks-import-dialog.tsx(22,8): error TS2307: Cannot find module '@/components/ui/form' or its corresponding type declarations.
+admin/src/features/tasks/components/tasks-import-dialog.tsx(23,23): error TS2307: Cannot find module '@/components/ui/input' or its corresponding type declarations.
+admin/src/features/tasks/components/tasks-import-dialog.tsx(70,22): error TS7006: Parameter 'val' implicitly has an 'any' type.
+admin/src/features/tasks/components/tasks-multi-delete-dialog.test.tsx(2,33): error TS2307: Cannot find module '@/test-utils/tanstack-table' or its corresponding type declarations.
+admin/src/features/tasks/components/tasks-multi-delete-dialog.tsx(7,23): error TS2307: Cannot find module '@/lib/utils' or its corresponding type declarations.
+admin/src/features/tasks/components/tasks-multi-delete-dialog.tsx(8,53): error TS2307: Cannot find module '@/components/ui/alert' or its corresponding type declarations.
+admin/src/features/tasks/components/tasks-multi-delete-dialog.tsx(9,23): error TS2307: Cannot find module '@/components/ui/input' or its corresponding type declarations.
+admin/src/features/tasks/components/tasks-multi-delete-dialog.tsx(10,23): error TS2307: Cannot find module '@/components/ui/label' or its corresponding type declarations.
+admin/src/features/tasks/components/tasks-multi-delete-dialog.tsx(11,31): error TS2307: Cannot find module '@/components/confirm-dialog' or its corresponding type declarations.
+admin/src/features/tasks/components/tasks-multi-delete-dialog.tsx(85,26): error TS7006: Parameter 'e' implicitly has an 'any' type.
+admin/src/features/tasks/components/tasks-mutate-drawer.test.tsx(5,35): error TS2307: Cannot find module '@/lib/show-submitted-data' or its corresponding type declarations.
+admin/src/features/tasks/components/tasks-mutate-drawer.tsx(4,35): error TS2307: Cannot find module '@/lib/show-submitted-data' or its corresponding type declarations.
+admin/src/features/tasks/components/tasks-mutate-drawer.tsx(5,24): error TS2307: Cannot find module '@/components/ui/button' or its corresponding type declarations.
+admin/src/features/tasks/components/tasks-mutate-drawer.tsx(13,8): error TS2307: Cannot find module '@/components/ui/form' or its corresponding type declarations.
+admin/src/features/tasks/components/tasks-mutate-drawer.tsx(14,23): error TS2307: Cannot find module '@/components/ui/input' or its corresponding type declarations.
+admin/src/features/tasks/components/tasks-mutate-drawer.tsx(15,44): error TS2307: Cannot find module '@/components/ui/radio-group' or its corresponding type declarations.
+admin/src/features/tasks/components/tasks-mutate-drawer.tsx(24,8): error TS2307: Cannot find module '@/components/ui/sheet' or its corresponding type declarations.
+admin/src/features/tasks/components/tasks-mutate-drawer.tsx(25,32): error TS2307: Cannot find module '@/components/select-dropdown' or its corresponding type declarations.
+admin/src/features/tasks/components/tasks-mutate-drawer.tsx(69,22): error TS7006: Parameter 'v' implicitly has an 'any' type.
+admin/src/features/tasks/components/tasks-mutate-drawer.tsx(93,26): error TS7031: Binding element 'field' implicitly has an 'any' type.
+admin/src/features/tasks/components/tasks-mutate-drawer.tsx(106,26): error TS7031: Binding element 'field' implicitly has an 'any' type.
+admin/src/features/tasks/components/tasks-mutate-drawer.tsx(128,26): error TS7031: Binding element 'field' implicitly has an 'any' type.
+admin/src/features/tasks/components/tasks-mutate-drawer.tsx(166,26): error TS7031: Binding element 'field' implicitly has an 'any' type.
+admin/src/features/tasks/components/tasks-primary-buttons.tsx(2,24): error TS2307: Cannot find module '@/components/ui/button' or its corresponding type declarations.
+admin/src/features/tasks/components/tasks-provider.tsx(2,28): error TS2307: Cannot find module '@/hooks/use-dialog-state' or its corresponding type declarations.
+admin/src/features/tasks/components/tasks-table.tsx(15,20): error TS2307: Cannot find module '@/lib/utils' or its corresponding type declarations.
+admin/src/features/tasks/components/tasks-table.tsx(16,34): error TS2307: Cannot find module '@/hooks/use-table-url-state' or its corresponding type declarations.
+admin/src/features/tasks/components/tasks-table.tsx(24,8): error TS2307: Cannot find module '@/components/ui/table' or its corresponding type declarations.
+admin/src/features/tasks/components/tasks-table.tsx(25,55): error TS2307: Cannot find module '@/components/data-table' or its corresponding type declarations.
+admin/src/features/tasks/index.tsx(1,30): error TS2307: Cannot find module '@/components/config-drawer' or its corresponding type declarations.
+admin/src/features/tasks/index.tsx(2,24): error TS2307: Cannot find module '@/components/layout/header' or its corresponding type declarations.
+admin/src/features/tasks/index.tsx(3,22): error TS2307: Cannot find module '@/components/layout/main' or its corresponding type declarations.
+admin/src/features/tasks/index.tsx(4,33): error TS2307: Cannot find module '@/components/profile-dropdown' or its corresponding type declarations.
+admin/src/features/tasks/index.tsx(5,24): error TS2307: Cannot find module '@/components/search' or its corresponding type declarations.
+admin/src/features/tasks/index.tsx(6,29): error TS2307: Cannot find module '@/components/theme-switch' or its corresponding type declarations.
+admin/src/features/users-management/index.tsx(15,24): error TS2307: Cannot find module '@/components/ui/button' or its corresponding type declarations.
+admin/src/features/users-management/index.tsx(16,23): error TS2307: Cannot find module '@/components/ui/input' or its corresponding type declarations.
+admin/src/features/users-management/index.tsx(20,8): error TS2307: Cannot find module '@/components/ui/card' or its corresponding type declarations.
+admin/src/features/users-management/index.tsx(28,8): error TS2307: Cannot find module '@/components/ui/dialog' or its corresponding type declarations.
+admin/src/features/users-management/index.tsx(29,23): error TS2307: Cannot find module '@/components/ui/badge' or its corresponding type declarations.
+admin/src/features/users-management/index.tsx(30,26): error TS2307: Cannot find module '@/components/ui/skeleton' or its corresponding type declarations.
+admin/src/features/users-management/index.tsx(31,53): error TS2307: Cannot find module '@/components/ui/avatar' or its corresponding type declarations.
+admin/src/features/users-management/index.tsx(39,8): error TS2307: Cannot find module '@/components/ui/table' or its corresponding type declarations.
+admin/src/features/users-management/index.tsx(40,30): error TS2307: Cannot find module '@/components/config-drawer' or its corresponding type declarations.
+admin/src/features/users-management/index.tsx(41,24): error TS2307: Cannot find module '@/components/layout/header' or its corresponding type declarations.
+admin/src/features/users-management/index.tsx(42,22): error TS2307: Cannot find module '@/components/layout/main' or its corresponding type declarations.
+admin/src/features/users-management/index.tsx(43,33): error TS2307: Cannot find module '@/components/profile-dropdown' or its corresponding type declarations.
+admin/src/features/users-management/index.tsx(44,24): error TS2307: Cannot find module '@/components/search' or its corresponding type declarations.
+admin/src/features/users-management/index.tsx(45,29): error TS2307: Cannot find module '@/components/theme-switch' or its corresponding type declarations.
+admin/src/features/users-management/index.tsx(46,10): error TS2724: '"@/lib/api"' has no exported member named 'fetchUsers'. Did you mean 'fetchUser'?
+admin/src/features/users-management/index.tsx(46,22): error TS2305: Module '"@/lib/api"' has no exported member 'fetchUserDetail'.
+admin/src/features/users-management/index.tsx(46,39): error TS2305: Module '"@/lib/api"' has no exported member 'deleteUser'.
+admin/src/features/users-management/index.tsx(130,24): error TS7006: Parameter 'e' implicitly has an 'any' type.
+admin/src/features/users/components/data-table-bulk-actions.tsx(5,23): error TS2307: Cannot find module '@/lib/utils' or its corresponding type declarations.
+admin/src/features/users/components/data-table-bulk-actions.tsx(6,24): error TS2307: Cannot find module '@/components/ui/button' or its corresponding type declarations.
+admin/src/features/users/components/data-table-bulk-actions.tsx(11,8): error TS2307: Cannot find module '@/components/ui/tooltip' or its corresponding type declarations.
+admin/src/features/users/components/data-table-bulk-actions.tsx(12,60): error TS2307: Cannot find module '@/components/data-table' or its corresponding type declarations.
+admin/src/features/users/components/data-table-row-actions.tsx(4,24): error TS2307: Cannot find module '@/components/ui/button' or its corresponding type declarations.
+admin/src/features/users/components/data-table-row-actions.tsx(12,8): error TS2307: Cannot find module '@/components/ui/dropdown-menu' or its corresponding type declarations.
+admin/src/features/users/components/users-action-dialog.test.tsx(4,35): error TS2307: Cannot find module '@/lib/show-submitted-data' or its corresponding type declarations.
+admin/src/features/users/components/users-action-dialog.tsx(6,35): error TS2307: Cannot find module '@/lib/show-submitted-data' or its corresponding type declarations.
+admin/src/features/users/components/users-action-dialog.tsx(7,24): error TS2307: Cannot find module '@/components/ui/button' or its corresponding type declarations.
+admin/src/features/users/components/users-action-dialog.tsx(15,8): error TS2307: Cannot find module '@/components/ui/dialog' or its corresponding type declarations.
+admin/src/features/users/components/users-action-dialog.tsx(23,8): error TS2307: Cannot find module '@/components/ui/form' or its corresponding type declarations.
+admin/src/features/users/components/users-action-dialog.tsx(24,23): error TS2307: Cannot find module '@/components/ui/input' or its corresponding type declarations.
+admin/src/features/users/components/users-action-dialog.tsx(25,31): error TS2307: Cannot find module '@/components/password-input' or its corresponding type declarations.
+admin/src/features/users/components/users-action-dialog.tsx(26,32): error TS2307: Cannot find module '@/components/select-dropdown' or its corresponding type declarations.
+admin/src/features/users/components/users-action-dialog.tsx(141,22): error TS7006: Parameter 'state' implicitly has an 'any' type.
+admin/src/features/users/components/users-action-dialog.tsx(164,28): error TS7031: Binding element 'field' implicitly has an 'any' type.
+admin/src/features/users/components/users-action-dialog.tsx(184,28): error TS7031: Binding element 'field' implicitly has an 'any' type.
+admin/src/features/users/components/users-action-dialog.tsx(204,28): error TS7031: Binding element 'field' implicitly has an 'any' type.
+admin/src/features/users/components/users-action-dialog.tsx(223,28): error TS7031: Binding element 'field' implicitly has an 'any' type.
+admin/src/features/users/components/users-action-dialog.tsx(240,28): error TS7031: Binding element 'field' implicitly has an 'any' type.
+admin/src/features/users/components/users-action-dialog.tsx(259,28): error TS7031: Binding element 'field' implicitly has an 'any' type.
+admin/src/features/users/components/users-action-dialog.tsx(279,28): error TS7031: Binding element 'field' implicitly has an 'any' type.
+admin/src/features/users/components/users-action-dialog.tsx(298,28): error TS7031: Binding element 'field' implicitly has an 'any' type.
+admin/src/features/users/components/users-columns.tsx(2,20): error TS2307: Cannot find module '@/lib/utils' or its corresponding type declarations.
+admin/src/features/users/components/users-columns.tsx(3,23): error TS2307: Cannot find module '@/components/ui/badge' or its corresponding type declarations.
+admin/src/features/users/components/users-columns.tsx(4,26): error TS2307: Cannot find module '@/components/ui/checkbox' or its corresponding type declarations.
+admin/src/features/users/components/users-columns.tsx(5,39): error TS2307: Cannot find module '@/components/data-table' or its corresponding type declarations.
+admin/src/features/users/components/users-columns.tsx(6,26): error TS2307: Cannot find module '@/components/long-text' or its corresponding type declarations.
+admin/src/features/users/components/users-columns.tsx(20,27): error TS7006: Parameter 'value' implicitly has an 'any' type.
+admin/src/features/users/components/users-columns.tsx(31,27): error TS7006: Parameter 'value' implicitly has an 'any' type.
+admin/src/features/users/components/users-delete-dialog.test.tsx(5,35): error TS2307: Cannot find module '@/lib/show-submitted-data' or its corresponding type declarations.
+admin/src/features/users/components/users-delete-dialog.tsx(5,35): error TS2307: Cannot find module '@/lib/show-submitted-data' or its corresponding type declarations.
+admin/src/features/users/components/users-delete-dialog.tsx(6,53): error TS2307: Cannot find module '@/components/ui/alert' or its corresponding type declarations.
+admin/src/features/users/components/users-delete-dialog.tsx(7,23): error TS2307: Cannot find module '@/components/ui/input' or its corresponding type declarations.
+admin/src/features/users/components/users-delete-dialog.tsx(8,23): error TS2307: Cannot find module '@/components/ui/label' or its corresponding type declarations.
+admin/src/features/users/components/users-delete-dialog.tsx(9,31): error TS2307: Cannot find module '@/components/confirm-dialog' or its corresponding type declarations.
+admin/src/features/users/components/users-delete-dialog.tsx(71,26): error TS7006: Parameter 'e' implicitly has an 'any' type.
+admin/src/features/users/components/users-invite-dialog.test.tsx(5,35): error TS2307: Cannot find module '@/lib/show-submitted-data' or its corresponding type declarations.
+admin/src/features/users/components/users-invite-dialog.tsx(5,35): error TS2307: Cannot find module '@/lib/show-submitted-data' or its corresponding type declarations.
+admin/src/features/users/components/users-invite-dialog.tsx(6,24): error TS2307: Cannot find module '@/components/ui/button' or its corresponding type declarations.
+admin/src/features/users/components/users-invite-dialog.tsx(15,8): error TS2307: Cannot find module '@/components/ui/dialog' or its corresponding type declarations.
+admin/src/features/users/components/users-invite-dialog.tsx(23,8): error TS2307: Cannot find module '@/components/ui/form' or its corresponding type declarations.
+admin/src/features/users/components/users-invite-dialog.tsx(24,23): error TS2307: Cannot find module '@/components/ui/input' or its corresponding type declarations.
+admin/src/features/users/components/users-invite-dialog.tsx(25,26): error TS2307: Cannot find module '@/components/ui/textarea' or its corresponding type declarations.
+admin/src/features/users/components/users-invite-dialog.tsx(26,32): error TS2307: Cannot find module '@/components/select-dropdown' or its corresponding type declarations.
+admin/src/features/users/components/users-invite-dialog.tsx(63,22): error TS7006: Parameter 'state' implicitly has an 'any' type.
+admin/src/features/users/components/users-invite-dialog.tsx(87,26): error TS7031: Binding element 'field' implicitly has an 'any' type.
+admin/src/features/users/components/users-invite-dialog.tsx(104,26): error TS7031: Binding element 'field' implicitly has an 'any' type.
+admin/src/features/users/components/users-invite-dialog.tsx(123,26): error TS7031: Binding element 'field' implicitly has an 'any' type.
+admin/src/features/users/components/users-multi-delete-dialog.test.tsx(2,33): error TS2307: Cannot find module '@/test-utils/tanstack-table' or its corresponding type declarations.
+admin/src/features/users/components/users-multi-delete-dialog.tsx(7,23): error TS2307: Cannot find module '@/lib/utils' or its corresponding type declarations.
+admin/src/features/users/components/users-multi-delete-dialog.tsx(8,53): error TS2307: Cannot find module '@/components/ui/alert' or its corresponding type declarations.
+admin/src/features/users/components/users-multi-delete-dialog.tsx(9,23): error TS2307: Cannot find module '@/components/ui/input' or its corresponding type declarations.
+admin/src/features/users/components/users-multi-delete-dialog.tsx(10,23): error TS2307: Cannot find module '@/components/ui/label' or its corresponding type declarations.
+admin/src/features/users/components/users-multi-delete-dialog.tsx(11,31): error TS2307: Cannot find module '@/components/confirm-dialog' or its corresponding type declarations.
+admin/src/features/users/components/users-multi-delete-dialog.tsx(85,26): error TS7006: Parameter 'e' implicitly has an 'any' type.
+admin/src/features/users/components/users-primary-buttons.tsx(2,24): error TS2307: Cannot find module '@/components/ui/button' or its corresponding type declarations.
+admin/src/features/users/components/users-provider.tsx(2,28): error TS2307: Cannot find module '@/hooks/use-dialog-state' or its corresponding type declarations.
+admin/src/features/users/components/users-table.tsx(14,20): error TS2307: Cannot find module '@/lib/utils' or its corresponding type declarations.
+admin/src/features/users/components/users-table.tsx(15,51): error TS2307: Cannot find module '@/hooks/use-table-url-state' or its corresponding type declarations.
+admin/src/features/users/components/users-table.tsx(23,8): error TS2307: Cannot find module '@/components/ui/table' or its corresponding type declarations.
+admin/src/features/users/components/users-table.tsx(24,55): error TS2307: Cannot find module '@/components/data-table' or its corresponding type declarations.
+admin/src/features/users/index.tsx(2,30): error TS2307: Cannot find module '@/components/config-drawer' or its corresponding type declarations.
+admin/src/features/users/index.tsx(3,24): error TS2307: Cannot find module '@/components/layout/header' or its corresponding type declarations.
+admin/src/features/users/index.tsx(4,22): error TS2307: Cannot find module '@/components/layout/main' or its corresponding type declarations.
+admin/src/features/users/index.tsx(5,33): error TS2307: Cannot find module '@/components/profile-dropdown' or its corresponding type declarations.
+admin/src/features/users/index.tsx(6,24): error TS2307: Cannot find module '@/components/search' or its corresponding type declarations.
+admin/src/features/users/index.tsx(7,29): error TS2307: Cannot find module '@/components/theme-switch' or its corresponding type declarations.
+admin/src/features/venues/index.tsx(17,24): error TS2307: Cannot find module '@/components/ui/button' or its corresponding type declarations.
+admin/src/features/venues/index.tsx(18,23): error TS2307: Cannot find module '@/components/ui/input' or its corresponding type declarations.
+admin/src/features/venues/index.tsx(19,26): error TS2307: Cannot find module '@/components/ui/textarea' or its corresponding type declarations.
+admin/src/features/venues/index.tsx(25,8): error TS2307: Cannot find module '@/components/ui/card' or its corresponding type declarations.
+admin/src/features/venues/index.tsx(33,8): error TS2307: Cannot find module '@/components/ui/dialog' or its corresponding type declarations.
+admin/src/features/venues/index.tsx(40,8): error TS2307: Cannot find module '@/components/ui/select' or its corresponding type declarations.
+admin/src/features/venues/index.tsx(41,23): error TS2307: Cannot find module '@/components/ui/badge' or its corresponding type declarations.
+admin/src/features/venues/index.tsx(42,26): error TS2307: Cannot find module '@/components/ui/skeleton' or its corresponding type declarations.
+admin/src/features/venues/index.tsx(43,53): error TS2307: Cannot find module '@/components/ui/avatar' or its corresponding type declarations.
+admin/src/features/venues/index.tsx(51,8): error TS2307: Cannot find module '@/components/ui/table' or its corresponding type declarations.
+admin/src/features/venues/index.tsx(52,23): error TS2307: Cannot find module '@/components/ui/label' or its corresponding type declarations.
+admin/src/features/venues/index.tsx(53,30): error TS2307: Cannot find module '@/components/config-drawer' or its corresponding type declarations.
+admin/src/features/venues/index.tsx(54,24): error TS2307: Cannot find module '@/components/layout/header' or its corresponding type declarations.
+admin/src/features/venues/index.tsx(55,22): error TS2307: Cannot find module '@/components/layout/main' or its corresponding type declarations.
+admin/src/features/venues/index.tsx(56,33): error TS2307: Cannot find module '@/components/profile-dropdown' or its corresponding type declarations.
+admin/src/features/venues/index.tsx(57,24): error TS2307: Cannot find module '@/components/search' or its corresponding type declarations.
+admin/src/features/venues/index.tsx(58,29): error TS2307: Cannot find module '@/components/theme-switch' or its corresponding type declarations.
+admin/src/features/venues/index.tsx(62,3): error TS2305: Module '"@/lib/api"' has no exported member 'createVenue'.
+admin/src/features/venues/index.tsx(63,3): error TS2305: Module '"@/lib/api"' has no exported member 'updateVenue'.
+admin/src/features/venues/index.tsx(64,3): error TS2305: Module '"@/lib/api"' has no exported member 'deleteVenue'.
+admin/src/features/venues/index.tsx(107,9): error TS2353: Object literal may only specify known properties, and 'category_id' does not exist in type 'VenueFilters'.
+admin/src/features/venues/index.tsx(236,26): error TS7006: Parameter 'e' implicitly has an 'any' type.
+admin/src/features/venues/index.tsx(400,30): error TS7006: Parameter 'e' implicitly has an 'any' type.
+admin/src/features/venues/index.tsx(408,30): error TS7006: Parameter 'e' implicitly has an 'any' type.
+admin/src/features/venues/index.tsx(418,28): error TS7006: Parameter 'e' implicitly has an 'any' type.
+admin/src/features/venues/index.tsx(427,28): error TS7006: Parameter 'e' implicitly has an 'any' type.
+admin/src/features/venues/index.tsx(438,35): error TS7006: Parameter 'val' implicitly has an 'any' type.
+admin/src/features/venues/index.tsx(456,30): error TS7006: Parameter 'e' implicitly has an 'any' type.
+admin/src/features/venues/index.tsx(468,30): error TS7006: Parameter 'e' implicitly has an 'any' type.
+admin/src/features/venues/index.tsx(476,30): error TS7006: Parameter 'e' implicitly has an 'any' type.
+admin/src/features/venues/index.tsx(484,30): error TS7006: Parameter 'e' implicitly has an 'any' type.
+admin/src/features/venues/index.tsx(494,30): error TS7006: Parameter 'e' implicitly has an 'any' type.
+admin/src/features/venues/index.tsx(502,30): error TS7006: Parameter 'e' implicitly has an 'any' type.
+admin/src/features/venues/index.tsx(509,30): error TS7006: Parameter 'e' implicitly has an 'any' type.
+admin/src/features/venues/index.tsx(519,30): error TS7006: Parameter 'e' implicitly has an 'any' type.
+admin/src/features/venues/index.tsx(521,31): error TS7006: Parameter 'e' implicitly has an 'any' type.
+admin/src/hooks/use-table-url-state.test.ts(3,51): error TS2307: Cannot find module '@/hooks/use-table-url-state' or its corresponding type declarations.
+admin/src/hooks/use-table-url-state.test.ts(357,27): error TS7006: Parameter 'v' implicitly has an 'any' type.
+admin/src/hooks/use-table-url-state.test.ts(358,25): error TS7006: Parameter 'v' implicitly has an 'any' type.
+admin/src/lib/cookies.test.ts(1,30): error TS2307: Cannot find module '@/test-utils/cookies' or its corresponding type declarations.
+admin/src/main.tsx(12,35): error TS2307: Cannot find module '@/lib/handle-server-error' or its corresponding type declarations.
+admin/src/routes/(auth)/forgot-password.tsx(2,32): error TS2307: Cannot find module '@/features/auth/forgot-password' or its corresponding type declarations.
+admin/src/routes/(auth)/otp.tsx(2,21): error TS2307: Cannot find module '@/features/auth/otp' or its corresponding type declarations.
+admin/src/routes/(auth)/sign-in-2.tsx(2,25): error TS2307: Cannot find module '@/features/auth/sign-in/sign-in-2' or its corresponding type declarations.
+admin/src/routes/(auth)/sign-in.tsx(3,24): error TS2307: Cannot find module '@/features/auth/sign-in' or its corresponding type declarations.
+admin/src/routes/(auth)/sign-up.tsx(2,24): error TS2307: Cannot find module '@/features/auth/sign-up' or its corresponding type declarations.
+admin/src/routes/(errors)/401.tsx(2,35): error TS2307: Cannot find module '@/features/errors/unauthorized-error' or its corresponding type declarations.
+admin/src/routes/(errors)/403.tsx(2,32): error TS2307: Cannot find module '@/features/errors/forbidden' or its corresponding type declarations.
+admin/src/routes/(errors)/404.tsx(2,31): error TS2307: Cannot find module '@/features/errors/not-found-error' or its corresponding type declarations.
+admin/src/routes/(errors)/500.tsx(2,30): error TS2307: Cannot find module '@/features/errors/general-error' or its corresponding type declarations.
+admin/src/routes/(errors)/503.tsx(2,34): error TS2307: Cannot find module '@/features/errors/maintenance-error' or its corresponding type declarations.
+admin/src/routes/__root.tsx(5,25): error TS2307: Cannot find module '@/components/ui/sonner' or its corresponding type declarations.
+admin/src/routes/__root.tsx(6,36): error TS2307: Cannot find module '@/components/navigation-progress' or its corresponding type declarations.
+admin/src/routes/__root.tsx(7,30): error TS2307: Cannot find module '@/features/errors/general-error' or its corresponding type declarations.
+admin/src/routes/__root.tsx(8,31): error TS2307: Cannot find module '@/features/errors/not-found-error' or its corresponding type declarations.
+admin/src/routes/_authenticated/analytics/index.tsx(2,31): error TS2307: Cannot find module '@/features/analytics' or its corresponding type declarations.
+admin/src/routes/_authenticated/apps/index.tsx(3,22): error TS2307: Cannot find module '@/features/apps' or its corresponding type declarations.
+admin/src/routes/_authenticated/bookings/index.tsx(2,30): error TS2307: Cannot find module '@/features/bookings-management' or its corresponding type declarations.
+admin/src/routes/_authenticated/categories/index.tsx(2,32): error TS2307: Cannot find module '@/features/categories' or its corresponding type declarations.
+admin/src/routes/_authenticated/chats/index.tsx(2,23): error TS2307: Cannot find module '@/features/chats' or its corresponding type declarations.
+admin/src/routes/_authenticated/errors/$error.tsx(2,30): error TS2307: Cannot find module '@/components/config-drawer' or its corresponding type declarations.
+admin/src/routes/_authenticated/errors/$error.tsx(3,24): error TS2307: Cannot find module '@/components/layout/header' or its corresponding type declarations.
+admin/src/routes/_authenticated/errors/$error.tsx(4,33): error TS2307: Cannot find module '@/components/profile-dropdown' or its corresponding type declarations.
+admin/src/routes/_authenticated/errors/$error.tsx(5,24): error TS2307: Cannot find module '@/components/search' or its corresponding type declarations.
+admin/src/routes/_authenticated/errors/$error.tsx(6,29): error TS2307: Cannot find module '@/components/theme-switch' or its corresponding type declarations.
+admin/src/routes/_authenticated/errors/$error.tsx(7,32): error TS2307: Cannot find module '@/features/errors/forbidden' or its corresponding type declarations.
+admin/src/routes/_authenticated/errors/$error.tsx(8,30): error TS2307: Cannot find module '@/features/errors/general-error' or its corresponding type declarations.
+admin/src/routes/_authenticated/errors/$error.tsx(9,34): error TS2307: Cannot find module '@/features/errors/maintenance-error' or its corresponding type declarations.
+admin/src/routes/_authenticated/errors/$error.tsx(10,31): error TS2307: Cannot find module '@/features/errors/not-found-error' or its corresponding type declarations.
+admin/src/routes/_authenticated/errors/$error.tsx(11,35): error TS2307: Cannot find module '@/features/errors/unauthorized-error' or its corresponding type declarations.
+admin/src/routes/_authenticated/help-center/index.tsx(2,28): error TS2307: Cannot find module '@/components/coming-soon' or its corresponding type declarations.
+admin/src/routes/_authenticated/index.tsx(2,27): error TS2307: Cannot find module '@/features/dashboard' or its corresponding type declarations.
+admin/src/routes/_authenticated/notifications/index.tsx(2,35): error TS2307: Cannot find module '@/features/notifications-management' or its corresponding type declarations.
+admin/src/routes/_authenticated/route.tsx(2,37): error TS2307: Cannot find module '@/components/layout/authenticated-layout' or its corresponding type declarations.
+admin/src/routes/_authenticated/settings/account.tsx(2,33): error TS2307: Cannot find module '@/features/settings/account' or its corresponding type declarations.
+admin/src/routes/_authenticated/settings/appearance.tsx(2,36): error TS2307: Cannot find module '@/features/settings/appearance' or its corresponding type declarations.
+admin/src/routes/_authenticated/settings/display.tsx(2,33): error TS2307: Cannot find module '@/features/settings/display' or its corresponding type declarations.
+admin/src/routes/_authenticated/settings/index.tsx(2,33): error TS2307: Cannot find module '@/features/settings/profile' or its corresponding type declarations.
+admin/src/routes/_authenticated/settings/notifications.tsx(2,39): error TS2307: Cannot find module '@/features/settings/notifications' or its corresponding type declarations.
+admin/src/routes/_authenticated/settings/route.tsx(2,26): error TS2307: Cannot find module '@/features/settings' or its corresponding type declarations.
+admin/src/routes/_authenticated/tasks/index.tsx(3,23): error TS2307: Cannot find module '@/features/tasks' or its corresponding type declarations.
+admin/src/routes/_authenticated/tasks/index.tsx(4,38): error TS2307: Cannot find module '@/features/tasks/data/data' or its corresponding type declarations.
+admin/src/routes/_authenticated/tasks/index.tsx(10,33): error TS7006: Parameter 'status' implicitly has an 'any' type.
+admin/src/routes/_authenticated/tasks/index.tsx(14,35): error TS7006: Parameter 'priority' implicitly has an 'any' type.
+admin/src/routes/_authenticated/users/index.tsx(2,37): error TS2307: Cannot find module '@/features/users-management' or its corresponding type declarations.
+admin/src/routes/_authenticated/venues/index.tsx(2,28): error TS2307: Cannot find module '@/features/venues' or its corresponding type declarations.
+admin/src/routes/clerk/(auth)/route.tsx(2,31): error TS2307: Cannot find module '@/assets/clerk-full-logo' or its corresponding type declarations.
+admin/src/routes/clerk/(auth)/route.tsx(3,22): error TS2307: Cannot find module '@/assets/logo' or its corresponding type declarations.
+admin/src/routes/clerk/(auth)/route.tsx(4,27): error TS2307: Cannot find module '@/components/learn-more' or its corresponding type declarations.
+admin/src/routes/clerk/(auth)/sign-in.tsx(2,24): error TS2307: Cannot find module '@clerk/react' or its corresponding type declarations.
+admin/src/routes/clerk/(auth)/sign-in.tsx(3,26): error TS2307: Cannot find module '@/components/ui/skeleton' or its corresponding type declarations.
+admin/src/routes/clerk/(auth)/sign-up.tsx(2,24): error TS2307: Cannot find module '@clerk/react' or its corresponding type declarations.
+admin/src/routes/clerk/(auth)/sign-up.tsx(3,26): error TS2307: Cannot find module '@/components/ui/skeleton' or its corresponding type declarations.
+admin/src/routes/clerk/_authenticated/route.tsx(2,37): error TS2307: Cannot find module '@/components/layout/authenticated-layout' or its corresponding type declarations.
+admin/src/routes/clerk/_authenticated/user-management.tsx(9,37): error TS2307: Cannot find module '@clerk/react' or its corresponding type declarations.
+admin/src/routes/clerk/_authenticated/user-management.tsx(11,27): error TS2307: Cannot find module '@/assets/clerk-logo' or its corresponding type declarations.
+admin/src/routes/clerk/_authenticated/user-management.tsx(12,24): error TS2307: Cannot find module '@/components/ui/button' or its corresponding type declarations.
+admin/src/routes/clerk/_authenticated/user-management.tsx(13,30): error TS2307: Cannot find module '@/components/config-drawer' or its corresponding type declarations.
+admin/src/routes/clerk/_authenticated/user-management.tsx(14,24): error TS2307: Cannot find module '@/components/layout/header' or its corresponding type declarations.
+admin/src/routes/clerk/_authenticated/user-management.tsx(15,22): error TS2307: Cannot find module '@/components/layout/main' or its corresponding type declarations.
+admin/src/routes/clerk/_authenticated/user-management.tsx(16,27): error TS2307: Cannot find module '@/components/learn-more' or its corresponding type declarations.
+admin/src/routes/clerk/_authenticated/user-management.tsx(17,24): error TS2307: Cannot find module '@/components/search' or its corresponding type declarations.
+admin/src/routes/clerk/_authenticated/user-management.tsx(18,29): error TS2307: Cannot find module '@/components/theme-switch' or its corresponding type declarations.
+admin/src/routes/clerk/_authenticated/user-management.tsx(19,30): error TS2307: Cannot find module '@/features/users/components/users-dialogs' or its corresponding type declarations.
+admin/src/routes/clerk/_authenticated/user-management.tsx(20,37): error TS2307: Cannot find module '@/features/users/components/users-primary-buttons' or its corresponding type declarations.
+admin/src/routes/clerk/_authenticated/user-management.tsx(21,31): error TS2307: Cannot find module '@/features/users/components/users-provider' or its corresponding type declarations.
+admin/src/routes/clerk/_authenticated/user-management.tsx(22,28): error TS2307: Cannot find module '@/features/users/components/users-table' or its corresponding type declarations.
+admin/src/routes/clerk/_authenticated/user-management.tsx(23,23): error TS2307: Cannot find module '@/features/users/data/users' or its corresponding type declarations.
+admin/src/routes/clerk/route.tsx(3,31): error TS2307: Cannot find module '@clerk/react' or its corresponding type declarations.
+admin/src/routes/clerk/route.tsx(5,53): error TS2307: Cannot find module '@/components/ui/alert' or its corresponding type declarations.
+admin/src/routes/clerk/route.tsx(6,27): error TS2307: Cannot find module '@/components/ui/separator' or its corresponding type declarations.
+admin/src/routes/clerk/route.tsx(7,32): error TS2307: Cannot find module '@/components/ui/sidebar' or its corresponding type declarations.
+admin/src/routes/clerk/route.tsx(8,30): error TS2307: Cannot find module '@/components/config-drawer' or its corresponding type declarations.
+admin/src/routes/clerk/route.tsx(9,37): error TS2307: Cannot find module '@/components/layout/authenticated-layout' or its corresponding type declarations.
+admin/src/routes/clerk/route.tsx(10,22): error TS2307: Cannot find module '@/components/layout/main' or its corresponding type declarations.
+admin/src/routes/clerk/route.tsx(11,29): error TS2307: Cannot find module '@/components/theme-switch' or its corresponding type declarations.
+admin/src/stores/auth-store.test.ts(1,30): error TS2307: Cannot find module '@/test-utils/cookies' or its corresponding type declarations.
+admin/src/stores/auth-store.ts(2,52): error TS2307: Cannot find module '@/lib/cookies' or its corresponding type declarations.
+admin/src/test-utils/cookies.ts(1,30): error TS2307: Cannot find module '@/lib/cookies' or its corresponding type declarations.
+app/(tabs)/favorites.tsx(22,11): error TS2339: Property 'supabase' does not exist on type 'AuthContextValue'.
+app/(tabs)/favorites.tsx(43,56): error TS2554: Expected 1 arguments, but got 2.
+app/(tabs)/home.tsx(51,11): error TS2339: Property 'supabase' does not exist on type 'AuthContextValue'.
+app/(tabs)/home.tsx(71,25): error TS2554: Expected 0 arguments, but got 1.
+app/(tabs)/profile.tsx(26,20): error TS2339: Property 'user' does not exist on type 'AuthContextValue'.
+app/(tabs)/search.tsx(23,11): error TS2339: Property 'supabase' does not exist on type 'AuthContextValue'.
+app/(tabs)/search.tsx(36,21): error TS2554: Expected 0 arguments, but got 1.
+app/(tabs)/search.tsx(46,48): error TS2554: Expected 0-1 arguments, but got 2.
+app/booking-detail.tsx(23,13): error TS2339: Property 'supabase' does not exist on type 'AuthContextValue'.
+app/booking-detail.tsx(38,57): error TS2554: Expected 1 arguments, but got 2.
+app/booking-detail.tsx(67,59): error TS2554: Expected 1 arguments, but got 2.
+app/bookings.tsx(14,11): error TS2339: Property 'supabase' does not exist on type 'AuthContextValue'.
+app/bookings.tsx(28,50): error TS2554: Expected 1 arguments, but got 2.
+app/category-venues.tsx(24,11): error TS2339: Property 'supabase' does not exist on type 'AuthContextValue'.
+app/category-venues.tsx(39,58): error TS2554: Expected 1 arguments, but got 2.
+app/edit-profile.tsx(24,13): error TS2339: Property 'supabase' does not exist on type 'AuthContextValue'.
+app/edit-profile.tsx(24,23): error TS2339: Property 'user' does not exist on type 'AuthContextValue'.
+app/edit-profile.tsx(48,48): error TS2554: Expected 2 arguments, but got 3.
+app/forgot-password.tsx(1,27): error TS2307: Cannot find module '@clerk/clerk-expo' or its corresponding type declarations.
+app/login.tsx(230,68): error TS2551: Property 'lightBackground' does not exist on type '{ primary: string; primaryDark: string; primaryLight: string; gradientStart: string; gradientEnd: string; background: string; surface: string; card: string; text: string; textSecondary: string; ... 10 more ...; tabInactive: string; }'. Did you mean 'background'?
+app/new-password.tsx(1,27): error TS2307: Cannot find module '@clerk/clerk-expo' or its corresponding type declarations.
+app/notifications.tsx(20,11): error TS2339: Property 'supabase' does not exist on type 'AuthContextValue'.
+app/notifications.tsx(34,55): error TS2554: Expected 1 arguments, but got 2.
+app/notifications.tsx(45,44): error TS2554: Expected 1 arguments, but got 2.
+app/select-favourite.tsx(25,11): error TS2339: Property 'supabase' does not exist on type 'AuthContextValue'.
+app/select-favourite.tsx(33,42): error TS2554: Expected 0 arguments, but got 1.
+app/venue-detail.tsx(35,13): error TS2339: Property 'supabase' does not exist on type 'AuthContextValue'.
+app/venue-detail.tsx(49,57): error TS2554: Expected 1 arguments, but got 2.
+app/view-booking.tsx(21,13): error TS2339: Property 'supabase' does not exist on type 'AuthContextValue'.
+app/view-booking.tsx(34,59): error TS2554: Expected 1 arguments, but got 2.
+lib/api.ts(50,35): error TS18047: 'v.city' is possibly 'null'.

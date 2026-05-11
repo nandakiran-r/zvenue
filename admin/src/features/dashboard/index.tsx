@@ -51,7 +51,7 @@ import {
 const COLORS = ['#7a3317', '#d4956b', '#f0c9a8', '#a85c3b', '#5c2511', '#c47a50', '#e8a87c', '#8b4726']
 
 function formatINR(amount: number) {
-  return `₹${amount.toLocaleString('en-IN')}`
+  return `₹${(amount || 0).toLocaleString('en-IN')}`
 }
 
 function StatCard({

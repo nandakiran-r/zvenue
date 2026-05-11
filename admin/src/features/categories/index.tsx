@@ -196,11 +196,11 @@ export function CategoriesPage() {
                           <Badge variant='outline'>{cat.sort_order}</Badge>
                         </TableCell>
                         <TableCell className='text-sm text-muted-foreground'>
-                          {new Date(cat.created_at).toLocaleDateString('en-IN', {
+                          {cat.created_at ? new Date(cat.created_at).toLocaleDateString('en-IN', {
                             year: 'numeric',
                             month: 'short',
                             day: 'numeric',
-                          })}
+                          }) : '—'}
                         </TableCell>
                         <TableCell>
                           <div className='flex items-center justify-end gap-1'>

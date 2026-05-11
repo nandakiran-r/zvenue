@@ -23,11 +23,11 @@ const MENU_ITEMS = [
 
 export default function ProfileScreen() {
   const insets = useSafeAreaInsets();
-  const { signOut, user, dbUser } = useAuth();
+  const { signOut, dbUser } = useAuth();
 
-  const displayName = dbUser?.full_name ?? user?.fullName ?? "User";
-  const displayEmail = dbUser?.email ?? user?.emailAddresses?.[0]?.emailAddress ?? "";
-  const displayAvatar = dbUser?.avatar_url ?? user?.imageUrl ?? null;
+  const displayName = dbUser?.full_name ?? "User";
+  const displayEmail = dbUser?.email ?? "";
+  const displayAvatar = dbUser?.avatar_url ?? null;
 
   const handleLogout = async () => {
     try {

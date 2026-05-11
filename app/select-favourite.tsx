@@ -22,15 +22,15 @@ export default function SelectFavouriteScreen() {
   const [categories, setCategories] = useState<DbCategory[]>([]);
   const [loading, setLoading] = useState(true);
   const insets = useSafeAreaInsets();
-  const { supabase } = useAuth();
+  
 
   useEffect(() => {
     loadCategories();
-  }, [supabase]);
+  }, []);
 
   const loadCategories = async () => {
     try {
-      const data = await fetchCategories(supabase);
+      const data = await fetchCategories();
       setCategories(data);
       // Pre-select the third one if it exists
       if (data.length >= 3) setSelected([data[2].id]);

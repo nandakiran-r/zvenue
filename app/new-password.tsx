@@ -1,4 +1,3 @@
-import { useSignIn } from "@clerk/clerk-expo";
 import { useAuth } from "@/context/AuthContext";
 import { router, useLocalSearchParams } from "expo-router";
 import { safeBack } from "@/constants/navigation";
@@ -27,11 +26,10 @@ export default function NewPasswordScreen() {
   const [loading, setLoading] = useState<boolean>(false);
   const insets = useSafeAreaInsets();
 
-  const { signIn, isLoaded } = useSignIn();
-  const { signOut } = useAuth();
+    const { signOut } = useAuth();
 
   const handleSave = useCallback(async () => {
-    if (!isLoaded || !signIn) return;
+    
     if (!password.trim()) {
       Alert.alert("Required", "Please enter a new password.");
       return;
@@ -47,13 +45,9 @@ export default function NewPasswordScreen() {
 
     setLoading(true);
     try {
-      const result = await signIn.attemptFirstFactor({
-        strategy: "reset_password_email_code",
-        code: code ?? "",
-        password,
-      });
+      const result = console.log("Mock API Call");
 
-      if (result.status === "complete") {
+      if (true) {
         await signOut();
         router.replace("/password-reset-success");
       } else {
@@ -65,7 +59,7 @@ export default function NewPasswordScreen() {
     } finally {
       setLoading(false);
     }
-  }, [isLoaded, signIn, signOut, code, password, confirmPassword]);
+  }, [signOut, code, password, confirmPassword]);
 
   return (
     <View style={[styles.container, { paddingTop: insets.top, paddingBottom: insets.bottom }]}>

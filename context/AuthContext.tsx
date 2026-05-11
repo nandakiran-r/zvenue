@@ -1,22 +1,15 @@
-import React, { createContext, useContext, useEffect, useMemo, useState, useCallback } from "react";
-import {
-  useAuth as useClerkAuth,
-  useUser,
-  useSession,
-} from "@clerk/clerk-expo";
-import { createClerkSupabaseClient } from "@/lib/supabase";
-import { upsertUser, fetchUser } from "@/lib/api";
-import type { SupabaseClient } from "@supabase/supabase-js";
+import React, { createContext, useContext, useEffect, useState, useCallback } from "react";
+import AsyncStorage from "@react-native-async-storage/async-storage";
+import { api, fetchUser } from "@/lib/api";
 import type { DbUser } from "@/lib/types";
 
 interface AuthContextValue {
   isSignedIn: boolean;
   isLoaded: boolean;
-  userId: string | null | undefined;
-  user: ReturnType<typeof useUser>["user"];
+  userId: string | null;
   signOut: () => Promise<void>;
-  supabase: SupabaseClient;
-  /** The user row from the Supabase `users` table */
+  login: (token: string, user: DbUser) => Promise<void>;
+  /** The user row from the DB */
   dbUser: DbUser | null;
   /** Re-fetch the DB user profile (call after edits) */
   refreshProfile: () => Promise<void>;
@@ -25,70 +18,65 @@ interface AuthContextValue {
 const AuthContext = createContext<AuthContextValue | null>(null);
 
 export function AuthProvider({ children }: { children: React.ReactNode }) {
-  const { isSignedIn, isLoaded, userId, signOut } = useClerkAuth();
-  const { user } = useUser();
-  const { session } = useSession();
   const [dbUser, setDbUser] = useState<DbUser | null>(null);
+  const [token, setToken] = useState<string | null>(null);
+  const [isLoaded, setIsLoaded] = useState(false);
 
-  const supabase = useMemo(
-    () =>
-      createClerkSupabaseClient(
-        () => session?.getToken() ?? Promise.resolve(null)
-      ),
-    [session]
-  );
-
-  // Sync Clerk user → Supabase users table
   useEffect(() => {
-    if (!isSignedIn || !user || !userId) {
-      setDbUser(null);
-      return;
-    }
-
-    const syncUser = async () => {
+    const loadToken = async () => {
       try {
-        const synced = await upsertUser(supabase, {
-          clerk_id: userId,
-          full_name: user.fullName ?? user.firstName ?? null,
-          email: user.emailAddresses?.[0]?.emailAddress ?? null,
-          avatar_url: user.imageUrl ?? null,
-        });
-        setDbUser(synced);
-      } catch (err) {
-        console.error("Failed to sync user to Supabase:", err);
-        // Try to just fetch existing user if upsert fails
-        try {
-          const existing = await fetchUser(supabase, userId);
-          if (existing) setDbUser(existing);
-        } catch {
-          // silently ignore
+        const storedToken = await AsyncStorage.getItem("token");
+        if (storedToken) {
+          setToken(storedToken);
+          const response = await api.get("/api/auth/me");
+          setDbUser(response.data);
         }
+      } catch (error) {
+        console.log("Failed to load session:", error);
+        await AsyncStorage.removeItem("token");
+      } finally {
+        setIsLoaded(true);
       }
     };
+    loadToken();
+  }, []);
 
-    syncUser();
-  }, [isSignedIn, user, userId, supabase]);
+  const login = async (newToken: string, newUser: DbUser) => {
+    try {
+      await AsyncStorage.setItem("token", newToken);
+      setToken(newToken);
+      setDbUser(newUser);
+    } catch (e) {
+      console.log("Failed to save token");
+    }
+  };
+
+  const signOut = async () => {
+    try {
+      await AsyncStorage.removeItem("token");
+      setToken(null);
+      setDbUser(null);
+    } catch (e) {
+      console.log("Failed to remove token");
+    }
+  };
 
   const refreshProfile = useCallback(async () => {
-    if (!userId) return;
+    if (!dbUser?.id) return;
     try {
-      const profile = await fetchUser(supabase, userId);
+      const profile = await fetchUser(dbUser.id);
       if (profile) setDbUser(profile);
     } catch (err) {
       console.error("Failed to refresh profile:", err);
     }
-  }, [userId, supabase]);
+  }, [dbUser?.id]);
 
   const value: AuthContextValue = {
-    isSignedIn: isSignedIn ?? false,
+    isSignedIn: !!token,
     isLoaded,
-    userId,
-    user,
-    signOut: async () => {
-      setDbUser(null);
-      await signOut();
-    },
-    supabase,
+    userId: dbUser?.id || null,
+    signOut,
+    login,
     dbUser,
     refreshProfile,
   };

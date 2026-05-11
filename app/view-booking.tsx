@@ -18,7 +18,7 @@ import type { DbBooking } from "@/lib/types";
 export default function ViewBookingScreen() {
     const { id } = useLocalSearchParams<{ id: string }>();
     const insets = useSafeAreaInsets();
-    const { supabase, dbUser } = useAuth();
+    const { dbUser } = useAuth();
 
     const [booking, setBooking] = useState<DbBooking | null>(null);
     const [loading, setLoading] = useState(true);
@@ -31,7 +31,7 @@ export default function ViewBookingScreen() {
     const loadBooking = async () => {
         try {
             setLoading(true);
-            const data = await fetchBookingById(supabase, id!);
+            const data = await fetchBookingById(id!);
             setBooking(data);
         } catch (err) {
             console.error("Failed to load booking:", err);

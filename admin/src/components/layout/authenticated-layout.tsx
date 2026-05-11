@@ -6,13 +6,25 @@ import { SearchProvider } from '@/context/search-provider'
 import { SidebarInset, SidebarProvider } from '@/components/ui/sidebar'
 import { AppSidebar } from '@/components/layout/app-sidebar'
 import { SkipToMain } from '@/components/skip-to-main'
+import { useAuth } from '@/context/auth-provider'
+import { Navigate } from '@tanstack/react-router'
 
 type AuthenticatedLayoutProps = {
   children?: React.ReactNode
 }
 
 export function AuthenticatedLayout({ children }: AuthenticatedLayoutProps) {
+  const { token, isLoading } = useAuth()
   const defaultOpen = getCookie('sidebar_state') !== 'false'
+
+  if (isLoading) {
+    return <div className="flex h-svh items-center justify-center">Loading...</div>
+  }
+
+  if (!token) {
+    return <Navigate to="/sign-in" />
+  }
+
   return (
     <SearchProvider>
       <LayoutProvider>

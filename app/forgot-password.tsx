@@ -1,4 +1,3 @@
-import { useSignIn } from "@clerk/clerk-expo";
 import { useAuth } from "@/context/AuthContext";
 import { safeBack } from "@/constants/navigation";
 import { ChevronLeft, Mail } from "lucide-react-native";
@@ -23,11 +22,10 @@ export default function ForgotPasswordScreen() {
   const [loading, setLoading] = useState(false);
   const insets = useSafeAreaInsets();
 
-  const { signIn, isLoaded } = useSignIn();
-  const { signOut } = useAuth();
+    const { signOut } = useAuth();
 
   const handleSend = useCallback(async () => {
-    if (!isLoaded || !signIn) return;
+    
     if (!email.trim()) {
       Alert.alert("Required", "Please enter your email address.");
       return;
@@ -39,10 +37,7 @@ export default function ForgotPasswordScreen() {
         await signOut();
       } catch (e) {}
 
-      await signIn.create({
-        strategy: "reset_password_email_code",
-        identifier: email.trim(),
-      });
+      console.log("Mock API Call");
 
       // Navigate to OTP screen in password-reset mode
       router.push({
@@ -55,7 +50,7 @@ export default function ForgotPasswordScreen() {
     } finally {
       setLoading(false);
     }
-  }, [isLoaded, signIn, email]);
+  }, [email]);
 
   return (
     <KeyboardAvoidingView

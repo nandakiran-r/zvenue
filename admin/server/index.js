@@ -1,397 +1,542 @@
 import 'dotenv/config';
-import express from 'express';
-import cors from 'cors';
-import { createClient } from '@supabase/supabase-js';
+import Fastify from 'fastify';
+import cors from '@fastify/cors';
+import jwt from '@fastify/jwt';
+import argon2 from 'argon2';
+import { db } from './db/index.js';
+import { users, venues, categories, bookings, notifications, otps } from './db/schema.js';
+import { eq, ilike, or, desc, asc, count, sum, sql } from 'drizzle-orm';
 
-const app = express();
-app.use(cors());
-app.use(express.json());
+const fastify = Fastify({ logger: true });
 
-const supabase = createClient(
-  process.env.SUPABASE_URL,
-  process.env.SUPABASE_SERVICE_ROLE_KEY
-);
+// Plugins
+fastify.register(cors, {
+  origin: '*', // For dev
+});
 
-// ─── Dashboard Stats ───────────────────────────────────────────────────────
-app.get('/api/dashboard/stats', async (_req, res) => {
+fastify.register(jwt, {
+  secret: process.env.JWT_SECRET || 'supersecretkey_change_me_in_prod'
+});
+
+// Middleware to protect routes
+fastify.decorate('authenticate', async function (request, reply) {
   try {
-    const [
-      { count: totalVenues },
-      { count: totalBookings },
-      { count: totalUsers },
-      { count: totalCategories },
-      { data: bookings },
-      { count: pendingBookings },
-      { count: confirmedBookings },
-      { count: cancelledBookings },
-    ] = await Promise.all([
-      supabase.from('venues').select('*', { count: 'exact', head: true }),
-      supabase.from('bookings').select('*', { count: 'exact', head: true }),
-      supabase.from('users').select('*', { count: 'exact', head: true }),
-      supabase.from('categories').select('*', { count: 'exact', head: true }),
-      supabase.from('bookings').select('total'),
-      supabase.from('bookings').select('*', { count: 'exact', head: true }).eq('status', 'pending'),
-      supabase.from('bookings').select('*', { count: 'exact', head: true }).eq('status', 'confirmed'),
-      supabase.from('bookings').select('*', { count: 'exact', head: true }).eq('status', 'cancelled'),
-    ]);
+    await request.jwtVerify();
+  } catch (err) {
+    reply.send(err);
+  }
+});
 
-    const totalRevenue = (bookings || []).reduce((sum, b) => sum + (b.total || 0), 0);
-    const avgBookingValue = totalBookings > 0 ? totalRevenue / totalBookings : 0;
+// ─── AUTHENTICATION ────────────────────────────────────────────────────────
+fastify.post('/api/auth/sign-up', async (request, reply) => {
+  const { full_name, email, password } = request.body;
+  
+  if (!full_name || !email || !password) {
+    return reply.status(400).send({ error: 'Missing required fields' });
+  }
 
-    res.json({
-      totalVenues: totalVenues || 0,
-      totalBookings: totalBookings || 0,
-      totalUsers: totalUsers || 0,
-      totalCategories: totalCategories || 0,
+  try {
+    const existing = await db.query.users.findFirst({
+      where: eq(users.email, email)
+    });
+    if (existing) {
+      return reply.status(400).send({ error: 'Email already exists' });
+    }
+
+    const hashedPassword = await argon2.hash(password);
+    const [newUser] = await db.insert(users).values({
+      full_name,
+      email,
+      password: hashedPassword
+    }).returning();
+
+    const token = fastify.jwt.sign({ id: newUser.id, email: newUser.email });
+    return { token, user: { id: newUser.id, full_name: newUser.full_name, email: newUser.email } };
+  } catch (err) {
+    fastify.log.error(err);
+    return reply.status(500).send({ error: 'Internal Server Error' });
+  }
+});
+
+fastify.post('/api/auth/sign-in', async (request, reply) => {
+  const { email, password } = request.body;
+
+  try {
+    const user = await db.query.users.findFirst({
+      where: eq(users.email, email)
+    });
+
+    if (!user || !user.password) {
+      return reply.status(401).send({ error: 'Invalid credentials' });
+    }
+
+    const isMatch = await argon2.verify(user.password, password);
+    if (!isMatch) {
+      return reply.status(401).send({ error: 'Invalid credentials' });
+    }
+
+    const token = fastify.jwt.sign({ id: user.id, email: user.email });
+    return { token, user: { id: user.id, full_name: user.full_name, email: user.email, avatar_url: user.avatar_url } };
+  } catch (err) {
+    fastify.log.error(err);
+    return reply.status(500).send({ error: 'Internal Server Error' });
+  }
+});
+
+fastify.post('/api/auth/send-otp', async (request, reply) => {
+  const { phone_number } = request.body;
+  if (!phone_number) return reply.status(400).send({ error: 'Phone number is required' });
+
+  try {
+    const otp = "123456"; // Hardcoded for testing
+    const expires_at = new Date(Date.now() + 5 * 60000); // 5 mins
+    
+    await db.insert(otps).values({
+      phone_number,
+      otp,
+      expires_at
+    });
+
+    // Mock sending SMS
+    console.log(`\n\n=== OTP for ${phone_number} is ${otp} ===\n\n`);
+
+    return { success: true, message: 'OTP sent successfully' };
+  } catch (err) {
+    fastify.log.error(err);
+    return reply.status(500).send({ error: 'Internal Server Error' });
+  }
+});
+
+fastify.post('/api/auth/verify-otp', async (request, reply) => {
+  const { phone_number, otp } = request.body;
+  if (!phone_number || !otp) return reply.status(400).send({ error: 'Phone number and OTP are required' });
+
+  try {
+    const otpRecord = await db.query.otps.findFirst({
+      where: eq(otps.phone_number, phone_number),
+      orderBy: [desc(otps.created_at)]
+    });
+
+    if (!otpRecord) return reply.status(400).send({ error: 'Invalid or expired OTP' });
+    if (new Date() > otpRecord.expires_at) return reply.status(400).send({ error: 'OTP has expired' });
+    if (otpRecord.otp !== otp) return reply.status(400).send({ error: 'Invalid OTP' });
+
+    let user = await db.query.users.findFirst({
+      where: eq(users.phone_number, phone_number)
+    });
+
+    if (!user) {
+      // Create new user via phone login
+      [user] = await db.insert(users).values({
+        full_name: 'New User',
+        phone_number,
+        phone_verified: true
+      }).returning();
+    } else if (!user.phone_verified) {
+      [user] = await db.update(users)
+        .set({ phone_verified: true })
+        .where(eq(users.id, user.id))
+        .returning();
+    }
+
+    const token = fastify.jwt.sign({ id: user.id, phone_number: user.phone_number });
+    return { token, user: { id: user.id, full_name: user.full_name, phone_number: user.phone_number, avatar_url: user.avatar_url } };
+  } catch (err) {
+    fastify.log.error(err);
+    return reply.status(500).send({ error: 'Internal Server Error' });
+  }
+});
+
+fastify.get('/api/auth/me', { onRequest: [fastify.authenticate] }, async (request, reply) => {
+  try {
+    const user = await db.query.users.findFirst({
+      where: eq(users.id, request.user.id),
+      columns: { id: true, full_name: true, email: true, avatar_url: true }
+    });
+    if (!user) {
+      return reply.status(404).send({ error: 'User not found' });
+    }
+    return user;
+  } catch (err) {
+    return reply.status(500).send({ error: 'Internal Server Error' });
+  }
+});
+
+// ─── DASHBOARD STATS ───────────────────────────────────────────────────────
+fastify.get('/api/dashboard/stats', { onRequest: [fastify.authenticate] }, async (request, reply) => {
+  try {
+    const [totalVenuesRes] = await db.select({ count: count() }).from(venues);
+    const [totalBookingsRes] = await db.select({ count: count() }).from(bookings);
+    const [totalUsersRes] = await db.select({ count: count() }).from(users);
+    const [totalCategoriesRes] = await db.select({ count: count() }).from(categories);
+    
+    const [revenueRes] = await db.select({ total: sum(bookings.total) }).from(bookings);
+    const totalRevenue = revenueRes.total ? Number(revenueRes.total) : 0;
+    const avgBookingValue = totalBookingsRes.count > 0 ? totalRevenue / totalBookingsRes.count : 0;
+
+    const [pendingRes] = await db.select({ count: count() }).from(bookings).where(eq(bookings.status, 'pending'));
+    const [confirmedRes] = await db.select({ count: count() }).from(bookings).where(eq(bookings.status, 'confirmed'));
+    const [cancelledRes] = await db.select({ count: count() }).from(bookings).where(eq(bookings.status, 'cancelled'));
+
+    return {
+      totalVenues: totalVenuesRes.count,
+      totalBookings: totalBookingsRes.count,
+      totalUsers: totalUsersRes.count,
+      totalCategories: totalCategoriesRes.count,
       totalRevenue,
       avgBookingValue,
-      pendingBookings: pendingBookings || 0,
-      confirmedBookings: confirmedBookings || 0,
-      cancelledBookings: cancelledBookings || 0,
+      pendingBookings: pendingRes.count,
+      confirmedBookings: confirmedRes.count,
+      cancelledBookings: cancelledRes.count,
+    };
+  } catch (err) {
+    fastify.log.error(err);
+    return reply.status(500).send({ error: 'Internal Server Error' });
+  }
+});
+
+// ─── DASHBOARD RECENT BOOKINGS ─────────────────────────────────────────────
+fastify.get('/api/dashboard/recent-bookings', { onRequest: [fastify.authenticate] }, async (request, reply) => {
+  try {
+    const data = await db.query.bookings.findMany({
+      with: {
+        venue: { columns: { name: true, city: true, image_url: true } },
+        user: { columns: { full_name: true, email: true, avatar_url: true } },
+      },
+      orderBy: [desc(bookings.created_at)],
+      limit: 10,
     });
+    return data;
   } catch (err) {
-    console.error('Dashboard stats error:', err);
-    res.status(500).json({ error: err.message });
+    fastify.log.error(err);
+    return reply.status(500).send({ error: 'Internal Server Error' });
   }
 });
 
-// ─── Dashboard Recent Bookings ─────────────────────────────────────────────
-app.get('/api/dashboard/recent-bookings', async (_req, res) => {
+// ─── DASHBOARD REVENUE CHART ───────────────────────────────────────────────
+fastify.get('/api/dashboard/revenue-chart', { onRequest: [fastify.authenticate] }, async (request, reply) => {
   try {
-    const { data, error } = await supabase
-      .from('bookings')
-      .select('*, venue:venues(name, city, image_url), user:users(full_name, email, avatar_url)')
-      .order('created_at', { ascending: false })
-      .limit(10);
-    if (error) throw error;
-    res.json(data || []);
-  } catch (err) {
-    res.status(500).json({ error: err.message });
-  }
-});
+    const data = await db.query.bookings.findMany({
+      columns: { total: true, created_at: true },
+      orderBy: [asc(bookings.created_at)],
+    });
 
-// ─── Dashboard Revenue by Month ────────────────────────────────────────────
-app.get('/api/dashboard/revenue-chart', async (_req, res) => {
-  try {
-    const { data, error } = await supabase
-      .from('bookings')
-      .select('total, created_at')
-      .order('created_at', { ascending: true });
-    if (error) throw error;
-
-    // Group by month
     const monthly = {};
-    (data || []).forEach(b => {
+    data.forEach(b => {
       const month = new Date(b.created_at).toLocaleString('en', { month: 'short', year: 'numeric' });
       monthly[month] = (monthly[month] || 0) + (b.total || 0);
     });
 
-    res.json(Object.entries(monthly).map(([month, revenue]) => ({ month, revenue })));
+    return Object.entries(monthly).map(([month, revenue]) => ({ month, revenue }));
   } catch (err) {
-    res.status(500).json({ error: err.message });
+    return reply.status(500).send({ error: 'Internal Server Error' });
   }
 });
 
-// ─── Dashboard Bookings by Category ────────────────────────────────────────
-app.get('/api/dashboard/bookings-by-category', async (_req, res) => {
+// ─── DASHBOARD BOOKINGS BY CATEGORY ────────────────────────────────────────
+fastify.get('/api/dashboard/bookings-by-category', { onRequest: [fastify.authenticate] }, async (request, reply) => {
   try {
-    const { data, error } = await supabase
-      .from('bookings')
-      .select('venue:venues(category:categories(name))');
-    if (error) throw error;
+    const data = await db.query.bookings.findMany({
+      with: {
+        venue: {
+          with: { category: { columns: { name: true } } }
+        }
+      }
+    });
 
     const counts = {};
-    (data || []).forEach(b => {
+    data.forEach(b => {
       const catName = b.venue?.category?.name || 'Other';
       counts[catName] = (counts[catName] || 0) + 1;
     });
 
-    res.json(Object.entries(counts).map(([name, count]) => ({ name, count })));
+    return Object.entries(counts).map(([name, count]) => ({ name, count }));
   } catch (err) {
-    res.status(500).json({ error: err.message });
+    return reply.status(500).send({ error: 'Internal Server Error' });
   }
 });
 
-// ─── Venues CRUD ───────────────────────────────────────────────────────────
-app.get('/api/venues', async (req, res) => {
+// ─── VENUES CRUD ───────────────────────────────────────────────────────────
+fastify.get('/api/venues', async (request, reply) => {
   try {
-    let query = supabase.from('venues').select('*, category:categories(*)');
-    if (req.query.search) {
-      query = query.or(`name.ilike.%${req.query.search}%,city.ilike.%${req.query.search}%`);
+    const { search, category_id } = request.query;
+    
+    let whereClause = undefined;
+    if (search && category_id) {
+      whereClause = sql`(name ILIKE ${'%' + search + '%'} OR city ILIKE ${'%' + search + '%'}) AND category_id = ${category_id}`;
+    } else if (search) {
+      whereClause = sql`name ILIKE ${'%' + search + '%'} OR city ILIKE ${'%' + search + '%'}`;
+    } else if (category_id) {
+      whereClause = eq(venues.category_id, category_id);
     }
-    if (req.query.category_id) {
-      query = query.eq('category_id', req.query.category_id);
+
+    const data = await db.query.venues.findMany({
+      where: whereClause,
+      with: { category: true },
+      orderBy: [desc(venues.created_at)]
+    });
+    return data;
+  } catch (err) {
+    return reply.status(500).send({ error: 'Internal Server Error' });
+  }
+});
+
+fastify.get('/api/venues/:id', async (request, reply) => {
+  try {
+    const data = await db.query.venues.findFirst({
+      where: eq(venues.id, request.params.id),
+      with: { category: true }
+    });
+    return data || {};
+  } catch (err) {
+    return reply.status(500).send({ error: 'Internal Server Error' });
+  }
+});
+
+fastify.post('/api/venues', { onRequest: [fastify.authenticate] }, async (request, reply) => {
+  try {
+    const [inserted] = await db.insert(venues).values(request.body).returning();
+    const data = await db.query.venues.findFirst({
+      where: eq(venues.id, inserted.id),
+      with: { category: true }
+    });
+    return data;
+  } catch (err) {
+    return reply.status(500).send({ error: 'Internal Server Error' });
+  }
+});
+
+fastify.put('/api/venues/:id', { onRequest: [fastify.authenticate] }, async (request, reply) => {
+  try {
+    await db.update(venues).set(request.body).where(eq(venues.id, request.params.id));
+    const data = await db.query.venues.findFirst({
+      where: eq(venues.id, request.params.id),
+      with: { category: true }
+    });
+    return data;
+  } catch (err) {
+    return reply.status(500).send({ error: 'Internal Server Error' });
+  }
+});
+
+fastify.delete('/api/venues/:id', { onRequest: [fastify.authenticate] }, async (request, reply) => {
+  try {
+    await db.delete(venues).where(eq(venues.id, request.params.id));
+    return { success: true };
+  } catch (err) {
+    return reply.status(500).send({ error: 'Internal Server Error' });
+  }
+});
+
+// ─── CATEGORIES CRUD ───────────────────────────────────────────────────────
+fastify.get('/api/categories', async (request, reply) => {
+  try {
+    const data = await db.query.categories.findMany({
+      orderBy: [asc(categories.sort_order)]
+    });
+    return data;
+  } catch (err) {
+    return reply.status(500).send({ error: 'Internal Server Error' });
+  }
+});
+
+fastify.post('/api/categories', { onRequest: [fastify.authenticate] }, async (request, reply) => {
+  try {
+    const [inserted] = await db.insert(categories).values(request.body).returning();
+    return inserted;
+  } catch (err) {
+    return reply.status(500).send({ error: 'Internal Server Error' });
+  }
+});
+
+fastify.put('/api/categories/:id', { onRequest: [fastify.authenticate] }, async (request, reply) => {
+  try {
+    const [updated] = await db.update(categories).set(request.body).where(eq(categories.id, request.params.id)).returning();
+    return updated;
+  } catch (err) {
+    return reply.status(500).send({ error: 'Internal Server Error' });
+  }
+});
+
+fastify.delete('/api/categories/:id', { onRequest: [fastify.authenticate] }, async (request, reply) => {
+  try {
+    await db.delete(categories).where(eq(categories.id, request.params.id));
+    return { success: true };
+  } catch (err) {
+    return reply.status(500).send({ error: 'Internal Server Error' });
+  }
+});
+
+// ─── BOOKINGS CRUD ─────────────────────────────────────────────────────────
+fastify.get('/api/bookings', { onRequest: [fastify.authenticate] }, async (request, reply) => {
+  try {
+    const { status, search } = request.query;
+    
+    // Simplification for search: we'll fetch and filter if necessary since relations search in Drizzle can be complex with Postgres ILIKE on joined tables.
+    let whereClause = undefined;
+    if (status) {
+      whereClause = eq(bookings.status, status);
     }
-    const { data, error } = await query.order('created_at', { ascending: false });
-    if (error) throw error;
-    res.json(data || []);
-  } catch (err) {
-    res.status(500).json({ error: err.message });
-  }
-});
+    
+    const data = await db.query.bookings.findMany({
+      where: whereClause,
+      with: {
+        venue: { with: { category: true } },
+        user: { columns: { full_name: true, email: true, avatar_url: true } }
+      },
+      orderBy: [desc(bookings.created_at)]
+    });
 
-app.get('/api/venues/:id', async (req, res) => {
-  try {
-    const { data, error } = await supabase
-      .from('venues')
-      .select('*, category:categories(*)')
-      .eq('id', req.params.id)
-      .single();
-    if (error) throw error;
-    res.json(data);
-  } catch (err) {
-    res.status(500).json({ error: err.message });
-  }
-});
-
-app.post('/api/venues', async (req, res) => {
-  try {
-    const { data, error } = await supabase
-      .from('venues')
-      .insert(req.body)
-      .select('*, category:categories(*)')
-      .single();
-    if (error) throw error;
-    res.json(data);
-  } catch (err) {
-    res.status(500).json({ error: err.message });
-  }
-});
-
-app.put('/api/venues/:id', async (req, res) => {
-  try {
-    const { data, error } = await supabase
-      .from('venues')
-      .update(req.body)
-      .eq('id', req.params.id)
-      .select('*, category:categories(*)')
-      .single();
-    if (error) throw error;
-    res.json(data);
-  } catch (err) {
-    res.status(500).json({ error: err.message });
-  }
-});
-
-app.delete('/api/venues/:id', async (req, res) => {
-  try {
-    const { error } = await supabase.from('venues').delete().eq('id', req.params.id);
-    if (error) throw error;
-    res.json({ success: true });
-  } catch (err) {
-    res.status(500).json({ error: err.message });
-  }
-});
-
-// ─── Categories CRUD ───────────────────────────────────────────────────────
-app.get('/api/categories', async (_req, res) => {
-  try {
-    const { data, error } = await supabase.from('categories').select('*').order('sort_order');
-    if (error) throw error;
-    res.json(data || []);
-  } catch (err) {
-    res.status(500).json({ error: err.message });
-  }
-});
-
-app.post('/api/categories', async (req, res) => {
-  try {
-    const { data, error } = await supabase.from('categories').insert(req.body).select().single();
-    if (error) throw error;
-    res.json(data);
-  } catch (err) {
-    res.status(500).json({ error: err.message });
-  }
-});
-
-app.put('/api/categories/:id', async (req, res) => {
-  try {
-    const { data, error } = await supabase
-      .from('categories')
-      .update(req.body)
-      .eq('id', req.params.id)
-      .select()
-      .single();
-    if (error) throw error;
-    res.json(data);
-  } catch (err) {
-    res.status(500).json({ error: err.message });
-  }
-});
-
-app.delete('/api/categories/:id', async (req, res) => {
-  try {
-    const { error } = await supabase.from('categories').delete().eq('id', req.params.id);
-    if (error) throw error;
-    res.json({ success: true });
-  } catch (err) {
-    res.status(500).json({ error: err.message });
-  }
-});
-
-// ─── Bookings CRUD ─────────────────────────────────────────────────────────
-app.get('/api/bookings', async (req, res) => {
-  try {
-    let query = supabase
-      .from('bookings')
-      .select('*, venue:venues(name, city, image_url, category:categories(name)), user:users(full_name, email, avatar_url)');
-    if (req.query.status) {
-      query = query.eq('status', req.query.status);
+    if (search) {
+      const lowerSearch = search.toLowerCase();
+      return data.filter(b => b.venue?.name?.toLowerCase().includes(lowerSearch) || b.user?.full_name?.toLowerCase().includes(lowerSearch));
     }
-    if (req.query.search) {
-      // Search by venue name or user name
-      query = query.or(`venue.name.ilike.%${req.query.search}%`);
+
+    return data;
+  } catch (err) {
+    return reply.status(500).send({ error: 'Internal Server Error' });
+  }
+});
+
+fastify.get('/api/bookings/:id', { onRequest: [fastify.authenticate] }, async (request, reply) => {
+  try {
+    const data = await db.query.bookings.findFirst({
+      where: eq(bookings.id, request.params.id),
+      with: {
+        venue: { with: { category: true } },
+        user: true
+      }
+    });
+    return data;
+  } catch (err) {
+    return reply.status(500).send({ error: 'Internal Server Error' });
+  }
+});
+
+fastify.put('/api/bookings/:id', { onRequest: [fastify.authenticate] }, async (request, reply) => {
+  try {
+    await db.update(bookings).set(request.body).where(eq(bookings.id, request.params.id));
+    const data = await db.query.bookings.findFirst({
+      where: eq(bookings.id, request.params.id),
+      with: {
+        venue: { columns: { name: true, city: true, image_url: true } },
+        user: { columns: { full_name: true, email: true } }
+      }
+    });
+    return data;
+  } catch (err) {
+    return reply.status(500).send({ error: 'Internal Server Error' });
+  }
+});
+
+fastify.delete('/api/bookings/:id', { onRequest: [fastify.authenticate] }, async (request, reply) => {
+  try {
+    await db.delete(bookings).where(eq(bookings.id, request.params.id));
+    return { success: true };
+  } catch (err) {
+    return reply.status(500).send({ error: 'Internal Server Error' });
+  }
+});
+
+// ─── USERS ─────────────────────────────────────────────────────────────────
+fastify.get('/api/users', { onRequest: [fastify.authenticate] }, async (request, reply) => {
+  try {
+    const { search } = request.query;
+    
+    let whereClause = undefined;
+    if (search) {
+      whereClause = sql`full_name ILIKE ${'%' + search + '%'} OR email ILIKE ${'%' + search + '%'}`;
     }
-    const { data, error } = await query.order('created_at', { ascending: false });
-    if (error) throw error;
-    res.json(data || []);
+
+    const data = await db.query.users.findMany({
+      where: whereClause,
+      columns: { id: true, full_name: true, email: true, avatar_url: true, created_at: true },
+      with: {
+        bookings: { columns: { id: true } }
+      },
+      orderBy: [desc(users.created_at)]
+    });
+
+    return data.map(u => ({
+      ...u,
+      booking_count: u.bookings.length,
+      bookings: undefined // remove the array, just keep the count
+    }));
   } catch (err) {
-    res.status(500).json({ error: err.message });
+    return reply.status(500).send({ error: 'Internal Server Error' });
   }
 });
 
-app.get('/api/bookings/:id', async (req, res) => {
+fastify.get('/api/users/:id', { onRequest: [fastify.authenticate] }, async (request, reply) => {
   try {
-    const { data, error } = await supabase
-      .from('bookings')
-      .select('*, venue:venues(*, category:categories(*)), user:users(*)')
-      .eq('id', req.params.id)
-      .single();
-    if (error) throw error;
-    res.json(data);
+    const data = await db.query.users.findFirst({
+      where: eq(users.id, request.params.id),
+      columns: { id: true, full_name: true, email: true, avatar_url: true, created_at: true },
+      with: {
+        bookings: {
+          with: { venue: { columns: { name: true, city: true, image_url: true } } },
+          orderBy: [desc(bookings.created_at)]
+        }
+      }
+    });
+    return data;
   } catch (err) {
-    res.status(500).json({ error: err.message });
+    return reply.status(500).send({ error: 'Internal Server Error' });
   }
 });
 
-app.put('/api/bookings/:id', async (req, res) => {
+fastify.delete('/api/users/:id', { onRequest: [fastify.authenticate] }, async (request, reply) => {
   try {
-    const { data, error } = await supabase
-      .from('bookings')
-      .update(req.body)
-      .eq('id', req.params.id)
-      .select('*, venue:venues(name, city, image_url), user:users(full_name, email)')
-      .single();
-    if (error) throw error;
-    res.json(data);
+    await db.delete(users).where(eq(users.id, request.params.id));
+    return { success: true };
   } catch (err) {
-    res.status(500).json({ error: err.message });
+    return reply.status(500).send({ error: 'Internal Server Error' });
   }
 });
 
-app.delete('/api/bookings/:id', async (req, res) => {
+// ─── NOTIFICATIONS ─────────────────────────────────────────────────────────
+fastify.get('/api/notifications', { onRequest: [fastify.authenticate] }, async (request, reply) => {
   try {
-    const { error } = await supabase.from('bookings').delete().eq('id', req.params.id);
-    if (error) throw error;
-    res.json({ success: true });
-  } catch (err) {
-    res.status(500).json({ error: err.message });
-  }
-});
-
-// ─── Users ─────────────────────────────────────────────────────────────────
-app.get('/api/users', async (req, res) => {
-  try {
-    let query = supabase.from('users').select('*');
-    if (req.query.search) {
-      query = query.or(`full_name.ilike.%${req.query.search}%,email.ilike.%${req.query.search}%`);
+    const { user_id } = request.query;
+    
+    let whereClause = undefined;
+    if (user_id) {
+      whereClause = eq(notifications.user_id, user_id);
     }
-    const { data, error } = await query.order('created_at', { ascending: false });
-    if (error) throw error;
 
-    // Also get booking count per user
-    const userIds = (data || []).map(u => u.id);
-    if (userIds.length > 0) {
-      const { data: bookingCounts } = await supabase
-        .from('bookings')
-        .select('user_id');
-
-      const countMap = {};
-      (bookingCounts || []).forEach(b => {
-        countMap[b.user_id] = (countMap[b.user_id] || 0) + 1;
-      });
-
-      const enriched = (data || []).map(u => ({
-        ...u,
-        booking_count: countMap[u.id] || 0,
-      }));
-      res.json(enriched);
-    } else {
-      res.json(data || []);
-    }
+    const data = await db.query.notifications.findMany({
+      where: whereClause,
+      with: {
+        user: { columns: { full_name: true, email: true } }
+      },
+      orderBy: [desc(notifications.created_at)],
+      limit: 100
+    });
+    return data;
   } catch (err) {
-    res.status(500).json({ error: err.message });
+    return reply.status(500).send({ error: 'Internal Server Error' });
   }
 });
 
-app.get('/api/users/:id', async (req, res) => {
+fastify.post('/api/notifications', { onRequest: [fastify.authenticate] }, async (request, reply) => {
   try {
-    const { data, error } = await supabase
-      .from('users')
-      .select('*')
-      .eq('id', req.params.id)
-      .single();
-    if (error) throw error;
-
-    // Get user's bookings
-    const { data: bookings } = await supabase
-      .from('bookings')
-      .select('*, venue:venues(name, city, image_url)')
-      .eq('user_id', req.params.id)
-      .order('created_at', { ascending: false });
-
-    res.json({ ...data, bookings: bookings || [] });
+    const [inserted] = await db.insert(notifications).values(request.body).returning();
+    const data = await db.query.notifications.findFirst({
+      where: eq(notifications.id, inserted.id),
+      with: { user: { columns: { full_name: true, email: true } } }
+    });
+    return data;
   } catch (err) {
-    res.status(500).json({ error: err.message });
+    return reply.status(500).send({ error: 'Internal Server Error' });
   }
 });
 
-app.delete('/api/users/:id', async (req, res) => {
+fastify.post('/api/notifications/broadcast', { onRequest: [fastify.authenticate] }, async (request, reply) => {
   try {
-    const { error } = await supabase.from('users').delete().eq('id', req.params.id);
-    if (error) throw error;
-    res.json({ success: true });
-  } catch (err) {
-    res.status(500).json({ error: err.message });
-  }
-});
+    const { title, body, type } = request.body;
+    const allUsers = await db.query.users.findMany({ columns: { id: true } });
 
-// ─── Notifications ─────────────────────────────────────────────────────────
-app.get('/api/notifications', async (req, res) => {
-  try {
-    let query = supabase.from('notifications').select('*, user:users(full_name, email)');
-    if (req.query.user_id) {
-      query = query.eq('user_id', req.query.user_id);
-    }
-    const { data, error } = await query.order('created_at', { ascending: false }).limit(100);
-    if (error) throw error;
-    res.json(data || []);
-  } catch (err) {
-    res.status(500).json({ error: err.message });
-  }
-});
-
-app.post('/api/notifications', async (req, res) => {
-  try {
-    const { data, error } = await supabase
-      .from('notifications')
-      .insert(req.body)
-      .select('*, user:users(full_name, email)')
-      .single();
-    if (error) throw error;
-    res.json(data);
-  } catch (err) {
-    res.status(500).json({ error: err.message });
-  }
-});
-
-app.post('/api/notifications/broadcast', async (req, res) => {
-  try {
-    const { title, body, type } = req.body;
-    const { data: users, error: usersError } = await supabase.from('users').select('id');
-    if (usersError) throw usersError;
-
-    const notifications = (users || []).map(u => ({
+    const notificationsData = allUsers.map(u => ({
       user_id: u.id,
       title,
       body,
@@ -400,61 +545,66 @@ app.post('/api/notifications/broadcast', async (req, res) => {
       data: {},
     }));
 
-    if (notifications.length > 0) {
-      const { error } = await supabase.from('notifications').insert(notifications);
-      if (error) throw error;
+    if (notificationsData.length > 0) {
+      await db.insert(notifications).values(notificationsData);
     }
 
-    res.json({ success: true, count: notifications.length });
+    return { success: true, count: notificationsData.length };
   } catch (err) {
-    res.status(500).json({ error: err.message });
+    return reply.status(500).send({ error: 'Internal Server Error' });
   }
 });
 
-app.delete('/api/notifications/:id', async (req, res) => {
+fastify.delete('/api/notifications/:id', { onRequest: [fastify.authenticate] }, async (request, reply) => {
   try {
-    const { error } = await supabase.from('notifications').delete().eq('id', req.params.id);
-    if (error) throw error;
-    res.json({ success: true });
+    await db.delete(notifications).where(eq(notifications.id, request.params.id));
+    return { success: true };
   } catch (err) {
-    res.status(500).json({ error: err.message });
+    return reply.status(500).send({ error: 'Internal Server Error' });
   }
 });
 
-// ─── Dashboard: Top Venues ─────────────────────────────────────────────────
-app.get('/api/dashboard/top-venues', async (_req, res) => {
+// ─── DASHBOARD: TOP VENUES ─────────────────────────────────────────────────
+fastify.get('/api/dashboard/top-venues', { onRequest: [fastify.authenticate] }, async (request, reply) => {
   try {
-    const { data, error } = await supabase
-      .from('venues')
-      .select('id, name, city, rating, review_count, image_url, category:categories(name)')
-      .order('rating', { ascending: false })
-      .limit(5);
-    if (error) throw error;
-    res.json(data || []);
+    const data = await db.query.venues.findMany({
+      columns: { id: true, name: true, city: true, rating: true, review_count: true, image_url: true },
+      with: { category: { columns: { name: true } } },
+      orderBy: [desc(venues.rating)],
+      limit: 5
+    });
+    return data;
   } catch (err) {
-    res.status(500).json({ error: err.message });
+    return reply.status(500).send({ error: 'Internal Server Error' });
   }
 });
 
-// ─── Dashboard: City Distribution ──────────────────────────────────────────
-app.get('/api/dashboard/city-distribution', async (_req, res) => {
+// ─── DASHBOARD: CITY DISTRIBUTION ──────────────────────────────────────────
+fastify.get('/api/dashboard/city-distribution', { onRequest: [fastify.authenticate] }, async (request, reply) => {
   try {
-    const { data, error } = await supabase.from('venues').select('city');
-    if (error) throw error;
-
+    const data = await db.query.venues.findMany({ columns: { city: true } });
+    
     const counts = {};
-    (data || []).forEach(v => {
+    data.forEach(v => {
       const city = v.city || 'Unknown';
       counts[city] = (counts[city] || 0) + 1;
     });
 
-    res.json(Object.entries(counts).map(([city, count]) => ({ city, count })).sort((a, b) => b.count - a.count));
+    return Object.entries(counts).map(([city, count]) => ({ city, count })).sort((a, b) => b.count - a.count);
   } catch (err) {
-    res.status(500).json({ error: err.message });
+    return reply.status(500).send({ error: 'Internal Server Error' });
   }
 });
 
-const PORT = process.env.PORT || 3001;
-app.listen(PORT, () => {
-  console.log(`ZVenue Admin API running on http://localhost:${PORT}`);
-});
+// Start Server
+const start = async () => {
+  try {
+    const port = process.env.PORT || 3001;
+    await fastify.listen({ port, host: '0.0.0.0' });
+    console.log(`ZVenue Admin API running on http://localhost:${port}`);
+  } catch (err) {
+    fastify.log.error(err);
+    process.exit(1);
+  }
+};
+start();

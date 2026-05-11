@@ -20,7 +20,7 @@ import type { DbVenue } from "@/lib/types";
 export default function BookingDetailScreen() {
     const { id } = useLocalSearchParams<{ id: string }>();
     const insets = useSafeAreaInsets();
-    const { supabase, dbUser } = useAuth();
+    const { dbUser } = useAuth();
 
     const [venue, setVenue] = useState<DbVenue | null>(null);
     const [loading, setLoading] = useState(true);
@@ -35,7 +35,7 @@ export default function BookingDetailScreen() {
     const loadVenue = async () => {
         try {
             setLoading(true);
-            const data = await fetchVenueById(supabase, id!);
+            const data = await fetchVenueById(id!);
             setVenue(data);
         } catch (err) {
             console.error("Failed to load venue:", err);
@@ -64,7 +64,7 @@ export default function BookingDetailScreen() {
         if (!dbUser || submitting) return;
         try {
             setSubmitting(true);
-            const booking = await createBooking(supabase, {
+            const booking = await createBooking({
                 user_id: dbUser.id,
                 venue_id: venue.id,
                 booking_date: new Date().toISOString().split("T")[0],

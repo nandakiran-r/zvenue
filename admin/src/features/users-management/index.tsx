@@ -46,7 +46,7 @@ import { ThemeSwitch } from '@/components/theme-switch'
 import { fetchUsers, fetchUserDetail, deleteUser } from '@/lib/api'
 
 function formatINR(amount: number) {
-  return `₹${amount.toLocaleString('en-IN')}`
+  return `₹${(amount || 0).toLocaleString('en-IN')}`
 }
 
 export function UsersManagementPage() {
@@ -170,7 +170,6 @@ export function UsersManagementPage() {
                         <TableCell>
                           <p className='font-medium'>{user.full_name || '—'}</p>
                           <p className='text-xs text-muted-foreground truncate max-w-[150px]'>
-                            {user.clerk_id}
                           </p>
                         </TableCell>
                         <TableCell>
@@ -291,13 +290,7 @@ export function UsersManagementPage() {
                   </div>
                   <p className='text-sm font-medium'>{formatDate(userDetail.created_at)}</p>
                 </div>
-                <div className='rounded-lg bg-muted p-3'>
-                  <div className='flex items-center gap-2 mb-1'>
-                    <UsersIcon className='h-3 w-3 text-muted-foreground' />
-                    <p className='text-xs text-muted-foreground'>Clerk ID</p>
-                  </div>
-                  <p className='text-sm font-medium truncate'>{userDetail.clerk_id}</p>
-                </div>
+
               </div>
 
               {/* User's Bookings */}

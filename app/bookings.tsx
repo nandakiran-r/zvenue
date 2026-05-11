@@ -11,7 +11,7 @@ import type { DbBooking } from '@/lib/types';
 export default function BookingsScreen() {
   const router = useRouter();
   const insets = useSafeAreaInsets();
-  const { supabase, dbUser } = useAuth();
+  const { dbUser } = useAuth();
 
   const [bookings, setBookings] = useState<DbBooking[]>([]);
   const [loading, setLoading] = useState(true);
@@ -25,7 +25,7 @@ export default function BookingsScreen() {
     if (!dbUser) return;
     try {
       setLoading(true);
-      const data = await fetchBookings(supabase, dbUser.id);
+      const data = await fetchBookings(dbUser.id);
       setBookings(data);
     } catch (err) {
       console.error('Failed to load bookings:', err);

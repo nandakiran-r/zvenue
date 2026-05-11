@@ -19,7 +19,7 @@ import type { DbVenue } from "@/lib/types";
 
 export default function FavoritesScreen() {
   const insets = useSafeAreaInsets();
-  const { supabase } = useAuth();
+  
   const { favorites, toggleFavorite } = useFavorites();
 
   const [favoriteVenues, setFavoriteVenues] = useState<DbVenue[]>([]);
@@ -40,7 +40,7 @@ export default function FavoritesScreen() {
     try {
       setLoading(true);
       const results = await Promise.all(
-        favorites.map((id) => fetchVenueById(supabase, id))
+        favorites.map((id) => fetchVenueById(id))
       );
       setFavoriteVenues(results.filter(Boolean) as DbVenue[]);
     } catch (err) {

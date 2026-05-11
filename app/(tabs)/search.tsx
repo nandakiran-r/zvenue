@@ -20,7 +20,7 @@ import type { DbCategory, DbVenue } from "@/lib/types";
 
 export default function SearchScreen() {
   const insets = useSafeAreaInsets();
-  const { supabase } = useAuth();
+  
   const { favorites, toggleFavorite: toggleFav } = useFavorites();
 
   const [searchText, setSearchText] = useState<string>("");
@@ -33,17 +33,17 @@ export default function SearchScreen() {
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    fetchCategories(supabase).then(setCategories).catch(console.error);
-  }, [supabase]);
+    fetchCategories().then(setCategories).catch(console.error);
+  }, []);
 
   useEffect(() => {
     loadVenues();
-  }, [supabase, searchText, selectedCategory, minCapacity]);
+  }, [searchText, selectedCategory, minCapacity]);
 
   const loadVenues = async () => {
     try {
       setLoading(true);
-      const data = await fetchVenues(supabase, {
+      const data = await fetchVenues({
         search: searchText || undefined,
         categoryName: selectedCategory ?? undefined,
         minCapacity: minCapacity ?? undefined,

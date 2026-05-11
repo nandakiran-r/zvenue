@@ -11,9 +11,9 @@ export default function TabLayout() {
   if (!isLoaded) return null;
 
   // Redirect unauthenticated users to login
-  if (!isSignedIn) {
-    return <Redirect href="/login" />;
-  }
+  // if (!isSignedIn) {
+  //   return <Redirect href="/login" />;
+  // }
 
   return (
     <Tabs

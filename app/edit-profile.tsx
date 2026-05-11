@@ -21,7 +21,7 @@ import { updateUser } from "@/lib/api";
 
 export default function EditProfileScreen() {
     const insets = useSafeAreaInsets();
-    const { supabase, user, dbUser, userId, refreshProfile } = useAuth();
+    const { dbUser, userId, refreshProfile } = useAuth();
 
     const [name, setName] = useState("");
     const [email, setEmail] = useState("");
@@ -35,17 +35,14 @@ export default function EditProfileScreen() {
             setEmail(dbUser.email ?? "");
             setPhone(dbUser.phone ?? "");
             setDob(dbUser.dob ?? "");
-        } else if (user) {
-            setName(user.fullName ?? user.firstName ?? "");
-            setEmail(user.emailAddresses?.[0]?.emailAddress ?? "");
         }
-    }, [dbUser, user]);
+    }, [dbUser]);
 
     const handleSave = async () => {
         if (!userId || saving) return;
         try {
             setSaving(true);
-            await updateUser(supabase, userId, {
+            await updateUser(userId, {
                 full_name: name,
                 email,
                 phone,
@@ -61,7 +58,7 @@ export default function EditProfileScreen() {
         }
     };
 
-    const displayAvatar = dbUser?.avatar_url ?? user?.imageUrl ?? null;
+    const displayAvatar = dbUser?.avatar_url ?? null;
 
     return (
         <View style={[styles.container, { paddingTop: insets.top }]}>

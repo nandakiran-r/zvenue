@@ -1,5 +1,5 @@
 import { Link } from '@tanstack/react-router'
-import { useUser, useClerk } from '@clerk/react'
+import { useAuth } from '@/context/auth-provider'
 import {
   BadgeCheck,
   Bell,
@@ -32,13 +32,12 @@ type NavUserProps = {
 }
 
 export function NavUser({ user: fallbackUser }: NavUserProps) {
+  const { user: authUser, logout } = useAuth()
   const { isMobile } = useSidebar()
-  const { user: clerkUser } = useUser()
-  const { signOut } = useClerk()
 
-  const displayName = clerkUser?.fullName || clerkUser?.firstName || fallbackUser.name
-  const displayEmail = clerkUser?.emailAddresses?.[0]?.emailAddress || fallbackUser.email
-  const displayAvatar = clerkUser?.imageUrl || fallbackUser.avatar
+  const displayName = authUser?.full_name || fallbackUser.name
+  const displayEmail = authUser?.email || fallbackUser.email
+  const displayAvatar = authUser?.avatar_url || fallbackUser.avatar
 
   return (
     <SidebarMenu>
@@ -100,7 +99,7 @@ export function NavUser({ user: fallbackUser }: NavUserProps) {
             <DropdownMenuSeparator />
             <DropdownMenuItem
               variant='destructive'
-              onClick={() => signOut({ redirectUrl: '/sign-in' })}
+              onClick={() => logout()}
             >
               <LogOut />
               Sign out

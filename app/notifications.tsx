@@ -17,7 +17,7 @@ import type { DbNotification } from "@/lib/types";
 
 export default function NotificationsScreen() {
   const insets = useSafeAreaInsets();
-  const { supabase, dbUser } = useAuth();
+  const { dbUser } = useAuth();
 
   const [notifications, setNotifications] = useState<DbNotification[]>([]);
   const [loading, setLoading] = useState(true);
@@ -31,7 +31,7 @@ export default function NotificationsScreen() {
     if (!dbUser) return;
     try {
       setLoading(true);
-      const data = await fetchNotifications(supabase, dbUser.id);
+      const data = await fetchNotifications(dbUser.id);
       setNotifications(data);
     } catch (err) {
       console.error("Failed to load notifications:", err);
@@ -42,7 +42,7 @@ export default function NotificationsScreen() {
 
   const handleMarkRead = async (id: string) => {
     try {
-      await markNotificationRead(supabase, id);
+      await markNotificationRead(id);
       setNotifications((prev) =>
         prev.map((n) => (n.id === id ? { ...n, is_read: true } : n))
       );

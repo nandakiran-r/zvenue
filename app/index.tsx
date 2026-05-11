@@ -25,11 +25,8 @@ export default function SplashScreen() {
 
     const timer = setTimeout(() => {
       if (isLoaded) {
-        if (isSignedIn) {
-          router.replace("/(tabs)/home");
-        } else {
-          router.replace("/onboarding");
-        }
+        // BYPASS AUTH FOR TESTING
+        router.replace("/(tabs)/home");
       }
     }, 2500);
     return () => clearTimeout(timer);

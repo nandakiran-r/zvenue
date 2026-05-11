@@ -32,7 +32,7 @@ const AMENITY_ICONS: Record<string, any> = {
 export default function VenueDetailScreen() {
     const { id } = useLocalSearchParams<{ id: string }>();
     const insets = useSafeAreaInsets();
-    const { supabase } = useAuth();
+    
     const { isFavorite, toggleFavorite } = useFavorites();
 
     const [venue, setVenue] = useState<DbVenue | null>(null);
@@ -46,7 +46,7 @@ export default function VenueDetailScreen() {
     const loadVenue = async () => {
         try {
             setLoading(true);
-            const data = await fetchVenueById(supabase, id!);
+            const data = await fetchVenueById(id!);
             setVenue(data);
         } catch (err) {
             console.error("Failed to load venue:", err);

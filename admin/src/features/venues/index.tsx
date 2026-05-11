@@ -65,7 +65,7 @@ import {
 } from '@/lib/api'
 
 function formatINR(amount: number) {
-  return `₹${amount.toLocaleString('en-IN')}`
+  return `₹${(amount || 0).toLocaleString('en-IN')}`
 }
 
 const defaultVenueForm = {

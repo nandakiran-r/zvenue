@@ -55,7 +55,7 @@ import { ThemeSwitch } from '@/components/theme-switch'
 import { fetchBookings, updateBooking, deleteBooking } from '@/lib/api'
 
 function formatINR(amount: number) {
-  return `₹${amount.toLocaleString('en-IN')}`
+  return `₹${(amount || 0).toLocaleString('en-IN')}`
 }
 
 function statusVariant(status: string) {

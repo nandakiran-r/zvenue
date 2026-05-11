@@ -1,5 +1,5 @@
 import { Link } from '@tanstack/react-router'
-import { useUser, useClerk } from '@clerk/react'
+import { useAuth } from '@/context/auth-provider'
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar'
 import { Button } from '@/components/ui/button'
 import {
@@ -14,12 +14,11 @@ import {
 } from '@/components/ui/dropdown-menu'
 
 export function ProfileDropdown() {
-  const { user } = useUser()
-  const { signOut } = useClerk()
+  const { user, logout } = useAuth()
 
-  const displayName = user?.fullName || user?.firstName || 'Admin'
-  const displayEmail = user?.emailAddresses?.[0]?.emailAddress || ''
-  const displayAvatar = user?.imageUrl || ''
+  const displayName = user?.full_name || 'Admin'
+  const displayEmail = user?.email || ''
+  const displayAvatar = user?.avatar_url || ''
 
   return (
     <DropdownMenu modal={false}>
@@ -60,7 +59,7 @@ export function ProfileDropdown() {
         <DropdownMenuSeparator />
         <DropdownMenuItem
           variant='destructive'
-          onClick={() => signOut({ redirectUrl: '/sign-in' })}
+          onClick={() => logout()}
         >
           Sign out
           <DropdownMenuShortcut className='text-current'>

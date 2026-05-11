@@ -1,17 +1,17 @@
-import { ClerkProvider, ClerkLoaded } from "@clerk/clerk-expo";
+
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { Stack } from "expo-router";
 import * as SplashScreen from "expo-splash-screen";
 import React, { useEffect } from "react";
 import { GestureHandlerRootView } from "react-native-gesture-handler";
-import { tokenCache } from "@/lib/clerk";
+
 import { AuthProvider } from "@/context/AuthContext";
 import { FavoritesProvider } from "@/context/FavoritesContext";
 
 SplashScreen.preventAutoHideAsync();
 
 const queryClient = new QueryClient();
-const publishableKey = process.env.EXPO_PUBLIC_CLERK_PUBLISHABLE_KEY!;
+
 
 function RootLayoutNav() {
   return (
@@ -43,8 +43,6 @@ export default function RootLayout() {
   }, []);
 
   return (
-    <ClerkProvider publishableKey={publishableKey} tokenCache={tokenCache}>
-      <ClerkLoaded>
         <AuthProvider>
           <FavoritesProvider>
             <QueryClientProvider client={queryClient}>
@@ -54,7 +52,5 @@ export default function RootLayout() {
             </QueryClientProvider>
           </FavoritesProvider>
         </AuthProvider>
-      </ClerkLoaded>
-    </ClerkProvider>
   );
 }

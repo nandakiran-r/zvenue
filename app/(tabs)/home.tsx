@@ -48,7 +48,7 @@ const POPULAR_CITIES = ["Mumbai", "Delhi", "Bengaluru", "Jaipur"];
 
 export default function HomeScreen() {
   const insets = useSafeAreaInsets();
-  const { supabase } = useAuth();
+  
   const { isFavorite, toggleFavorite } = useFavorites();
 
   const [categories, setCategories] = useState<DbCategory[]>([]);
@@ -62,14 +62,14 @@ export default function HomeScreen() {
 
   useEffect(() => {
     loadData();
-  }, [supabase]);
+  }, []);
 
   const loadData = async () => {
     try {
       setLoading(true);
       const [cats, allVenues] = await Promise.all([
-        fetchCategories(supabase),
-        fetchVenues(supabase),
+        fetchCategories(),
+        fetchVenues(),
       ]);
       setCategories(cats);
 

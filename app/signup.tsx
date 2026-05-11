@@ -1,8 +1,7 @@
-import { useSignUp, useOAuth } from "@clerk/clerk-expo";
 import { router } from "expo-router";
 import { useAuth } from "@/context/AuthContext";
 import { safeBack } from "@/constants/navigation";
-import * as WebBrowser from "expo-web-browser";
+import { api } from "@/lib/api";
 import { ChevronLeft, Eye, EyeOff, Lock, Mail, User } from "lucide-react-native";
 import React, { useCallback, useState } from "react";
 import {
@@ -21,24 +20,17 @@ import {
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import Colors from "@/constants/colors";
 
-WebBrowser.maybeCompleteAuthSession();
-
 export default function SignupScreen() {
   const [name, setName] = useState<string>("");
   const [email, setEmail] = useState<string>("");
   const [password, setPassword] = useState<string>("");
   const [showPassword, setShowPassword] = useState<boolean>(false);
   const [loading, setLoading] = useState<boolean>(false);
-  const [googleLoading, setGoogleLoading] = useState<boolean>(false);
   const insets = useSafeAreaInsets();
 
-  const { signUp, isLoaded } = useSignUp();
-  const { startOAuthFlow } = useOAuth({ strategy: "oauth_google" });
-  const { signOut } = useAuth();
+  const { login } = useAuth();
 
-  // ── Email / Password Sign-Up ────────────────────────────────────────────────
-  const handleSignup = useCallback(async () => {
-    if (!isLoaded || !signUp) return;
+  const handleSignup = async () => {
     if (!name.trim() || !email.trim() || !password.trim()) {
       Alert.alert("Required", "Please fill in all fields.");
       return;
@@ -46,53 +38,20 @@ export default function SignupScreen() {
 
     setLoading(true);
     try {
-      try {
-        await signOut();
-      } catch (e) {}
-
-      await signUp.create({
-        firstName: name.trim().split(" ")[0],
-        lastName: name.trim().split(" ").slice(1).join(" ") || undefined,
-        emailAddress: email.trim(),
+      const response = await api.post("/api/auth/sign-up", {
+        full_name: name.trim(),
+        email: email.trim(),
         password,
       });
-
-      // Send email verification code
-      await signUp.prepareEmailAddressVerification({ strategy: "email_code" });
-
-      // Navigate to OTP screen for email verification
-      router.push({
-        pathname: "/enter-otp",
-        params: { mode: "verify", email: email.trim() },
-      });
+      await login(response.data.token, response.data.user);
+      router.replace("/(tabs)/home");
     } catch (err: any) {
-      const message = err?.errors?.[0]?.longMessage ?? err?.message ?? "Signup failed. Please try again.";
+      const message = err.response?.data?.error || "Signup failed. Please try again.";
       Alert.alert("Signup Failed", message);
     } finally {
       setLoading(false);
     }
-  }, [isLoaded, signUp, name, email, password]);
-
-  // ── Google OAuth ────────────────────────────────────────────────────────────
-  const handleGoogleSignup = useCallback(async () => {
-    setGoogleLoading(true);
-    try {
-      try {
-        await signOut();
-      } catch (e) {}
-
-      const { createdSessionId, setActive } = await startOAuthFlow();
-      if (createdSessionId && setActive) {
-        await setActive({ session: createdSessionId });
-        router.replace("/(tabs)/home");
-      }
-    } catch (err: any) {
-      const message = err?.errors?.[0]?.longMessage ?? "Google sign-up failed. Please try again.";
-      Alert.alert("Google Sign-Up Failed", message);
-    } finally {
-      setGoogleLoading(false);
-    }
-  }, [startOAuthFlow]);
+  };
 
   return (
     <View style={[styles.container, { paddingTop: insets.top }]}>
@@ -177,28 +136,6 @@ export default function SignupScreen() {
               <ActivityIndicator color={Colors.white} />
             ) : (
               <Text style={styles.primaryButtonText}>Signup</Text>
-            )}
-          </TouchableOpacity>
-
-          <View style={styles.orRow}>
-            <View style={styles.orLine} />
-            <Text style={styles.orText}>Or</Text>
-            <View style={styles.orLine} />
-          </View>
-
-          <TouchableOpacity
-            style={[styles.socialButton, googleLoading && styles.disabledButton]}
-            activeOpacity={0.7}
-            onPress={handleGoogleSignup}
-            disabled={googleLoading}
-          >
-            {googleLoading ? (
-              <ActivityIndicator color={Colors.text} />
-            ) : (
-              <>
-                <Text style={styles.socialIcon}>G</Text>
-                <Text style={styles.socialText}>Sign up with Google</Text>
-              </>
             )}
           </TouchableOpacity>
 
@@ -294,42 +231,6 @@ const styles = StyleSheet.create({
     color: Colors.white,
     fontSize: 16,
     fontWeight: "700" as const,
-  },
-  orRow: {
-    flexDirection: "row",
-    alignItems: "center",
-    marginBottom: 20,
-  },
-  orLine: {
-    flex: 1,
-    height: 1,
-    backgroundColor: Colors.border,
-  },
-  orText: {
-    marginHorizontal: 16,
-    fontSize: 13,
-    color: Colors.textSecondary,
-  },
-  socialButton: {
-    flexDirection: "row",
-    alignItems: "center",
-    justifyContent: "center",
-    borderWidth: 1,
-    borderColor: Colors.border,
-    borderRadius: 16,
-    paddingVertical: 14,
-    marginBottom: 12,
-    gap: 10,
-  },
-  socialIcon: {
-    fontSize: 18,
-    fontWeight: "700" as const,
-    color: Colors.text,
-  },
-  socialText: {
-    fontSize: 14,
-    fontWeight: "500" as const,
-    color: Colors.text,
   },
   bottomRow: {
     flexDirection: "row",

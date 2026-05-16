@@ -9,6 +9,12 @@ export interface DbUser {
   phone_number: string | null;
   avatar_url: string | null;
   dob: string | null;
+  // Subscription & Trial fields
+  is_trial_used: boolean;
+  trial_ends_at: string | null;
+  subscription_id: string | null;
+  subscription_status: string | null;
+  next_billing_at: string | null;
   created_at: string;
 }
 
@@ -68,6 +74,10 @@ export interface DbBooking {
   service_fee: number;
   total: number;
   payment_method: string;
+  order_id: string | null;
+  payment_id: string | null;
+  signature: string | null;
+  paid_at: string | null;
   created_at: string;
   /** Joined from venues table */
   venue?: DbVenue;
@@ -92,4 +102,69 @@ export interface CreateBookingInput {
   service_fee: number;
   total: number;
   payment_method: string;
+}
+
+export interface CreateOrderInput {
+  venue_id: string;
+  booking_date: string;
+  start_time: string;
+  end_time: string;
+  guests: number;
+  subtotal: number;
+  service_fee: number;
+  total: number;
+}
+
+export interface VerifyPaymentInput {
+  order_id: string;
+  payment_id: string;
+  signature: string;
+  booking_id: string;
+}
+
+export interface RazorpayOrderResponse {
+  order: {
+    id: string;
+    amount: number;
+    currency: string;
+    receipt: string;
+    status: string;
+    created_at: number;
+  };
+  booking: DbBooking;
+  venue: {
+    name: string;
+    city: string;
+  };
+}
+
+export interface VerifyPaymentResponse {
+  success: boolean;
+  message: string;
+  booking: DbBooking;
+}
+
+export type SubscriptionStatus = 'none' | 'authenticated' | 'active' | 'pending' | 'cancelled' | 'halted';
+
+export interface UserSubscriptionInfo {
+  is_trial_used: boolean;
+  trial_ends_at: string | null;
+  subscription_id: string | null;
+  subscription_status: SubscriptionStatus | null;
+  next_billing_at: string | null;
+  is_trial_active: boolean;
+  is_subscription_active: boolean;
+  has_access: boolean;
+}
+
+export interface RazorpaySubscription {
+  id: string;
+  status: string;
+  plan_id: string;
+  quantity: number;
+  total_count: number;
+  start_at: number;
+  next_bill_at: number;
+  customer_notify: number;
+  notes: { user_id: string };
 }

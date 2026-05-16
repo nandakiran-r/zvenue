@@ -11,6 +11,12 @@ export const users = pgTable('users', {
   password: text('password'),
   phone_verified: boolean('phone_verified').default(false),
   avatar_url: text('avatar_url'),
+  // Subscription & Trial fields
+  is_trial_used: boolean('is_trial_used').default(false),
+  trial_ends_at: timestamp('trial_ends_at'),
+  subscription_id: varchar('subscription_id', { length: 255 }),
+  subscription_status: varchar('subscription_status', { length: 50 }).default('none'), // none, authenticated, active, pending, cancelled, halted
+  next_billing_at: timestamp('next_billing_at'),
   created_at: timestamp('created_at').defaultNow(),
 });
 
@@ -63,7 +69,11 @@ export const bookings = pgTable('bookings', {
   subtotal: integer('subtotal').notNull().default(0),
   service_fee: integer('service_fee').notNull().default(0),
   total: integer('total').notNull(),
-  payment_method: varchar('payment_method', { length: 50 }).default('UPI'),
+  payment_method: varchar('payment_method', { length: 50 }).default('razorpay'),
+  order_id: varchar('order_id', { length: 255 }),
+  payment_id: varchar('payment_id', { length: 255 }),
+  signature: varchar('signature', { length: 500 }),
+  paid_at: timestamp('paid_at'),
   created_at: timestamp('created_at').defaultNow(),
 });
 

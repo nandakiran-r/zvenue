@@ -1,0 +1,18 @@
+PORT=3001
+DATABASE_URL="postgresql://neondb_owner:npg_3A5YshavEQFz@ep-ancient-math-aok29di2-pooler.c-2.ap-southeast-1.aws.neon.tech/neondb?sslmode=require"
+
+# Comma-separated list of allowed CORS origins
+ALLOWED_ORIGINS=http://localhost:5173,http://localhost:4173
+
+# AOC WhatsApp Credentials
+AOC_API_KEY=Gubga82D2GFVahWVxRF120500APFnG
+AOC_WHATSAPP_NUMBER=+917736761562
+AOC_TEMPLATE_NAME=otp
+BETTER_AUTH_SECRET=da74adfc183124b29f38d1041e709b8a99bf95b1a07c4da76279dfa5e9a4d923
+JWT_SECRET=supersecret_zvenue_key_123
+BETTER_AUTH_URL=http://localhost:3001
+
+# Razorpay Credentials
+RAZORPAY_KEY_ID=rzp_test_SpDyznKPQ9nviQ
+RAZORPAY_KEY_SECRET=LMWGsU2457jFCYYdiVzzmJUM
+RAZORPAY_WEBHOOK_SECRET=YourWebhookSecretHere

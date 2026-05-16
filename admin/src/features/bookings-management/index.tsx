@@ -183,6 +183,7 @@ export function BookingsPage() {
                   <TableHead>Time</TableHead>
                   <TableHead className='text-center'>Guests</TableHead>
                   <TableHead className='text-right'>Total</TableHead>
+                  <TableHead className='text-center'>Payment</TableHead>
                   <TableHead className='text-center'>Status</TableHead>
                   <TableHead className='text-right'>Actions</TableHead>
                 </TableRow>
@@ -191,7 +192,7 @@ export function BookingsPage() {
                 {isLoading
                   ? Array.from({ length: 5 }).map((_, i) => (
                       <TableRow key={i}>
-                        {Array.from({ length: 8 }).map((_, j) => (
+                        {Array.from({ length: 9 }).map((_, j) => (
                           <TableCell key={j}><Skeleton className='h-4 w-20' /></TableCell>
                         ))}
                       </TableRow>
@@ -260,6 +261,11 @@ export function BookingsPage() {
                           {formatINR(booking.total || 0)}
                         </TableCell>
                         <TableCell className='text-center'>
+                          <Badge variant='outline' className='text-xs'>
+                            {booking.payment_method || 'N/A'}
+                          </Badge>
+                        </TableCell>
+                        <TableCell className='text-center'>
                           <Badge variant={statusVariant(booking.status)}>
                             <StatusIcon status={booking.status} />
                             <span className='ml-1'>{booking.status}</span>
@@ -314,7 +320,7 @@ export function BookingsPage() {
                     ))}
                 {!isLoading && (bookings || []).length === 0 && (
                   <TableRow>
-                    <TableCell colSpan={8} className='h-24 text-center text-muted-foreground'>
+                    <TableCell colSpan={9} className='h-24 text-center text-muted-foreground'>
                       No bookings found
                     </TableCell>
                   </TableRow>
@@ -391,9 +397,27 @@ export function BookingsPage() {
                   <span>{formatINR(selectedBooking.total || 0)}</span>
                 </div>
                 <div className='flex justify-between text-sm'>
-                  <span className='text-muted-foreground'>Payment</span>
-                  <Badge variant='outline'>{selectedBooking.payment_method}</Badge>
+                  <span className='text-muted-foreground'>Payment Method</span>
+                  <Badge variant='outline'>{selectedBooking.payment_method || 'N/A'}</Badge>
                 </div>
+                {selectedBooking.order_id && (
+                  <div className='flex justify-between text-sm'>
+                    <span className='text-muted-foreground'>Order ID</span>
+                    <span className='font-mono text-xs'>{selectedBooking.order_id}</span>
+                  </div>
+                )}
+                {selectedBooking.payment_id && (
+                  <div className='flex justify-between text-sm'>
+                    <span className='text-muted-foreground'>Payment ID</span>
+                    <span className='font-mono text-xs'>{selectedBooking.payment_id}</span>
+                  </div>
+                )}
+                {selectedBooking.paid_at && (
+                  <div className='flex justify-between text-sm'>
+                    <span className='text-muted-foreground'>Paid At</span>
+                    <span>{new Date(selectedBooking.paid_at).toLocaleString()}</span>
+                  </div>
+                )}
               </div>
 
               {selectedBooking.status === 'pending' && (

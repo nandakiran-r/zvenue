@@ -2,14 +2,13 @@ import { router, useLocalSearchParams } from "expo-router";
 import { useAuth } from "@/context/AuthContext";
 import { safeBack } from "@/constants/navigation";
 import { api } from "@/lib/api";
-import { ChevronLeft, Mail, User, Phone, Lock, CheckCircle2, XCircle } from "lucide-react-native";
+import { ChevronLeft, Mail, User, Phone } from "lucide-react-native";
 import React, { useState } from "react";
 import {
   ActivityIndicator,
   Alert,
   Image,
   KeyboardAvoidingView,
-  Modal,
   Platform,
   ScrollView,
   StyleSheet,
@@ -30,8 +29,6 @@ export default function SignupScreen() {
   const [email, setEmail] = useState<string>("");
   const [phone, setPhone] = useState<string>(initialPhone);
   const [loading, setLoading] = useState(false);
-  const [showSuccessModal, setShowSuccessModal] = useState(false);
-  const [errorMsg, setErrorMsg] = useState<string | null>(null);
   const insets = useSafeAreaInsets();
 
   const { login } = useAuth();
@@ -52,11 +49,20 @@ export default function SignupScreen() {
         phone_number: formattedPhone,
       });
       
-      // Show custom success modal
-      setShowSuccessModal(true);
+      // Auto-login after signup
+      await login(response.data.token, response.data.user);
+      
+      // Send OTP automatically
+      await api.post("/api/auth/send-otp", { phone_number: formattedPhone });
+      
+      // Navigate to OTP verification
+      router.replace({
+        pathname: "/enter-otp",
+        params: { phone: formattedPhone }
+      });
     } catch (err: any) {
       const message = err.response?.data?.error || "Signup failed. Please try again.";
-      setErrorMsg(message);
+      Alert.alert("Signup Failed", message);
     } finally {
       setLoading(false);
     }
@@ -193,58 +199,6 @@ export default function SignupScreen() {
 
         </ScrollView>
       </KeyboardAvoidingView>
-
-      {/* Success Modal */}
-      <Modal
-        visible={showSuccessModal}
-        transparent
-        animationType="fade"
-      >
-        <View style={styles.modalOverlay}>
-          <View style={styles.modalContent}>
-            <View style={[styles.iconCircle, { backgroundColor: '#E8F5E9' }]}>
-              <CheckCircle2 size={48} color="#4CAF50" />
-            </View>
-            <Text style={styles.modalTitle}>Signup Successful!</Text>
-            <Text style={styles.modalSubtitle}>
-              Your account has been created. Please log in with your mobile number to start booking.
-            </Text>
-            <TouchableOpacity
-              style={[styles.primaryButton, { width: '100%' }]}
-              onPress={() => {
-                setShowSuccessModal(false);
-                router.replace("/login");
-              }}
-            >
-              <Text style={styles.primaryButtonText}>Go to Login</Text>
-            </TouchableOpacity>
-          </View>
-        </View>
-      </Modal>
-
-      {/* Error Modal */}
-      <Modal
-        visible={!!errorMsg}
-        transparent
-        animationType="fade"
-        onRequestClose={() => setErrorMsg(null)}
-      >
-        <View style={styles.modalOverlay}>
-          <View style={styles.modalContent}>
-            <View style={[styles.iconCircle, { backgroundColor: '#FFEBEE' }]}>
-              <XCircle size={48} color="#F44336" />
-            </View>
-            <Text style={styles.modalTitle}>Signup Failed</Text>
-            <Text style={styles.modalSubtitle}>{errorMsg}</Text>
-            <TouchableOpacity
-              style={[styles.primaryButton, { width: '100%', backgroundColor: '#F44336' }]}
-              onPress={() => setErrorMsg(null)}
-            >
-              <Text style={styles.primaryButtonText}>Try Again</Text>
-            </TouchableOpacity>
-          </View>
-        </View>
-      </Modal>
     </View>
   );
 }

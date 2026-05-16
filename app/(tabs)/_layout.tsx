@@ -1,19 +1,41 @@
 import { useAuth } from "@/context/AuthContext";
 import { Redirect, Tabs } from "expo-router";
 import { Heart, Home, Search, User } from "lucide-react-native";
-import React from "react";
+import React, { useEffect } from "react";
+import { ActivityIndicator, View } from "react-native";
 import Colors from "@/constants/colors";
 
 export default function TabLayout() {
-  const { isSignedIn, isLoaded } = useAuth();
+  const { isSignedIn, isLoaded, hasAccess, subscriptionInfo, refreshSubscriptionInfo } = useAuth();
 
-  // Wait for Clerk to load before deciding
-  if (!isLoaded) return null;
+  // Wait for auth to load
+  if (!isLoaded) {
+    return (
+      <View style={{ flex: 1, justifyContent: 'center', alignItems: 'center', backgroundColor: Colors.background }}>
+        <ActivityIndicator size="large" color={Colors.primary} />
+      </View>
+    );
+  }
 
   // Redirect unauthenticated users to login
-  // if (!isSignedIn) {
-  //   return <Redirect href="/login" />;
-  // }
+  if (!isSignedIn) {
+    return <Redirect href="/login" />;
+  }
+
+  // Check subscription/trial status
+  // If user has no access, redirect to subscription screen
+  if (isSignedIn && !hasAccess && subscriptionInfo) {
+    return <Redirect href="/subscription" />;
+  }
+
+  // If subscription info is loading, show loading state
+  if (isSignedIn && subscriptionInfo === null) {
+    return (
+      <View style={{ flex: 1, justifyContent: 'center', alignItems: 'center', backgroundColor: Colors.background }}>
+        <ActivityIndicator size="large" color={Colors.primary} />
+      </View>
+    );
+  }
 
   return (
     <Tabs

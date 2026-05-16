@@ -1,7 +1,7 @@
 import React, { createContext, useContext, useEffect, useState, useCallback } from "react";
 import AsyncStorage from "@react-native-async-storage/async-storage";
-import { api, fetchUser } from "@/lib/api";
-import type { DbUser } from "@/lib/types";
+import { api, fetchUser, fetchUserWithSubscription, getSubscriptionStatus } from "@/lib/api";
+import type { DbUser, UserSubscriptionInfo } from "@/lib/types";
 
 interface AuthContextValue {
   isSignedIn: boolean;
@@ -13,6 +13,11 @@ interface AuthContextValue {
   dbUser: DbUser | null;
   /** Re-fetch the DB user profile (call after edits) */
   refreshProfile: () => Promise<void>;
+  /** Subscription info */
+  subscriptionInfo: UserSubscriptionInfo | null;
+  refreshSubscriptionInfo: () => Promise<void>;
+  /** Check if user has access (trial or subscription active) */
+  hasAccess: boolean;
 }
 
 const AuthContext = createContext<AuthContextValue | null>(null);
@@ -21,6 +26,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const [dbUser, setDbUser] = useState<DbUser | null>(null);
   const [token, setToken] = useState<string | null>(null);
   const [isLoaded, setIsLoaded] = useState(false);
+  const [subscriptionInfo, setSubscriptionInfo] = useState<UserSubscriptionInfo | null>(null);
 
   useEffect(() => {
     const loadToken = async () => {
@@ -71,6 +77,22 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     }
   }, [dbUser?.id]);
 
+  const refreshSubscriptionInfo = useCallback(async () => {
+    if (!dbUser?.id) return;
+    try {
+      const status = await getSubscriptionStatus();
+      setSubscriptionInfo(status);
+    } catch (err) {
+      console.error("Failed to refresh subscription info:", err);
+    }
+  }, [dbUser?.id]);
+
+  useEffect(() => {
+    if (dbUser?.id) {
+      refreshSubscriptionInfo();
+    }
+  }, [dbUser?.id, refreshSubscriptionInfo]);
+
   const value: AuthContextValue = {
     isSignedIn: !!token,
     isLoaded,
@@ -79,6 +101,9 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     login,
     dbUser,
     refreshProfile,
+    subscriptionInfo,
+    refreshSubscriptionInfo,
+    hasAccess: subscriptionInfo?.has_access || false,
   };
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;

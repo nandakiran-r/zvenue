@@ -8,15 +8,25 @@ import type {
   DbUser,
   VenueFilters,
   CreateBookingInput,
+  SubscriptionStatus,
+  UserSubscriptionInfo,
+  RazorpaySubscription,
+  CreateOrderInput,
+  VerifyPaymentInput,
+  RazorpayOrderResponse,
+  VerifyPaymentResponse,
 } from './types';
 
-// Assuming Android emulator connects to 10.0.2.2 or similar. 
-// Adjust URL accordingly if testing on physical device.
-const API_URL = process.env.EXPO_PUBLIC_API_URL || 'http://10.0.2.2:3001';
+// Use environment variable for API URL (EXPO_PUBLIC_API_URL must be defined in .env)
+// For local development, the backend runs on http://localhost:3001
+// On physical device/emulator, use your machine's local IP (e.g., http://192.168.1.XXX:3001)
+const API_URL = process.env.EXPO_PUBLIC_API_URL || 'http://localhost:3001';
 
 export const api = axios.create({
   baseURL: API_URL,
-  headers: { 'Content-Type': 'application/json' },
+  headers: {
+    'Content-Type': 'application/json',
+  },
 });
 
 api.interceptors.request.use(async (config) => {
@@ -95,6 +105,18 @@ export async function createBooking(input: CreateBookingInput): Promise<DbBookin
   return data;
 }
 
+// ─── BOOKING PAYMENTS ───────────────────────────────────────────────────────
+
+export async function createBookingOrder(input: CreateOrderInput): Promise<RazorpayOrderResponse> {
+  const { data } = await api.post('/api/bookings/create-order', input);
+  return data;
+}
+
+export async function verifyPayment(input: VerifyPaymentInput): Promise<VerifyPaymentResponse> {
+  const { data } = await api.post('/api/bookings/verify-payment', input);
+  return data;
+}
+
 // ─── Notifications ─────────────────────────────────────────────────────────
 export async function fetchNotifications(userId: string): Promise<DbNotification[]> {
   const { data } = await api.get(`/api/notifications`, { params: { user_id: userId } });
@@ -116,7 +138,49 @@ export async function fetchUser(userId: string): Promise<DbUser | null> {
   }
 }
 
+// Fetch user with subscription info (used after login)
+export async function fetchUserWithSubscription(userId: string): Promise<DbUser | null> {
+  try {
+    // The /api/auth/me endpoint already includes subscription fields from the JWT payload
+    const { data } = await api.get(`/api/auth/me`);
+    return data;
+  } catch {
+    return null;
+  }
+}
+
 export async function updateUser(userId: string, updates: any): Promise<DbUser> {
   const { data } = await api.put(`/api/users/${userId}`, updates);
+  return data;
+}
+
+// ─── SUBSCRIPTION ─────────────────────────────────────────────────────────────
+
+export async function createSubscription(plan_id: string, quantity?: number, total_count?: number): Promise<RazorpaySubscription> {
+  const { data } = await api.post('/api/subscriptions/create', {
+    plan_id,
+    quantity: quantity || 1,
+    total_count: total_count || 12,
+  });
+  return data.subscription;
+}
+
+export async function getSubscriptionStatus(): Promise<UserSubscriptionInfo> {
+  const { data } = await api.get('/api/subscription/status');
+  return data;
+}
+
+export async function cancelSubscription(): Promise<{ success: boolean; message: string }> {
+  const { data } = await api.post('/api/subscriptions/cancel');
+  return data;
+}
+
+export async function getCheckoutOptions(): Promise<{ checkoutOptions: any; subscription: any }> {
+  const { data } = await api.post('/api/subscriptions/checkout');
+  return data;
+}
+
+export async function activateTrial(): Promise<{ success: boolean; message: string; trial_ends_at: string }> {
+  const { data } = await api.post('/api/subscription/activate-trial');
   return data;
 }

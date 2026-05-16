@@ -16,6 +16,8 @@ const Colors = {
   inputBackground: '#F9F9F9',
   success: '#4CD964',
   successLight: '#D4F5DC',
+  error: '#FF3B30',
+  errorLight: '#FFE5E5',
   white: '#FFFFFF',
   black: '#000000',
   overlay: 'rgba(0,0,0,0.5)',

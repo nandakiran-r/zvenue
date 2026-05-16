@@ -1,7 +1,7 @@
 import { router, useLocalSearchParams } from "expo-router";
 import { safeBack } from "@/constants/navigation";
 import { Calendar, ChevronLeft, Clock, MapPin, Users, XCircle } from "lucide-react-native";
-import React, { useEffect, useState } from "react";
+import React, { useEffect, useState, useRef } from "react";
 import {
     ActivityIndicator,
     Alert,
@@ -13,22 +13,24 @@ import {
     TextInput,
     TouchableOpacity,
     View,
+    Platform,
 } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import Colors from "@/constants/colors";
 import { useAuth } from "@/context/AuthContext";
-import { fetchVenueById, createBooking } from "@/lib/api";
+import { fetchVenueById, createBookingOrder, verifyPayment } from "@/lib/api";
 import type { DbVenue } from "@/lib/types";
+import Razorpay from "react-native-razorpay";
 
 export default function BookingDetailScreen() {
     const { id } = useLocalSearchParams<{ id: string }>();
     const insets = useSafeAreaInsets();
-    const { dbUser } = useAuth();
+    const { dbUser, hasAccess, subscriptionInfo } = useAuth();
 
     const [venue, setVenue] = useState<DbVenue | null>(null);
     const [loading, setLoading] = useState(true);
     const [submitting, setSubmitting] = useState(false);
-    const [paymentMethod, setPaymentMethod] = useState<"card" | "paypal">("card");
+    const [paymentMethod, setPaymentMethod] = useState<"razorpay" | "upi">("razorpay");
     
     // New states for selection
     const [bookingDate, setBookingDate] = useState(new Date().toISOString().split("T")[0]);
@@ -36,11 +38,20 @@ export default function BookingDetailScreen() {
     const [endTime, setEndTime] = useState("02:00 PM");
     const [guests, setGuests] = useState("200");
     const [errorMsg, setErrorMsg] = useState<string | null>(null);
+    const [unavailableModal, setUnavailableModal] = useState(false);
+    const [conflictDetails, setConflictDetails] = useState<any>(null);
 
     useEffect(() => {
         if (!id) return;
         loadVenue();
     }, [id]);
+
+    // Check subscription access
+    useEffect(() => {
+        if (dbUser && !hasAccess && !loading) {
+            setErrorMsg("You need an active trial or subscription to book venues.");
+        }
+    }, [dbUser, hasAccess, loading]);
 
     const loadVenue = async () => {
         try {
@@ -71,29 +82,189 @@ export default function BookingDetailScreen() {
     const formatPrice = (amount: number) => `₹${amount.toLocaleString("en-IN")}`;
 
     const handleConfirm = async () => {
-        if (!dbUser || submitting) return;
+        console.log("=== Confirm Booking Clicked ===");
+        console.log("dbUser:", dbUser);
+        console.log("submitting:", submitting);
+        
+        if (!dbUser) {
+            console.log("No dbUser - showing auth alert");
+            Alert.alert(
+                "Authentication Required",
+                "Please log in to book a venue.",
+                [
+                    { text: "Cancel", style: "cancel" },
+                    { text: "Log In", onPress: () => router.push("/login" as any) }
+                ]
+            );
+            return;
+        }
+        
+        if (!hasAccess) {
+            console.log("No subscription access - showing alert");
+            Alert.alert(
+                "Subscription Required",
+                "You need an active trial or subscription to book venues. Would you like to subscribe now?",
+                [
+                    { text: "Cancel", style: "cancel" },
+                    {
+                        text: "Subscribe",
+                        onPress: () => router.push("/subscription" as any)
+                    }
+                ]
+            );
+            return;
+        }
+        
+        if (submitting) {
+            console.log("Already submitting - ignoring");
+            return;
+        }
+        
         try {
+            console.log("Starting booking payment...");
             setSubmitting(true);
-            const booking = await createBooking({
-                user_id: dbUser.id,
+            setErrorMsg(null);
+            
+            // Step 1: Create Razorpay order
+            const orderData = {
                 venue_id: venue.id,
                 booking_date: bookingDate,
                 start_time: startTime,
                 end_time: endTime,
-                duration_hours: hoursBooked,
                 guests: parseInt(guests),
                 subtotal,
                 service_fee: serviceFee,
                 total,
-                payment_method: paymentMethod,
-            });
-            router.push({ pathname: "/booking-confirmed", params: { id: booking.id, venueId: venue.id } });
+            };
+            
+            console.log("Creating order with data:", orderData);
+            const orderResponse = await createBookingOrder(orderData);
+            console.log("Order created:", orderResponse);
+            
+            const { order, booking } = orderResponse;
+            
+            // Step 2: Open Razorpay checkout
+            const options = {
+                description: `Booking for ${venue.name}`,
+                image: "https://your-logo-url.com/logo.png",
+                currency: "INR",
+                key: process.env.RAZORPAY_KEY_ID || "rzp_test_SpDyznKPQ9nviQ",
+                amount: order.amount,
+                order_id: order.id,
+                name: "Zvenue",
+                prefill: {
+                    email: dbUser.email || "",
+                    contact: dbUser.phone_number || "",
+                    name: dbUser.full_name || "",
+                },
+                theme: {
+                    color: "#7a3317",
+                },
+                modal: {
+                    // For iOS
+                    confirm_close: true,
+                    // For Android
+                    back_button_close: true,
+                    // Avoid closing on outside touch
+                    escape_exit: false,
+                },
+            };
+            
+            try {
+                const paymentData = await Razorpay.open(options);
+                console.log("Payment successful:", paymentData);
+                
+                // Verify payment and confirm booking
+                await verifyPaymentOnServer(paymentData, booking.id);
+            } catch (error: any) {
+                console.log("Payment failed or cancelled:", error);
+                setSubmitting(false);
+                if (error.code && error.code === 0) {
+                    // User cancelled
+                    setErrorMsg("Payment was cancelled. Please try again.");
+                    Alert.alert("Payment Cancelled", "The payment was cancelled. Please try again.");
+                } else {
+                    setErrorMsg("Payment failed. Please try again.");
+                    Alert.alert("Payment Failed", "The payment could not be completed. Please try again.");
+                }
+            }
+            
         } catch (err: any) {
-            const errorMsg = err.response?.data?.error || "Failed to create booking.";
-            setErrorMsg(errorMsg);
             console.error("Failed to create booking:", err);
-        } finally {
+            
+            if (err.response) {
+                console.error("Response status:", err.response.status);
+                console.error("Response data:", err.response.data);
+            }
+            
+            const errorData = err.response?.data;
+            const errorMsg = errorData?.error || "Failed to create booking.";
+            
+            // Check for venue unavailability
+            if (errorData?.error === 'venue_unavailable') {
+                setConflictDetails(errorData.conflict);
+                setUnavailableModal(true);
+            } else if (errorData?.code === 'SUBSCRIPTION_REQUIRED') {
+                Alert.alert(
+                    "Subscription Required",
+                    "You need an active trial or subscription to book venues. Would you like to subscribe now?",
+                    [
+                        { text: "Cancel", style: "cancel" },
+                        {
+                            text: "Subscribe",
+                            onPress: () => router.push("/subscription" as any)
+                        }
+                    ]
+                );
+            } else {
+                setErrorMsg(errorMsg);
+                Alert.alert("Booking Failed", errorMsg);
+            }
             setSubmitting(false);
+        }
+    };
+    
+    const verifyPaymentOnServer = async (paymentData: any, bookingId: string) => {
+        try {
+            console.log("Verifying payment on server...");
+            const verifyData = {
+                order_id: paymentData.orderId,
+                payment_id: paymentData.paymentId,
+                signature: paymentData.signature,
+                booking_id: bookingId,
+            };
+            
+            const response = await verifyPayment(verifyData);
+            console.log("Payment verified:", response);
+            
+            setSubmitting(false);
+            
+            if (response.success) {
+                Alert.alert(
+                    "Payment Successful!",
+                    "Your booking has been confirmed.",
+                    [
+                        {
+                            text: "OK",
+                            onPress: () => {
+                                router.push({
+                                    pathname: "/booking-confirmed",
+                                    params: {
+                                        id: response.booking.id,
+                                        venueId: response.booking.venue_id
+                                    }
+                                });
+                            }
+                        }
+                    ]
+                );
+            } else {
+                Alert.alert("Verification Failed", "Could not verify payment. Please contact support.");
+            }
+        } catch (err: any) {
+            console.error("Payment verification error:", err);
+            setSubmitting(false);
+            Alert.alert("Error", "Failed to verify payment. Please contact support.");
         }
     };
 
@@ -193,34 +364,54 @@ export default function BookingDetailScreen() {
                 <Text style={[styles.sectionTitle, { marginTop: 8 }]}>Payment Method</Text>
 
                 <TouchableOpacity
-                    style={[styles.paymentOption, paymentMethod === "card" && styles.paymentOptionActive]}
-                    onPress={() => setPaymentMethod("card")}
+                    style={[styles.paymentOption, paymentMethod === "razorpay" && styles.paymentOptionActive]}
+                    onPress={() => setPaymentMethod("razorpay")}
                     activeOpacity={0.7}
                 >
-                    <View style={styles.paymentIconContainer}>
-                        <View style={[styles.paymentDot, { backgroundColor: "#FF9900" }]} />
-                        <View style={[styles.paymentDot, { backgroundColor: "#CC0000", marginLeft: -6 }]} />
+                    <View style={styles.razorpayIcon}>
+                        <Text style={styles.razorpayText}>R</Text>
                     </View>
-                    <Text style={styles.paymentLabel}>Credit / Debit Card</Text>
-                    <View style={[styles.radio, paymentMethod === "card" && styles.radioActive]}>
-                        {paymentMethod === "card" && <View style={styles.radioInner} />}
+                    <Text style={styles.paymentLabel}>Razorpay (Card/UPI/Netbanking)</Text>
+                    <View style={[styles.radio, paymentMethod === "razorpay" && styles.radioActive]}>
+                        {paymentMethod === "razorpay" && <View style={styles.radioInner} />}
                     </View>
                 </TouchableOpacity>
 
                 <TouchableOpacity
-                    style={[styles.paymentOption, paymentMethod === "paypal" && styles.paymentOptionActive]}
-                    onPress={() => setPaymentMethod("paypal")}
+                    style={[styles.paymentOption, paymentMethod === "upi" && styles.paymentOptionActive]}
+                    onPress={() => setPaymentMethod("upi")}
                     activeOpacity={0.7}
                 >
-                    <View style={styles.paypalIcon}>
-                        <Text style={styles.paypalText}>P</Text>
+                    <View style={styles.upiIcon}>
+                        <Text style={styles.upiText}>U</Text>
                     </View>
-                    <Text style={styles.paymentLabel}>UPI / Paypal</Text>
-                    <View style={[styles.radio, paymentMethod === "paypal" && styles.radioActive]}>
-                        {paymentMethod === "paypal" && <View style={styles.radioInner} />}
+                    <Text style={styles.paymentLabel}>UPI (GPay/PhonePe/Paytm)</Text>
+                    <View style={[styles.radio, paymentMethod === "upi" && styles.radioActive]}>
+                        {paymentMethod === "upi" && <View style={styles.radioInner} />}
                     </View>
                 </TouchableOpacity>
             </ScrollView>
+            
+            {/* Subscription Warning Banner */}
+            {dbUser && !hasAccess && (
+                <View style={styles.warningBanner}>
+                    <View style={styles.warningIconContainer}>
+                        <XCircle size={24} color="#F57C00" />
+                    </View>
+                    <View style={styles.warningTextContainer}>
+                        <Text style={styles.warningTitle}>Subscription Required</Text>
+                        <Text style={styles.warningMessage}>
+                            You need an active trial or subscription to book venues.
+                        </Text>
+                    </View>
+                    <TouchableOpacity
+                        style={styles.warningButton}
+                        onPress={() => router.push("/subscription" as any)}
+                    >
+                        <Text style={styles.warningButtonText}>Subscribe</Text>
+                    </TouchableOpacity>
+                </View>
+            )}
 
             <View style={[styles.bottomBar, { paddingBottom: insets.bottom + 12 }]}>
                 <View style={styles.priceColumn}>
@@ -257,6 +448,39 @@ export default function BookingDetailScreen() {
                             onPress={() => setErrorMsg(null)}
                         >
                             <Text style={styles.primaryButtonText}>Try Again</Text>
+                        </TouchableOpacity>
+                    </View>
+                </View>
+            </Modal>
+
+            {/* Venue Unavailable Modal */}
+            <Modal
+                visible={unavailableModal}
+                transparent
+                animationType="fade"
+                onRequestClose={() => setUnavailableModal(false)}
+            >
+                <View style={styles.modalOverlay}>
+                    <View style={[styles.modalContent, { maxWidth: 400 }]}>
+                        <View style={[styles.iconCircle, { backgroundColor: '#FFF3E0' }]}>
+                            <Calendar size={48} color="#F57C00" />
+                        </View>
+                        <Text style={styles.modalTitle}>Venue Not Available</Text>
+                        <Text style={styles.modalSubtitle}>
+                            This venue is already booked on {conflictDetails?.date} from {conflictDetails?.start_time} to {conflictDetails?.end_time}.
+                            Please choose a different date or time.
+                        </Text>
+                        <View style={styles.suggestionContainer}>
+                            <Text style={styles.suggestionTitle}>Suggestions:</Text>
+                            <Text style={styles.suggestionText}>• Check the venue's available dates</Text>
+                            <Text style={styles.suggestionText}>• Try a different time slot</Text>
+                            <Text style={styles.suggestionText}>• Contact the venue owner directly</Text>
+                        </View>
+                        <TouchableOpacity
+                            style={[styles.primaryButton, { width: '100%', backgroundColor: Colors.primary }]}
+                            onPress={() => setUnavailableModal(false)}
+                        >
+                            <Text style={styles.primaryButtonText}>Understood</Text>
                         </TouchableOpacity>
                     </View>
                 </View>
@@ -442,18 +666,50 @@ const styles = StyleSheet.create({
         borderRadius: 6,
         backgroundColor: Colors.primary,
     },
-    paypalIcon: {
+    razorpayIcon: {
         width: 36,
         height: 28,
         borderRadius: 6,
-        backgroundColor: "#003087",
+        backgroundColor: "#0046B5",
         alignItems: "center",
         justifyContent: "center",
     },
-    paypalText: {
+    razorpayText: {
         fontSize: 16,
         fontWeight: "800" as const,
         color: Colors.white,
+    },
+    upiIcon: {
+        width: 36,
+        height: 28,
+        borderRadius: 6,
+        backgroundColor: "#5F2B8A",
+        alignItems: "center",
+        justifyContent: "center",
+    },
+    upiText: {
+        fontSize: 16,
+        fontWeight: "800" as const,
+        color: Colors.white,
+    },
+    suggestionContainer: {
+        backgroundColor: Colors.surface,
+        borderRadius: 12,
+        padding: 16,
+        marginBottom: 20,
+        width: '100%',
+    },
+    suggestionTitle: {
+        fontSize: 14,
+        fontWeight: "700" as const,
+        color: Colors.text,
+        marginBottom: 8,
+    },
+    suggestionText: {
+        fontSize: 13,
+        color: Colors.textSecondary,
+        marginBottom: 4,
+        lineHeight: 18,
     },
     bottomBar: {
         position: "absolute",
@@ -563,6 +819,50 @@ const styles = StyleSheet.create({
     primaryButtonText: {
         color: Colors.white,
         fontSize: 15,
+        fontWeight: "700" as const,
+    },
+    // Subscription warning banner styles
+    warningBanner: {
+        flexDirection: "row",
+        alignItems: "center",
+        backgroundColor: "#FFF3E0",
+        padding: 12,
+        marginHorizontal: 20,
+        marginBottom: 12,
+        borderRadius: 12,
+        gap: 12,
+    },
+    warningIconContainer: {
+        width: 40,
+        height: 40,
+        borderRadius: 20,
+        backgroundColor: "#FFE0B2",
+        alignItems: "center",
+        justifyContent: "center",
+    },
+    warningTextContainer: {
+        flex: 1,
+    },
+    warningTitle: {
+        fontSize: 14,
+        fontWeight: "700" as const,
+        color: "#E65100",
+        marginBottom: 2,
+    },
+    warningMessage: {
+        fontSize: 12,
+        color: "#F57C00",
+        lineHeight: 16,
+    },
+    warningButton: {
+        backgroundColor: Colors.primary,
+        paddingHorizontal: 16,
+        paddingVertical: 8,
+        borderRadius: 8,
+    },
+    warningButtonText: {
+        color: Colors.white,
+        fontSize: 12,
         fontWeight: "700" as const,
     },
 });

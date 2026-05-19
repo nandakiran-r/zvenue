@@ -94,8 +94,8 @@ export default function EnterOtpScreen() {
         full_name: full_name
       });
       await login(response.data.token, response.data.user);
-      // Redirect to onboarding to activate trial/subscription
-      router.replace("/onboarding");
+      // Navigate to home - tabs layout will gate access (redirect to /subscription if needed)
+      router.replace("/(tabs)/home");
     } catch (err: any) {
       const message = err.response?.data?.error || "Invalid code. Please try again.";
       Alert.alert("Verification Failed", message);

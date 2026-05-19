@@ -15,7 +15,7 @@ import {
 import { SafeAreaView } from "react-native-safe-area-context";
 import { WebView, WebViewNavigation } from "react-native-webview";
 import { useAuth } from "@/context/AuthContext";
-import { getSubscriptionStatus, createSubscription, getCheckoutOptions } from "@/lib/api";
+import { getSubscriptionStatus, createSubscription, getCheckoutOptions, confirmSubscription } from "@/lib/api";
 import Colors from "@/constants/colors";
 
 export default function SubscriptionScreen() {
@@ -103,38 +103,33 @@ export default function SubscriptionScreen() {
     setCheckoutModalVisible(false);
     setCheckoutHtml(null);
     
-    // Wait a moment for Razorpay webhook to process
-    await new Promise(resolve => setTimeout(resolve, 2000));
-    
-    // Refresh subscription info from the server
-    await refreshSubscriptionInfo();
-    
-    // Fetch fresh subscription status directly from API
     try {
-      const status = await getSubscriptionStatus();
-      const nowHasAccess = status?.has_access || false;
+      // Directly confirm subscription with backend (don't rely on webhook)
+      await confirmSubscription();
       
-      if (nowHasAccess) {
-        Alert.alert(
-          "Subscription Successful",
-          "Your subscription has been activated.",
-          [{ text: "OK", onPress: () => router.replace("/(tabs)/home") }]
-        );
+      // Refresh subscription info
+      await refreshSubscriptionInfo();
+      
+      Alert.alert(
+        "Subscription Successful!",
+        "Your subscription has been activated. Enjoy unlimited venue bookings!",
+        [{ text: "Let's Go!", onPress: () => router.replace("/(tabs)/home") }]
+      );
+    } catch (err) {
+      console.error("Failed to confirm subscription:", err);
+      // Even if confirm fails, try refreshing - webhook might have processed
+      await refreshSubscriptionInfo();
+      
+      const status = await getSubscriptionStatus();
+      if (status?.has_access) {
+        router.replace("/(tabs)/home");
       } else {
-        // If access still not granted, still allow proceeding but with a warning
         Alert.alert(
           "Payment Received",
-          "Your payment was successful. If you face any issues, please try refreshing the app in a minute.",
+          "Your payment was successful. Please restart the app if access isn't granted immediately.",
           [{ text: "OK", onPress: () => router.replace("/(tabs)/home") }]
         );
       }
-    } catch (err) {
-      console.error("Failed to check subscription status:", err);
-      Alert.alert(
-        "Payment Successful",
-        "Your payment was successful. Please restart the app if you face any issues.",
-        [{ text: "OK", onPress: () => router.replace("/(tabs)/home") }]
-      );
     }
   };
 

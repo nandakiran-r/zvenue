@@ -8,6 +8,13 @@ import Colors from "@/constants/colors";
 export default function TabLayout() {
   const { isSignedIn, isLoaded, hasAccess, subscriptionInfo, refreshSubscriptionInfo } = useAuth();
 
+  // Refresh subscription info when tab layout mounts
+  useEffect(() => {
+    if (isSignedIn) {
+      refreshSubscriptionInfo();
+    }
+  }, [isSignedIn]);
+
   // Wait for auth to load
   if (!isLoaded) {
     return (
@@ -22,19 +29,18 @@ export default function TabLayout() {
     return <Redirect href="/login" />;
   }
 
-  // Check subscription/trial status
-  // If user has no access, redirect to subscription screen
-  if (isSignedIn && !hasAccess && subscriptionInfo) {
-    return <Redirect href="/subscription" />;
-  }
-
-  // If subscription info is loading, show loading state
-  if (isSignedIn && subscriptionInfo === null) {
+  // If subscription info is still loading, show loading state
+  if (subscriptionInfo === null) {
     return (
       <View style={{ flex: 1, justifyContent: 'center', alignItems: 'center', backgroundColor: Colors.background }}>
         <ActivityIndicator size="large" color={Colors.primary} />
       </View>
     );
+  }
+
+  // If user has no access (trial expired + no subscription), redirect to subscription
+  if (!hasAccess) {
+    return <Redirect href="/subscription" />;
   }
 
   return (

@@ -1,15 +1,10 @@
 import { router } from "expo-router";
-import { useAuth } from "@/context/AuthContext";
-import { activateTrial } from "@/lib/api";
-import { Check, Clock, Gift, Shield, Zap } from "lucide-react-native";
-import React, { useEffect, useRef, useState } from "react";
+import AsyncStorage from "@react-native-async-storage/async-storage";
+import React, { useRef, useState } from "react";
 import {
-  ActivityIndicator,
-  Alert,
   Dimensions,
   FlatList,
   Image,
-  ScrollView,
   StyleSheet,
   Text,
   TouchableOpacity,
@@ -21,6 +16,7 @@ import Colors from "@/constants/colors";
 import { ONBOARDING_IMAGES } from "@/mocks/venues";
 
 const { width } = Dimensions.get("window");
+const ONBOARDING_SEEN_KEY = "zvenue_onboarding_seen";
 
 const SLIDES = [
   {
@@ -38,7 +34,7 @@ const SLIDES = [
   {
     id: "3",
     title: "Book your dream\nvenue in minutes",
-    subtitle: "Instant booking confirmation, no hassle. Your event, your way.",
+    subtitle: "Instant booking confirmation with secure payments. Start with a 7-day free trial!",
     images: ONBOARDING_IMAGES[2],
   },
 ];
@@ -47,17 +43,6 @@ export default function OnboardingScreen() {
   const [currentIndex, setCurrentIndex] = useState<number>(0);
   const flatListRef = useRef<FlatList>(null);
   const insets = useSafeAreaInsets();
-  const { dbUser, refreshSubscriptionInfo, hasAccess, isLoaded } = useAuth();
-  
-  const [activatingTrial, setActivatingTrial] = useState(false);
-  const [trialActivated, setTrialActivated] = useState(false);
-
-  // Redirect if user already has access (trial or subscription active)
-  useEffect(() => {
-    if (isLoaded && hasAccess) {
-      router.replace("/(tabs)/home");
-    }
-  }, [isLoaded, hasAccess]);
 
   const onViewableItemsChanged = useRef(
     ({ viewableItems }: { viewableItems: ViewToken[] }) => {
@@ -69,33 +54,23 @@ export default function OnboardingScreen() {
 
   const viewabilityConfig = useRef({ viewAreaCoveragePercentThreshold: 50 }).current;
 
-  const handleNext = async () => {
+  const handleNext = () => {
     if (currentIndex < SLIDES.length - 1) {
       flatListRef.current?.scrollToIndex({ index: currentIndex + 1 });
     } else {
-      // On last slide - activate trial and proceed
-      await activateTrialAndContinue();
+      handleGetStarted();
     }
   };
-  
-  const activateTrialAndContinue = async () => {
-    setActivatingTrial(true);
-    try {
-      const response = await activateTrial();
-      if (response.success) {
-        setTrialActivated(true);
-        await refreshSubscriptionInfo();
-        // Show success and navigate to app
-        setTimeout(() => {
-          router.replace("/(tabs)/home");
-        }, 1500);
-      }
-    } catch (err: any) {
-      const message = err.response?.data?.error || "Failed to activate trial. Please try again.";
-      Alert.alert("Activation Failed", message);
-    } finally {
-      setActivatingTrial(false);
-    }
+
+  const handleGetStarted = async () => {
+    // Mark onboarding as seen
+    await AsyncStorage.setItem(ONBOARDING_SEEN_KEY, "true");
+    router.replace("/login");
+  };
+
+  const handleSkip = async () => {
+    await AsyncStorage.setItem(ONBOARDING_SEEN_KEY, "true");
+    router.replace("/login");
   };
 
   const renderImageGrid = (images: string[]) => (
@@ -115,83 +90,25 @@ export default function OnboardingScreen() {
     </View>
   );
 
-  const renderSlide = ({ item }: { item: typeof SLIDES[0] }) => {
-    // If this is the last slide and trial is being activated or activated, show trial activation UI
-    if (item.id === "3" && currentIndex === SLIDES.length - 1) {
-      return (
-        <View style={[styles.slide, { width }, styles.trialSlide]}>
-          <View style={styles.trialContent}>
-            <View style={styles.trialIconContainer}>
-              <Gift size={48} color={Colors.primary} />
-            </View>
-            <Text style={styles.trialTitle}>Start Your 7-Day Free Trial</Text>
-            <Text style={styles.trialSubtitle}>
-              Get unlimited access to all premium venues and features
-            </Text>
-            
-            <View style={styles.trialFeatures}>
-              <View style={styles.trialFeatureItem}>
-                <Check size={20} color={Colors.success} />
-                <Text style={styles.trialFeatureText}>Unlimited venue bookings</Text>
-              </View>
-              <View style={styles.trialFeatureItem}>
-                <Check size={20} color={Colors.success} />
-                <Text style={styles.trialFeatureText}>No booking fees</Text>
-              </View>
-              <View style={styles.trialFeatureItem}>
-                <Check size={20} color={Colors.success} />
-                <Text style={styles.trialFeatureText}>Priority support</Text>
-              </View>
-              <View style={styles.trialFeatureItem}>
-                <Check size={20} color={Colors.success} />
-                <Text style={styles.trialFeatureText}>Exclusive deals</Text>
-              </View>
-            </View>
-
-            {trialActivated ? (
-              <View style={styles.successContainer}>
-                <Shield size={32} color={Colors.success} />
-                <Text style={styles.successText}>Trial Activated!</Text>
-                <Text style={styles.successSubtext}>Welcome to Zvenue Pro</Text>
-              </View>
-            ) : (
-              <TouchableOpacity
-                style={[styles.activateButton, activatingTrial && styles.disabledButton]}
-                onPress={handleNext}
-                disabled={activatingTrial}
-              >
-                {activatingTrial ? (
-                  <ActivityIndicator color={Colors.white} />
-                ) : (
-                  <>
-                    <Text style={styles.activateButtonText}>Start Free Trial</Text>
-                    <Clock size={20} color={Colors.white} />
-                  </>
-                )}
-              </TouchableOpacity>
-            )}
-
-            <Text style={styles.trialNote}>
-              Phone verification required. No charges during trial.
-            </Text>
-          </View>
-        </View>
-      );
-    }
-
-    return (
-      <View style={[styles.slide, { width }]}>
-        {renderImageGrid(item.images)}
-        <View style={styles.textContainer}>
-          <Text style={styles.title}>{item.title}</Text>
-          <Text style={styles.subtitle}>{item.subtitle}</Text>
-        </View>
+  const renderSlide = ({ item }: { item: typeof SLIDES[0] }) => (
+    <View style={[styles.slide, { width }]}>
+      {renderImageGrid(item.images)}
+      <View style={styles.textContainer}>
+        <Text style={styles.title}>{item.title}</Text>
+        <Text style={styles.subtitle}>{item.subtitle}</Text>
       </View>
-    );
-  };
+    </View>
+  );
+
+  const isLastSlide = currentIndex === SLIDES.length - 1;
 
   return (
     <View style={[styles.container, { paddingBottom: insets.bottom }]}>
+      {/* Skip button */}
+      <TouchableOpacity style={[styles.skipButton, { top: insets.top + 12 }]} onPress={handleSkip}>
+        <Text style={styles.skipText}>Skip</Text>
+      </TouchableOpacity>
+
       <FlatList
         ref={flatListRef}
         data={SLIDES}
@@ -203,29 +120,29 @@ export default function OnboardingScreen() {
         onViewableItemsChanged={onViewableItemsChanged}
         viewabilityConfig={viewabilityConfig}
       />
-      {currentIndex < SLIDES.length - 1 && (
-        <View style={styles.footer}>
-          <View style={styles.pagination}>
-            {SLIDES.map((_, index) => (
-              <View
-                key={index}
-                style={[
-                  styles.dot,
-                  index === currentIndex ? styles.dotActive : styles.dotInactive,
-                ]}
-              />
-            ))}
-          </View>
-          <TouchableOpacity
-            style={styles.button}
-            onPress={handleNext}
-            activeOpacity={0.8}
-            testID="onboarding-next"
-          >
-            <Text style={styles.buttonText}>Next</Text>
-          </TouchableOpacity>
+
+      <View style={styles.footer}>
+        <View style={styles.pagination}>
+          {SLIDES.map((_, index) => (
+            <View
+              key={index}
+              style={[
+                styles.dot,
+                index === currentIndex ? styles.dotActive : styles.dotInactive,
+              ]}
+            />
+          ))}
         </View>
-      )}
+        <TouchableOpacity
+          style={styles.button}
+          onPress={handleNext}
+          activeOpacity={0.8}
+        >
+          <Text style={styles.buttonText}>
+            {isLastSlide ? "Get Started" : "Next"}
+          </Text>
+        </TouchableOpacity>
+      </View>
     </View>
   );
 }
@@ -235,11 +152,20 @@ const styles = StyleSheet.create({
     flex: 1,
     backgroundColor: Colors.white,
   },
+  skipButton: {
+    position: "absolute",
+    right: 24,
+    zIndex: 10,
+    paddingHorizontal: 16,
+    paddingVertical: 8,
+  },
+  skipText: {
+    fontSize: 15,
+    fontWeight: "600",
+    color: Colors.textSecondary,
+  },
   slide: {
     flex: 1,
-  },
-  trialSlide: {
-    backgroundColor: Colors.background,
   },
   imageGrid: {
     flex: 1,
@@ -268,7 +194,7 @@ const styles = StyleSheet.create({
   },
   title: {
     fontSize: 28,
-    fontWeight: "700" as const,
+    fontWeight: "700",
     color: Colors.text,
     textAlign: "center",
     lineHeight: 36,
@@ -312,87 +238,6 @@ const styles = StyleSheet.create({
   buttonText: {
     color: Colors.white,
     fontSize: 16,
-    fontWeight: "700" as const,
-  },
-  // Trial activation styles
-  trialContent: {
-    flex: 1,
-    paddingHorizontal: 32,
-    paddingTop: 40,
-    alignItems: "center",
-  },
-  trialIconContainer: {
-    width: 96,
-    height: 96,
-    borderRadius: 48,
-    backgroundColor: Colors.primaryLight,
-    alignItems: "center",
-    justifyContent: "center",
-    marginBottom: 24,
-  },
-  trialTitle: {
-    fontSize: 24,
-    fontWeight: "700" as const,
-    color: Colors.text,
-    textAlign: "center",
-    marginBottom: 8,
-  },
-  trialSubtitle: {
-    fontSize: 14,
-    color: Colors.textSecondary,
-    textAlign: "center",
-    marginBottom: 32,
-  },
-  trialFeatures: {
-    width: "100%",
-    marginBottom: 32,
-    gap: 16,
-  },
-  trialFeatureItem: {
-    flexDirection: "row",
-    alignItems: "center",
-    gap: 12,
-  },
-  trialFeatureText: {
-    fontSize: 14,
-    color: Colors.text,
-  },
-  activateButton: {
-    backgroundColor: Colors.primary,
-    paddingVertical: 16,
-    paddingHorizontal: 32,
-    borderRadius: 12,
-    flexDirection: "row",
-    alignItems: "center",
-    justifyContent: "center",
-    gap: 8,
-    width: "100%",
-    marginBottom: 16,
-  },
-  disabledButton: {
-    opacity: 0.7,
-  },
-  activateButtonText: {
-    color: Colors.white,
-    fontSize: 16,
-    fontWeight: "600" as const,
-  },
-  trialNote: {
-    fontSize: 12,
-    color: Colors.textSecondary,
-    textAlign: "center",
-  },
-  successContainer: {
-    alignItems: "center",
-    gap: 12,
-  },
-  successText: {
-    fontSize: 20,
-    fontWeight: "700" as const,
-    color: Colors.success,
-  },
-  successSubtext: {
-    fontSize: 14,
-    color: Colors.textSecondary,
+    fontWeight: "700",
   },
 });

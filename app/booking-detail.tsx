@@ -1,7 +1,7 @@
 import { router, useLocalSearchParams } from "expo-router";
 import { safeBack } from "@/constants/navigation";
-import { Calendar, ChevronLeft, Clock, MapPin, Users, XCircle } from "lucide-react-native";
-import React, { useEffect, useState, useRef } from "react";
+import { Calendar, ChevronLeft, ChevronRight, Clock, MapPin, Users, XCircle, X } from "lucide-react-native";
+import React, { useEffect, useState, useMemo } from "react";
 import {
     ActivityIndicator,
     Alert,
@@ -13,45 +13,66 @@ import {
     TextInput,
     TouchableOpacity,
     View,
-    Platform,
 } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
+import { WebView } from "react-native-webview";
 import Colors from "@/constants/colors";
 import { useAuth } from "@/context/AuthContext";
-import { fetchVenueById, createBookingOrder, verifyPayment } from "@/lib/api";
+import { fetchVenueById, fetchVenueBookedDates, createBookingOrder, verifyPayment } from "@/lib/api";
 import type { DbVenue } from "@/lib/types";
-import Razorpay from "react-native-razorpay";
+
+const TIME_SLOTS = [
+    "09:00 AM", "10:00 AM", "11:00 AM", "12:00 PM",
+    "01:00 PM", "02:00 PM", "03:00 PM", "04:00 PM",
+    "05:00 PM", "06:00 PM", "07:00 PM", "08:00 PM",
+    "09:00 PM", "10:00 PM",
+];
+
+const DAYS = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"];
+const MONTHS = ["January", "February", "March", "April", "May", "June", "July", "August", "September", "October", "November", "December"];
+
+function formatDateKey(date: Date): string {
+    const y = date.getFullYear();
+    const m = String(date.getMonth() + 1).padStart(2, "0");
+    const d = String(date.getDate()).padStart(2, "0");
+    return `${y}-${m}-${d}`;
+}
 
 export default function BookingDetailScreen() {
     const { id } = useLocalSearchParams<{ id: string }>();
     const insets = useSafeAreaInsets();
-    const { dbUser, hasAccess, subscriptionInfo } = useAuth();
+    const { dbUser, hasAccess } = useAuth();
 
     const [venue, setVenue] = useState<DbVenue | null>(null);
     const [loading, setLoading] = useState(true);
     const [submitting, setSubmitting] = useState(false);
-    const [paymentMethod, setPaymentMethod] = useState<"razorpay" | "upi">("razorpay");
-    
-    // New states for selection
-    const [bookingDate, setBookingDate] = useState(new Date().toISOString().split("T")[0]);
-    const [startTime, setStartTime] = useState("10:00 AM");
-    const [endTime, setEndTime] = useState("02:00 PM");
-    const [guests, setGuests] = useState("200");
-    const [errorMsg, setErrorMsg] = useState<string | null>(null);
+
+    // Calendar state
+    const [currentMonth, setCurrentMonth] = useState(new Date());
+    const [selectedDate, setSelectedDate] = useState<string | null>(null);
+    const [bookedDates, setBookedDates] = useState<{ booking_date: string; start_time: string; end_time: string }[]>([]);
+
+    // Time slot state
+    const [startTime, setStartTime] = useState<string | null>(null);
+    const [endTime, setEndTime] = useState<string | null>(null);
+
+    // Guests
+    const [guests, setGuests] = useState("50");
+
+    // Modals
     const [unavailableModal, setUnavailableModal] = useState(false);
     const [conflictDetails, setConflictDetails] = useState<any>(null);
+    
+    // Payment WebView modal
+    const [paymentModalVisible, setPaymentModalVisible] = useState(false);
+    const [paymentHtml, setPaymentHtml] = useState<string | null>(null);
+    const [pendingBookingId, setPendingBookingId] = useState<string | null>(null);
 
     useEffect(() => {
         if (!id) return;
         loadVenue();
+        loadBookedDates();
     }, [id]);
-
-    // Check subscription access
-    useEffect(() => {
-        if (dbUser && !hasAccess && !loading) {
-            setErrorMsg("You need an active trial or subscription to book venues.");
-        }
-    }, [dbUser, hasAccess, loading]);
 
     const loadVenue = async () => {
         try {
@@ -65,6 +86,251 @@ export default function BookingDetailScreen() {
         }
     };
 
+    const loadBookedDates = async () => {
+        try {
+            const data = await fetchVenueBookedDates(id!);
+            setBookedDates(data);
+        } catch (err) {
+            console.error("Failed to load booked dates:", err);
+        }
+    };
+
+    // Calendar logic
+    const calendarDays = useMemo(() => {
+        const year = currentMonth.getFullYear();
+        const month = currentMonth.getMonth();
+        const firstDay = new Date(year, month, 1).getDay();
+        const daysInMonth = new Date(year, month + 1, 0).getDate();
+        const today = formatDateKey(new Date());
+
+        const days: { date: string; day: number; isCurrentMonth: boolean; isPast: boolean; isBooked: boolean; isToday: boolean }[] = [];
+
+        // Empty slots for days before the 1st
+        for (let i = 0; i < firstDay; i++) {
+            days.push({ date: "", day: 0, isCurrentMonth: false, isPast: false, isBooked: false, isToday: false });
+        }
+
+        for (let d = 1; d <= daysInMonth; d++) {
+            const dateObj = new Date(year, month, d);
+            const dateKey = formatDateKey(dateObj);
+            const isPast = dateKey < today;
+            const isBooked = bookedDates.some(b => b.booking_date === dateKey);
+            const isToday = dateKey === today;
+            days.push({ date: dateKey, day: d, isCurrentMonth: true, isPast, isBooked, isToday });
+        }
+
+        return days;
+    }, [currentMonth, bookedDates]);
+
+    const goToPrevMonth = () => {
+        setCurrentMonth(prev => new Date(prev.getFullYear(), prev.getMonth() - 1, 1));
+    };
+
+    const goToNextMonth = () => {
+        setCurrentMonth(prev => new Date(prev.getFullYear(), prev.getMonth() + 1, 1));
+    };
+
+    const handleDateSelect = (dateKey: string) => {
+        setSelectedDate(dateKey);
+        setStartTime(null);
+        setEndTime(null);
+    };
+
+    // Get booked time slots for selected date
+    const bookedTimesForDate = useMemo(() => {
+        if (!selectedDate) return [];
+        return bookedDates
+            .filter(b => b.booking_date === selectedDate)
+            .map(b => ({ start: b.start_time, end: b.end_time }));
+    }, [selectedDate, bookedDates]);
+
+    const isTimeSlotBooked = (slot: string) => {
+        return bookedTimesForDate.some(b => b.start === slot || b.end === slot);
+    };
+
+    const handleStartTimeSelect = (slot: string) => {
+        setStartTime(slot);
+        // Auto-select end time 2 slots later
+        const idx = TIME_SLOTS.indexOf(slot);
+        if (idx >= 0 && idx + 2 < TIME_SLOTS.length) {
+            setEndTime(TIME_SLOTS[idx + 2]);
+        } else {
+            setEndTime(null);
+        }
+    };
+
+    // Pricing calculation
+    const hoursBooked = useMemo(() => {
+        if (!startTime || !endTime) return 0;
+        const startIdx = TIME_SLOTS.indexOf(startTime);
+        const endIdx = TIME_SLOTS.indexOf(endTime);
+        return Math.max(0, endIdx - startIdx);
+    }, [startTime, endTime]);
+
+    const hourlyRate = venue?.price_per_hour ?? 0;
+    const subtotal = hourlyRate * hoursBooked;
+    const serviceFee = hoursBooked > 0 ? 500 : 0;
+    const total = subtotal + serviceFee;
+
+    const formatPrice = (amount: number) => `₹${amount.toLocaleString("en-IN")}`;
+
+    const canBook = selectedDate && startTime && endTime && hoursBooked > 0 && parseInt(guests) > 0;
+
+    const handleConfirm = async () => {
+        if (!dbUser) {
+            Alert.alert("Authentication Required", "Please log in to book a venue.", [
+                { text: "Cancel", style: "cancel" },
+                { text: "Log In", onPress: () => router.push("/login" as any) }
+            ]);
+            return;
+        }
+
+        if (!hasAccess) {
+            Alert.alert("Subscription Required", "You need an active trial or subscription to book venues.", [
+                { text: "Cancel", style: "cancel" },
+                { text: "Subscribe", onPress: () => router.push("/subscription" as any) }
+            ]);
+            return;
+        }
+
+        if (!canBook || submitting) return;
+
+        try {
+            setSubmitting(true);
+
+            const orderData = {
+                venue_id: venue!.id,
+                booking_date: selectedDate!,
+                start_time: startTime!,
+                end_time: endTime!,
+                guests: parseInt(guests),
+                subtotal,
+                service_fee: serviceFee,
+                total,
+            };
+
+            const orderResponse = await createBookingOrder(orderData);
+            const { order, booking } = orderResponse;
+
+            setPendingBookingId(booking.id);
+
+            // Generate Razorpay checkout HTML for WebView
+            const html = `
+                <html>
+                <head>
+                    <meta name="viewport" content="width=device-width, initial-scale=1">
+                    <script src="https://checkout.razorpay.com/v1/checkout.js"></script>
+                </head>
+                <body style="background:#fff;display:flex;justify-content:center;align-items:center;height:100vh;margin:0;font-family:sans-serif;">
+                    <div style="text-align:center;">
+                        <h3 style="color:#333;">Loading payment...</h3>
+                        <p style="color:#666;font-size:14px;">Please do not close this window.</p>
+                    </div>
+                    <script>
+                        var options = {
+                            key: "rzp_test_SpDyznKPQ9nviQ",
+                            amount: ${order.amount},
+                            currency: "INR",
+                            name: "Zvenue",
+                            description: "Booking for ${venue!.name.replace(/"/g, '\\"')}",
+                            order_id: "${order.id}",
+                            prefill: {
+                                email: "${dbUser.email || ''}",
+                                contact: "${dbUser.phone_number || ''}",
+                                name: "${dbUser.full_name || ''}"
+                            },
+                            theme: { color: "#7a3317" },
+                            handler: function(response) {
+                                window.ReactNativeWebView.postMessage(JSON.stringify({
+                                    event: 'success',
+                                    data: {
+                                        orderId: response.razorpay_order_id,
+                                        paymentId: response.razorpay_payment_id,
+                                        signature: response.razorpay_signature
+                                    }
+                                }));
+                            },
+                            modal: {
+                                ondismiss: function() {
+                                    window.ReactNativeWebView.postMessage(JSON.stringify({ event: 'cancel' }));
+                                }
+                            }
+                        };
+                        var rzp = new Razorpay(options);
+                        rzp.on('payment.failed', function(response) {
+                            window.ReactNativeWebView.postMessage(JSON.stringify({
+                                event: 'failed',
+                                data: response.error
+                            }));
+                        });
+                        rzp.open();
+                    </script>
+                </body>
+                </html>
+            `;
+
+            setPaymentHtml(html);
+            setPaymentModalVisible(true);
+            setSubmitting(false);
+        } catch (err: any) {
+            setSubmitting(false);
+            const errorData = err.response?.data;
+            if (errorData?.error === 'venue_unavailable') {
+                setConflictDetails(errorData.conflict);
+                setUnavailableModal(true);
+            } else if (errorData?.code === 'SUBSCRIPTION_REQUIRED') {
+                Alert.alert("Subscription Required", "Please subscribe to continue.", [
+                    { text: "Cancel", style: "cancel" },
+                    { text: "Subscribe", onPress: () => router.push("/subscription" as any) }
+                ]);
+            } else {
+                Alert.alert("Booking Failed", errorData?.error || errorData?.message || "Failed to create booking.");
+            }
+        }
+    };
+
+    const handlePaymentMessage = async (event: any) => {
+        try {
+            const data = JSON.parse(event.nativeEvent.data);
+            if (data.event === 'success') {
+                setPaymentModalVisible(false);
+                setPaymentHtml(null);
+
+                // Verify payment on server
+                const response = await verifyPayment({
+                    order_id: data.data.orderId,
+                    payment_id: data.data.paymentId,
+                    signature: data.data.signature,
+                    booking_id: pendingBookingId!,
+                });
+
+                if (response.success) {
+                    router.push({
+                        pathname: "/booking-confirmed",
+                        params: { id: response.booking.id, venueId: response.booking.venue_id }
+                    });
+                } else {
+                    Alert.alert("Verification Failed", "Payment received but verification failed. Contact support.");
+                }
+            } else if (data.event === 'cancel') {
+                setPaymentModalVisible(false);
+                setPaymentHtml(null);
+                Alert.alert("Payment Cancelled", "You cancelled the payment. Your booking is still pending.");
+            } else if (data.event === 'failed') {
+                setPaymentModalVisible(false);
+                setPaymentHtml(null);
+                Alert.alert("Payment Failed", data.data?.description || "Payment could not be processed.");
+            }
+        } catch (err) {
+            console.error("Failed to parse payment message:", err);
+        }
+    };
+
+    const handlePaymentClose = () => {
+        setPaymentModalVisible(false);
+        setPaymentHtml(null);
+    };
+
     if (loading || !venue) {
         return (
             <View style={[styles.container, { paddingTop: insets.top, justifyContent: "center", alignItems: "center" }]}>
@@ -73,212 +339,18 @@ export default function BookingDetailScreen() {
         );
     }
 
-    const hoursBooked = 4;
-    const hourlyRate = venue.price_per_hour;
-    const subtotal = hourlyRate * hoursBooked;
-    const serviceFee = 500;
-    const total = subtotal + serviceFee;
-
-    const formatPrice = (amount: number) => `₹${amount.toLocaleString("en-IN")}`;
-
-    const handleConfirm = async () => {
-        console.log("=== Confirm Booking Clicked ===");
-        console.log("dbUser:", dbUser);
-        console.log("submitting:", submitting);
-        
-        if (!dbUser) {
-            console.log("No dbUser - showing auth alert");
-            Alert.alert(
-                "Authentication Required",
-                "Please log in to book a venue.",
-                [
-                    { text: "Cancel", style: "cancel" },
-                    { text: "Log In", onPress: () => router.push("/login" as any) }
-                ]
-            );
-            return;
-        }
-        
-        if (!hasAccess) {
-            console.log("No subscription access - showing alert");
-            Alert.alert(
-                "Subscription Required",
-                "You need an active trial or subscription to book venues. Would you like to subscribe now?",
-                [
-                    { text: "Cancel", style: "cancel" },
-                    {
-                        text: "Subscribe",
-                        onPress: () => router.push("/subscription" as any)
-                    }
-                ]
-            );
-            return;
-        }
-        
-        if (submitting) {
-            console.log("Already submitting - ignoring");
-            return;
-        }
-        
-        try {
-            console.log("Starting booking payment...");
-            setSubmitting(true);
-            setErrorMsg(null);
-            
-            // Step 1: Create Razorpay order
-            const orderData = {
-                venue_id: venue.id,
-                booking_date: bookingDate,
-                start_time: startTime,
-                end_time: endTime,
-                guests: parseInt(guests),
-                subtotal,
-                service_fee: serviceFee,
-                total,
-            };
-            
-            console.log("Creating order with data:", orderData);
-            const orderResponse = await createBookingOrder(orderData);
-            console.log("Order created:", orderResponse);
-            
-            const { order, booking } = orderResponse;
-            
-            // Step 2: Open Razorpay checkout
-            const options = {
-                description: `Booking for ${venue.name}`,
-                image: "https://your-logo-url.com/logo.png",
-                currency: "INR",
-                key: process.env.RAZORPAY_KEY_ID || "rzp_test_SpDyznKPQ9nviQ",
-                amount: order.amount,
-                order_id: order.id,
-                name: "Zvenue",
-                prefill: {
-                    email: dbUser.email || "",
-                    contact: dbUser.phone_number || "",
-                    name: dbUser.full_name || "",
-                },
-                theme: {
-                    color: "#7a3317",
-                },
-                modal: {
-                    // For iOS
-                    confirm_close: true,
-                    // For Android
-                    back_button_close: true,
-                    // Avoid closing on outside touch
-                    escape_exit: false,
-                },
-            };
-            
-            try {
-                const paymentData = await Razorpay.open(options);
-                console.log("Payment successful:", paymentData);
-                
-                // Verify payment and confirm booking
-                await verifyPaymentOnServer(paymentData, booking.id);
-            } catch (error: any) {
-                console.log("Payment failed or cancelled:", error);
-                setSubmitting(false);
-                if (error.code && error.code === 0) {
-                    // User cancelled
-                    setErrorMsg("Payment was cancelled. Please try again.");
-                    Alert.alert("Payment Cancelled", "The payment was cancelled. Please try again.");
-                } else {
-                    setErrorMsg("Payment failed. Please try again.");
-                    Alert.alert("Payment Failed", "The payment could not be completed. Please try again.");
-                }
-            }
-            
-        } catch (err: any) {
-            console.error("Failed to create booking:", err);
-            
-            if (err.response) {
-                console.error("Response status:", err.response.status);
-                console.error("Response data:", err.response.data);
-            }
-            
-            const errorData = err.response?.data;
-            const errorMsg = errorData?.error || "Failed to create booking.";
-            
-            // Check for venue unavailability
-            if (errorData?.error === 'venue_unavailable') {
-                setConflictDetails(errorData.conflict);
-                setUnavailableModal(true);
-            } else if (errorData?.code === 'SUBSCRIPTION_REQUIRED') {
-                Alert.alert(
-                    "Subscription Required",
-                    "You need an active trial or subscription to book venues. Would you like to subscribe now?",
-                    [
-                        { text: "Cancel", style: "cancel" },
-                        {
-                            text: "Subscribe",
-                            onPress: () => router.push("/subscription" as any)
-                        }
-                    ]
-                );
-            } else {
-                setErrorMsg(errorMsg);
-                Alert.alert("Booking Failed", errorMsg);
-            }
-            setSubmitting(false);
-        }
-    };
-    
-    const verifyPaymentOnServer = async (paymentData: any, bookingId: string) => {
-        try {
-            console.log("Verifying payment on server...");
-            const verifyData = {
-                order_id: paymentData.orderId,
-                payment_id: paymentData.paymentId,
-                signature: paymentData.signature,
-                booking_id: bookingId,
-            };
-            
-            const response = await verifyPayment(verifyData);
-            console.log("Payment verified:", response);
-            
-            setSubmitting(false);
-            
-            if (response.success) {
-                Alert.alert(
-                    "Payment Successful!",
-                    "Your booking has been confirmed.",
-                    [
-                        {
-                            text: "OK",
-                            onPress: () => {
-                                router.push({
-                                    pathname: "/booking-confirmed",
-                                    params: {
-                                        id: response.booking.id,
-                                        venueId: response.booking.venue_id
-                                    }
-                                });
-                            }
-                        }
-                    ]
-                );
-            } else {
-                Alert.alert("Verification Failed", "Could not verify payment. Please contact support.");
-            }
-        } catch (err: any) {
-            console.error("Payment verification error:", err);
-            setSubmitting(false);
-            Alert.alert("Error", "Failed to verify payment. Please contact support.");
-        }
-    };
-
     return (
         <View style={[styles.container, { paddingTop: insets.top }]}>
             <View style={styles.header}>
                 <TouchableOpacity onPress={() => safeBack("/(tabs)/home")} style={styles.backButton}>
                     <ChevronLeft size={24} color={Colors.text} />
                 </TouchableOpacity>
-                <Text style={styles.headerTitle}>Booking Details</Text>
-                <View style={styles.backButton} />
+                <Text style={styles.headerTitle}>Book Venue</Text>
+                <View style={{ width: 40 }} />
             </View>
 
             <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={styles.scrollContent}>
+                {/* Venue Card */}
                 <View style={styles.venueCard}>
                     <Image source={{ uri: venue.image_url ?? undefined }} style={styles.venueImage} />
                     <View style={styles.venueInfo}>
@@ -287,200 +359,251 @@ export default function BookingDetailScreen() {
                             <MapPin size={12} color={Colors.textSecondary} />
                             <Text style={styles.metaText}>{venue.city}</Text>
                         </View>
-                        <View style={styles.metaRow}>
-                            <Users size={12} color={Colors.textSecondary} />
-                            <Text style={styles.metaText}>Up to {venue.capacity} guests</Text>
-                        </View>
+                        <Text style={styles.venuePrice}>{formatPrice(venue.price_per_hour)}/hr</Text>
                     </View>
                 </View>
 
-                <View style={styles.bookingInfoCard}>
-                    <Text style={styles.sectionTitle}>Booking Info</Text>
-                    
-                    <View style={styles.inputRow}>
-                        <Text style={styles.inputLabel}>Date (YYYY-MM-DD)</Text>
-                        <TextInput 
-                          style={styles.textInput}
-                          value={bookingDate}
-                          onChangeText={setBookingDate}
-                          placeholder="2024-05-20"
-                        />
-                    </View>
-
-                    <View style={styles.timeRow}>
-                        <View style={{ flex: 1 }}>
-                            <Text style={styles.inputLabel}>Start Time</Text>
-                            <TextInput 
-                              style={styles.textInput}
-                              value={startTime}
-                              onChangeText={setStartTime}
-                              placeholder="10:00 AM"
-                            />
-                        </View>
-                        <View style={{ width: 16 }} />
-                        <View style={{ flex: 1 }}>
-                            <Text style={styles.inputLabel}>End Time</Text>
-                            <TextInput 
-                              style={styles.textInput}
-                              value={endTime}
-                              onChangeText={setEndTime}
-                              placeholder="02:00 PM"
-                            />
-                        </View>
-                    </View>
-
-                    <View style={[styles.inputRow, { marginTop: 12 }]}>
-                        <Text style={styles.inputLabel}>Number of Guests</Text>
-                        <TextInput 
-                          style={styles.textInput}
-                          value={guests}
-                          onChangeText={setGuests}
-                          keyboardType="numeric"
-                          placeholder="200"
-                        />
-                    </View>
-                </View>
-
-                <Text style={styles.sectionTitle}>Booking Summary</Text>
-
-                <View style={styles.summaryRow}>
-                    <Text style={styles.summaryLabel}>{hoursBooked} hours × {formatPrice(hourlyRate)}</Text>
-                    <Text style={styles.summaryValue}>{formatPrice(subtotal)}</Text>
-                </View>
-                <View style={styles.summaryRow}>
-                    <Text style={styles.summaryLabel}>Subtotal</Text>
-                    <Text style={styles.summaryValue}>{formatPrice(subtotal)}</Text>
-                </View>
-                <View style={styles.summaryRow}>
-                    <Text style={styles.summaryLabel}>Service Fee</Text>
-                    <Text style={styles.summaryValue}>{formatPrice(serviceFee)}</Text>
-                </View>
-                <View style={styles.divider} />
-                <View style={styles.summaryRow}>
-                    <Text style={styles.totalLabel}>Total</Text>
-                    <Text style={styles.totalValue}>{formatPrice(total)}</Text>
-                </View>
-
-                <Text style={[styles.sectionTitle, { marginTop: 8 }]}>Payment Method</Text>
-
-                <TouchableOpacity
-                    style={[styles.paymentOption, paymentMethod === "razorpay" && styles.paymentOptionActive]}
-                    onPress={() => setPaymentMethod("razorpay")}
-                    activeOpacity={0.7}
-                >
-                    <View style={styles.razorpayIcon}>
-                        <Text style={styles.razorpayText}>R</Text>
-                    </View>
-                    <Text style={styles.paymentLabel}>Razorpay (Card/UPI/Netbanking)</Text>
-                    <View style={[styles.radio, paymentMethod === "razorpay" && styles.radioActive]}>
-                        {paymentMethod === "razorpay" && <View style={styles.radioInner} />}
-                    </View>
-                </TouchableOpacity>
-
-                <TouchableOpacity
-                    style={[styles.paymentOption, paymentMethod === "upi" && styles.paymentOptionActive]}
-                    onPress={() => setPaymentMethod("upi")}
-                    activeOpacity={0.7}
-                >
-                    <View style={styles.upiIcon}>
-                        <Text style={styles.upiText}>U</Text>
-                    </View>
-                    <Text style={styles.paymentLabel}>UPI (GPay/PhonePe/Paytm)</Text>
-                    <View style={[styles.radio, paymentMethod === "upi" && styles.radioActive]}>
-                        {paymentMethod === "upi" && <View style={styles.radioInner} />}
-                    </View>
-                </TouchableOpacity>
-            </ScrollView>
-            
-            {/* Subscription Warning Banner */}
-            {dbUser && !hasAccess && (
-                <View style={styles.warningBanner}>
-                    <View style={styles.warningIconContainer}>
-                        <XCircle size={24} color="#F57C00" />
-                    </View>
-                    <View style={styles.warningTextContainer}>
-                        <Text style={styles.warningTitle}>Subscription Required</Text>
-                        <Text style={styles.warningMessage}>
-                            You need an active trial or subscription to book venues.
+                {/* Calendar */}
+                <View style={styles.calendarCard}>
+                    <View style={styles.calendarHeader}>
+                        <TouchableOpacity onPress={goToPrevMonth} style={styles.calNavBtn}>
+                            <ChevronLeft size={20} color={Colors.text} />
+                        </TouchableOpacity>
+                        <Text style={styles.calMonthText}>
+                            {MONTHS[currentMonth.getMonth()]} {currentMonth.getFullYear()}
                         </Text>
+                        <TouchableOpacity onPress={goToNextMonth} style={styles.calNavBtn}>
+                            <ChevronRight size={20} color={Colors.text} />
+                        </TouchableOpacity>
                     </View>
-                    <TouchableOpacity
-                        style={styles.warningButton}
-                        onPress={() => router.push("/subscription" as any)}
-                    >
-                        <Text style={styles.warningButtonText}>Subscribe</Text>
-                    </TouchableOpacity>
-                </View>
-            )}
 
+                    <View style={styles.calDaysHeader}>
+                        {DAYS.map(day => (
+                            <Text key={day} style={styles.calDayLabel}>{day}</Text>
+                        ))}
+                    </View>
+
+                    <View style={styles.calGrid}>
+                        {calendarDays.map((item, idx) => {
+                            if (!item.isCurrentMonth) {
+                                return <View key={idx} style={styles.calCell} />;
+                            }
+                            const isSelected = item.date === selectedDate;
+                            const isDisabled = item.isPast;
+
+                            return (
+                                <TouchableOpacity
+                                    key={idx}
+                                    style={[
+                                        styles.calCell,
+                                        isSelected && styles.calCellSelected,
+                                        item.isToday && !isSelected && styles.calCellToday,
+                                        item.isBooked && styles.calCellBooked,
+                                    ]}
+                                    onPress={() => !isDisabled && handleDateSelect(item.date)}
+                                    disabled={isDisabled}
+                                    activeOpacity={0.7}
+                                >
+                                    <Text style={[
+                                        styles.calCellText,
+                                        isSelected && styles.calCellTextSelected,
+                                        isDisabled && styles.calCellTextDisabled,
+                                        item.isBooked && !isSelected && styles.calCellTextBooked,
+                                    ]}>
+                                        {item.day}
+                                    </Text>
+                                    {item.isBooked && (
+                                        <View style={[styles.bookedDot, isSelected && { backgroundColor: Colors.white }]} />
+                                    )}
+                                </TouchableOpacity>
+                            );
+                        })}
+                    </View>
+
+                    <View style={styles.calLegend}>
+                        <View style={styles.legendItem}>
+                            <View style={[styles.legendDot, { backgroundColor: Colors.primary }]} />
+                            <Text style={styles.legendText}>Selected</Text>
+                        </View>
+                        <View style={styles.legendItem}>
+                            <View style={[styles.legendDot, { backgroundColor: "#FF9800" }]} />
+                            <Text style={styles.legendText}>Has bookings</Text>
+                        </View>
+                        <View style={styles.legendItem}>
+                            <View style={[styles.legendDot, { backgroundColor: Colors.border }]} />
+                            <Text style={styles.legendText}>Past</Text>
+                        </View>
+                    </View>
+                </View>
+
+                {/* Time Slots */}
+                {selectedDate && (
+                    <View style={styles.timeSection}>
+                        <Text style={styles.sectionTitle}>
+                            <Clock size={16} color={Colors.primary} /> Select Time
+                        </Text>
+                        <Text style={styles.timeSubtitle}>Start Time</Text>
+                        <ScrollView horizontal showsHorizontalScrollIndicator={false} style={styles.timeSlotsRow}>
+                            {TIME_SLOTS.map(slot => {
+                                const booked = isTimeSlotBooked(slot);
+                                const isActive = slot === startTime;
+                                return (
+                                    <TouchableOpacity
+                                        key={`start-${slot}`}
+                                        style={[styles.timeChip, isActive && styles.timeChipActive, booked && styles.timeChipBooked]}
+                                        onPress={() => !booked && handleStartTimeSelect(slot)}
+                                        disabled={booked}
+                                    >
+                                        <Text style={[styles.timeChipText, isActive && styles.timeChipTextActive, booked && styles.timeChipTextBooked]}>
+                                            {slot}
+                                        </Text>
+                                    </TouchableOpacity>
+                                );
+                            })}
+                        </ScrollView>
+
+                        {startTime && (
+                            <>
+                                <Text style={[styles.timeSubtitle, { marginTop: 16 }]}>End Time</Text>
+                                <ScrollView horizontal showsHorizontalScrollIndicator={false} style={styles.timeSlotsRow}>
+                                    {TIME_SLOTS.filter(slot => TIME_SLOTS.indexOf(slot) > TIME_SLOTS.indexOf(startTime)).map(slot => {
+                                        const booked = isTimeSlotBooked(slot);
+                                        const isActive = slot === endTime;
+                                        return (
+                                            <TouchableOpacity
+                                                key={`end-${slot}`}
+                                                style={[styles.timeChip, isActive && styles.timeChipActive, booked && styles.timeChipBooked]}
+                                                onPress={() => !booked && setEndTime(slot)}
+                                                disabled={booked}
+                                            >
+                                                <Text style={[styles.timeChipText, isActive && styles.timeChipTextActive, booked && styles.timeChipTextBooked]}>
+                                                    {slot}
+                                                </Text>
+                                            </TouchableOpacity>
+                                        );
+                                    })}
+                                </ScrollView>
+                            </>
+                        )}
+                    </View>
+                )}
+
+                {/* Guests */}
+                {selectedDate && startTime && endTime && (
+                    <View style={styles.guestsSection}>
+                        <Text style={styles.sectionTitle}>
+                            <Users size={16} color={Colors.primary} /> Number of Guests
+                        </Text>
+                        <View style={styles.guestsRow}>
+                            <TouchableOpacity style={styles.guestBtn} onPress={() => setGuests(String(Math.max(1, parseInt(guests) - 10)))}>
+                                <Text style={styles.guestBtnText}>−</Text>
+                            </TouchableOpacity>
+                            <TextInput
+                                style={styles.guestInput}
+                                value={guests}
+                                onChangeText={setGuests}
+                                keyboardType="numeric"
+                            />
+                            <TouchableOpacity style={styles.guestBtn} onPress={() => setGuests(String(Math.min(venue.capacity, parseInt(guests) + 10)))}>
+                                <Text style={styles.guestBtnText}>+</Text>
+                            </TouchableOpacity>
+                            <Text style={styles.capacityHint}>Max: {venue.capacity}</Text>
+                        </View>
+                    </View>
+                )}
+
+                {/* Booking Summary */}
+                {canBook && (
+                    <View style={styles.summaryCard}>
+                        <Text style={styles.sectionTitle}>Booking Summary</Text>
+                        <View style={styles.summaryRow}>
+                            <Text style={styles.summaryLabel}>Date</Text>
+                            <Text style={styles.summaryValue}>{selectedDate}</Text>
+                        </View>
+                        <View style={styles.summaryRow}>
+                            <Text style={styles.summaryLabel}>Time</Text>
+                            <Text style={styles.summaryValue}>{startTime} – {endTime}</Text>
+                        </View>
+                        <View style={styles.summaryRow}>
+                            <Text style={styles.summaryLabel}>{hoursBooked} hrs × {formatPrice(hourlyRate)}</Text>
+                            <Text style={styles.summaryValue}>{formatPrice(subtotal)}</Text>
+                        </View>
+                        <View style={styles.summaryRow}>
+                            <Text style={styles.summaryLabel}>Service Fee</Text>
+                            <Text style={styles.summaryValue}>{formatPrice(serviceFee)}</Text>
+                        </View>
+                        <View style={styles.divider} />
+                        <View style={styles.summaryRow}>
+                            <Text style={styles.totalLabel}>Total</Text>
+                            <Text style={styles.totalValue}>{formatPrice(total)}</Text>
+                        </View>
+                    </View>
+                )}
+
+                <View style={{ height: 120 }} />
+            </ScrollView>
+
+            {/* Bottom Bar */}
             <View style={[styles.bottomBar, { paddingBottom: insets.bottom + 12 }]}>
                 <View style={styles.priceColumn}>
-                    <Text style={styles.priceLabelBottom}>Total Amount</Text>
-                    <Text style={styles.priceAmount}>{formatPrice(total)}</Text>
+                    <Text style={styles.priceLabelBottom}>Total</Text>
+                    <Text style={styles.priceAmount}>{canBook ? formatPrice(total) : "—"}</Text>
                 </View>
                 <TouchableOpacity
-                    style={[styles.confirmButton, submitting && { opacity: 0.6 }]}
+                    style={[styles.confirmButton, (!canBook || submitting) && { opacity: 0.5 }]}
                     onPress={handleConfirm}
                     activeOpacity={0.8}
-                    disabled={submitting}
-                    testID="confirm-booking"
+                    disabled={!canBook || submitting}
                 >
-                    <Text style={styles.confirmText}>{submitting ? "Booking..." : "Confirm Booking"}</Text>
+                    <Text style={styles.confirmText}>{submitting ? "Processing..." : "Confirm & Pay"}</Text>
                 </TouchableOpacity>
             </View>
 
-            {/* Error Modal */}
-            <Modal
-                visible={!!errorMsg}
-                transparent
-                animationType="fade"
-                onRequestClose={() => setErrorMsg(null)}
-            >
-                <View style={styles.modalOverlay}>
-                    <View style={styles.modalContent}>
-                        <View style={[styles.iconCircle, { backgroundColor: '#FFEBEE' }]}>
-                            <XCircle size={48} color="#F44336" />
-                        </View>
-                        <Text style={styles.modalTitle}>Booking Error</Text>
-                        <Text style={styles.modalSubtitle}>{errorMsg}</Text>
-                        <TouchableOpacity
-                            style={[styles.primaryButton, { width: '100%', backgroundColor: '#F44336' }]}
-                            onPress={() => setErrorMsg(null)}
-                        >
-                            <Text style={styles.primaryButtonText}>Try Again</Text>
+            {/* Payment WebView Modal */}
+            <Modal visible={paymentModalVisible} animationType="slide" onRequestClose={handlePaymentClose}>
+                <View style={{ flex: 1, backgroundColor: Colors.white }}>
+                    <View style={styles.paymentModalHeader}>
+                        <TouchableOpacity onPress={handlePaymentClose} style={{ padding: 8 }}>
+                            <X size={24} color={Colors.text} />
                         </TouchableOpacity>
+                        <Text style={{ fontSize: 16, fontWeight: "600", color: Colors.text }}>Complete Payment</Text>
+                        <View style={{ width: 40 }} />
                     </View>
+                    {paymentHtml && (
+                        <WebView
+                            source={{ html: paymentHtml }}
+                            style={{ flex: 1 }}
+                            onMessage={handlePaymentMessage}
+                            javaScriptEnabled
+                            domStorageEnabled
+                            startInLoadingState
+                            renderLoading={() => (
+                                <View style={{ flex: 1, justifyContent: "center", alignItems: "center", position: "absolute", top: 0, left: 0, right: 0, bottom: 0, backgroundColor: Colors.white }}>
+                                    <ActivityIndicator size="large" color={Colors.primary} />
+                                    <Text style={{ marginTop: 12, color: Colors.textSecondary }}>Loading payment gateway...</Text>
+                                </View>
+                            )}
+                        />
+                    )}
                 </View>
             </Modal>
 
             {/* Venue Unavailable Modal */}
-            <Modal
-                visible={unavailableModal}
-                transparent
-                animationType="fade"
-                onRequestClose={() => setUnavailableModal(false)}
-            >
+            <Modal visible={unavailableModal} transparent animationType="fade" onRequestClose={() => setUnavailableModal(false)}>
                 <View style={styles.modalOverlay}>
-                    <View style={[styles.modalContent, { maxWidth: 400 }]}>
+                    <View style={styles.modalContent}>
                         <View style={[styles.iconCircle, { backgroundColor: '#FFF3E0' }]}>
                             <Calendar size={48} color="#F57C00" />
                         </View>
                         <Text style={styles.modalTitle}>Venue Not Available</Text>
                         <Text style={styles.modalSubtitle}>
                             This venue is already booked on {conflictDetails?.date} from {conflictDetails?.start_time} to {conflictDetails?.end_time}.
-                            Please choose a different date or time.
                         </Text>
-                        <View style={styles.suggestionContainer}>
-                            <Text style={styles.suggestionTitle}>Suggestions:</Text>
-                            <Text style={styles.suggestionText}>• Check the venue's available dates</Text>
-                            <Text style={styles.suggestionText}>• Try a different time slot</Text>
-                            <Text style={styles.suggestionText}>• Contact the venue owner directly</Text>
-                        </View>
                         <TouchableOpacity
-                            style={[styles.primaryButton, { width: '100%', backgroundColor: Colors.primary }]}
-                            onPress={() => setUnavailableModal(false)}
+                            style={styles.modalButton}
+                            onPress={() => { setUnavailableModal(false); loadBookedDates(); }}
                         >
-                            <Text style={styles.primaryButtonText}>Understood</Text>
+                            <Text style={styles.modalButtonText}>Choose Another Slot</Text>
                         </TouchableOpacity>
                     </View>
                 </View>
@@ -490,379 +613,113 @@ export default function BookingDetailScreen() {
 }
 
 const styles = StyleSheet.create({
-    container: {
-        flex: 1,
-        backgroundColor: Colors.white,
-    },
+    container: { flex: 1, backgroundColor: Colors.background },
     header: {
-        flexDirection: "row",
-        alignItems: "center",
-        justifyContent: "space-between",
-        paddingHorizontal: 20,
-        paddingVertical: 15,
-        borderBottomWidth: 1,
-        borderBottomColor: Colors.border,
+        flexDirection: "row", alignItems: "center", justifyContent: "space-between",
+        paddingHorizontal: 20, paddingVertical: 14, backgroundColor: Colors.white,
+        borderBottomWidth: 1, borderBottomColor: Colors.border,
     },
-    backButton: {
-        padding: 8,
-    },
-    headerTitle: {
-        fontSize: 18,
-        fontWeight: "700" as const,
-        color: Colors.text,
-    },
-    scrollContent: {
-        padding: 20,
-    },
+    backButton: { padding: 8 },
+    headerTitle: { fontSize: 18, fontWeight: "700", color: Colors.text },
+    scrollContent: { padding: 20 },
+    // Venue card
     venueCard: {
-        flexDirection: "row",
-        backgroundColor: Colors.white,
-        borderRadius: 20,
-        padding: 12,
-        marginBottom: 24,
-        shadowColor: "#000",
-        shadowOffset: { width: 0, height: 4 },
-        shadowOpacity: 0.05,
-        shadowRadius: 10,
-        elevation: 2,
+        flexDirection: "row", backgroundColor: Colors.white, borderRadius: 16,
+        padding: 12, marginBottom: 20, shadowColor: "#000",
+        shadowOffset: { width: 0, height: 2 }, shadowOpacity: 0.05, shadowRadius: 8, elevation: 2,
     },
-    venueImage: {
-        width: 100,
-        height: 100,
-        borderRadius: 16,
+    venueImage: { width: 80, height: 80, borderRadius: 12 },
+    venueInfo: { flex: 1, marginLeft: 14, justifyContent: "center" },
+    venueTitle: { fontSize: 16, fontWeight: "700", color: Colors.text, marginBottom: 4 },
+    metaRow: { flexDirection: "row", alignItems: "center", gap: 4, marginBottom: 4 },
+    metaText: { fontSize: 12, color: Colors.textSecondary },
+    venuePrice: { fontSize: 14, fontWeight: "700", color: Colors.primary },
+    // Calendar
+    calendarCard: {
+        backgroundColor: Colors.white, borderRadius: 16, padding: 16, marginBottom: 20,
+        shadowColor: "#000", shadowOffset: { width: 0, height: 2 }, shadowOpacity: 0.04, shadowRadius: 6, elevation: 1,
     },
-    venueInfo: {
-        flex: 1,
-        marginLeft: 16,
-        justifyContent: "center",
+    calendarHeader: {
+        flexDirection: "row", alignItems: "center", justifyContent: "space-between", marginBottom: 16,
     },
-    venueTitle: {
-        fontSize: 18,
-        fontWeight: "700" as const,
-        color: Colors.text,
-        marginBottom: 8,
+    calNavBtn: { padding: 8, borderRadius: 20, backgroundColor: Colors.surface },
+    calMonthText: { fontSize: 16, fontWeight: "700", color: Colors.text },
+    calDaysHeader: { flexDirection: "row", marginBottom: 8 },
+    calDayLabel: { flex: 1, textAlign: "center", fontSize: 12, fontWeight: "600", color: Colors.textSecondary },
+    calGrid: { flexDirection: "row", flexWrap: "wrap" },
+    calCell: {
+        width: "14.28%", aspectRatio: 1, alignItems: "center", justifyContent: "center", borderRadius: 20,
     },
-    metaRow: {
-        flexDirection: "row",
-        alignItems: "center",
-        gap: 6,
-        marginBottom: 4,
+    calCellSelected: { backgroundColor: Colors.primary },
+    calCellToday: { borderWidth: 1.5, borderColor: Colors.primary },
+    calCellBooked: { backgroundColor: "#FFF3E0" },
+    calCellText: { fontSize: 14, fontWeight: "500", color: Colors.text },
+    calCellTextSelected: { color: Colors.white, fontWeight: "700" },
+    calCellTextDisabled: { color: Colors.border },
+    calCellTextBooked: { color: "#F57C00" },
+    bookedDot: { width: 5, height: 5, borderRadius: 3, backgroundColor: "#FF9800", marginTop: 2 },
+    calLegend: { flexDirection: "row", justifyContent: "center", gap: 16, marginTop: 12, paddingTop: 12, borderTopWidth: 1, borderTopColor: Colors.border },
+    legendItem: { flexDirection: "row", alignItems: "center", gap: 6 },
+    legendDot: { width: 8, height: 8, borderRadius: 4 },
+    legendText: { fontSize: 11, color: Colors.textSecondary },
+    // Time slots
+    timeSection: { backgroundColor: Colors.white, borderRadius: 16, padding: 16, marginBottom: 20 },
+    sectionTitle: { fontSize: 16, fontWeight: "700", color: Colors.text, marginBottom: 12 },
+    timeSubtitle: { fontSize: 13, fontWeight: "600", color: Colors.textSecondary, marginBottom: 8 },
+    timeSlotsRow: { flexDirection: "row" },
+    timeChip: {
+        paddingHorizontal: 14, paddingVertical: 10, borderRadius: 10, backgroundColor: Colors.surface,
+        marginRight: 8, borderWidth: 1, borderColor: Colors.border,
     },
-    metaText: {
-        fontSize: 12,
-        color: Colors.textSecondary,
+    timeChipActive: { backgroundColor: Colors.primary, borderColor: Colors.primary },
+    timeChipBooked: { backgroundColor: "#FFEBEE", borderColor: "#FFCDD2" },
+    timeChipText: { fontSize: 13, fontWeight: "500", color: Colors.text },
+    timeChipTextActive: { color: Colors.white, fontWeight: "700" },
+    timeChipTextBooked: { color: "#EF5350", textDecorationLine: "line-through" },
+    // Guests
+    guestsSection: { backgroundColor: Colors.white, borderRadius: 16, padding: 16, marginBottom: 20 },
+    guestsRow: { flexDirection: "row", alignItems: "center", gap: 12 },
+    guestBtn: {
+        width: 40, height: 40, borderRadius: 12, backgroundColor: Colors.surface,
+        alignItems: "center", justifyContent: "center", borderWidth: 1, borderColor: Colors.border,
     },
-    bookingInfoCard: {
-        backgroundColor: Colors.surface,
-        borderRadius: 16,
-        padding: 16,
-        marginBottom: 24,
+    guestBtnText: { fontSize: 20, fontWeight: "700", color: Colors.primary },
+    guestInput: {
+        width: 70, textAlign: "center", fontSize: 18, fontWeight: "700", color: Colors.text,
+        borderWidth: 1, borderColor: Colors.border, borderRadius: 12, paddingVertical: 8,
     },
-    sectionTitle: {
-        fontSize: 18,
-        fontWeight: "700" as const,
-        color: Colors.text,
-        marginBottom: 16,
-    },
-    infoRow: {
-        flexDirection: "row",
-        alignItems: "center",
-    },
-    infoItem: {
-        flex: 1,
-        alignItems: "center",
-        gap: 4,
-    },
-    infoDivider: {
-        width: 1,
-        height: 40,
-        backgroundColor: Colors.border,
-    },
-    infoLabel: {
-        fontSize: 11,
-        color: Colors.textSecondary,
-    },
-    infoValue: {
-        fontSize: 14,
-        fontWeight: "700" as const,
-        color: Colors.text,
-    },
-    summaryRow: {
-        flexDirection: "row",
-        justifyContent: "space-between",
-        marginBottom: 12,
-    },
-    summaryLabel: {
-        fontSize: 14,
-        color: Colors.textSecondary,
-    },
-    summaryValue: {
-        fontSize: 14,
-        fontWeight: "600" as const,
-        color: Colors.text,
-    },
-    divider: {
-        height: 1,
-        backgroundColor: Colors.border,
-        marginVertical: 12,
-    },
-    totalLabel: {
-        fontSize: 16,
-        fontWeight: "700" as const,
-        color: Colors.text,
-    },
-    totalValue: {
-        fontSize: 16,
-        fontWeight: "700" as const,
-        color: Colors.primary,
-    },
-    paymentOption: {
-        flexDirection: "row",
-        alignItems: "center",
-        borderWidth: 1,
-        borderColor: Colors.inputBorder,
-        borderRadius: 14,
-        padding: 16,
-        marginBottom: 12,
-        gap: 12,
-    },
-    paymentOptionActive: {
-        borderColor: Colors.primary,
-    },
-    paymentIconContainer: {
-        flexDirection: "row",
-        width: 36,
-        height: 28,
-        alignItems: "center",
-        justifyContent: "center",
-    },
-    paymentDot: {
-        width: 22,
-        height: 22,
-        borderRadius: 11,
-        opacity: 0.9,
-    },
-    paymentLabel: {
-        flex: 1,
-        fontSize: 14,
-        fontWeight: "500" as const,
-        color: Colors.text,
-    },
-    radio: {
-        width: 22,
-        height: 22,
-        borderRadius: 11,
-        borderWidth: 2,
-        borderColor: Colors.inputBorder,
-        alignItems: "center",
-        justifyContent: "center",
-    },
-    radioActive: {
-        borderColor: Colors.primary,
-    },
-    radioInner: {
-        width: 12,
-        height: 12,
-        borderRadius: 6,
-        backgroundColor: Colors.primary,
-    },
-    razorpayIcon: {
-        width: 36,
-        height: 28,
-        borderRadius: 6,
-        backgroundColor: "#0046B5",
-        alignItems: "center",
-        justifyContent: "center",
-    },
-    razorpayText: {
-        fontSize: 16,
-        fontWeight: "800" as const,
-        color: Colors.white,
-    },
-    upiIcon: {
-        width: 36,
-        height: 28,
-        borderRadius: 6,
-        backgroundColor: "#5F2B8A",
-        alignItems: "center",
-        justifyContent: "center",
-    },
-    upiText: {
-        fontSize: 16,
-        fontWeight: "800" as const,
-        color: Colors.white,
-    },
-    suggestionContainer: {
-        backgroundColor: Colors.surface,
-        borderRadius: 12,
-        padding: 16,
-        marginBottom: 20,
-        width: '100%',
-    },
-    suggestionTitle: {
-        fontSize: 14,
-        fontWeight: "700" as const,
-        color: Colors.text,
-        marginBottom: 8,
-    },
-    suggestionText: {
-        fontSize: 13,
-        color: Colors.textSecondary,
-        marginBottom: 4,
-        lineHeight: 18,
-    },
+    capacityHint: { fontSize: 12, color: Colors.textSecondary, marginLeft: 8 },
+    // Summary
+    summaryCard: { backgroundColor: Colors.white, borderRadius: 16, padding: 16, marginBottom: 20 },
+    summaryRow: { flexDirection: "row", justifyContent: "space-between", marginBottom: 10 },
+    summaryLabel: { fontSize: 14, color: Colors.textSecondary },
+    summaryValue: { fontSize: 14, fontWeight: "600", color: Colors.text },
+    divider: { height: 1, backgroundColor: Colors.border, marginVertical: 10 },
+    totalLabel: { fontSize: 16, fontWeight: "700", color: Colors.text },
+    totalValue: { fontSize: 16, fontWeight: "700", color: Colors.primary },
+    // Bottom bar
     bottomBar: {
-        position: "absolute",
-        bottom: 0,
-        left: 0,
-        right: 0,
-        flexDirection: "row",
-        alignItems: "center",
-        justifyContent: "space-between",
-        paddingHorizontal: 20,
-        paddingTop: 12,
-        backgroundColor: Colors.white,
-        borderTopWidth: 1,
-        borderTopColor: Colors.border,
+        position: "absolute", bottom: 0, left: 0, right: 0,
+        flexDirection: "row", alignItems: "center", justifyContent: "space-between",
+        paddingHorizontal: 20, paddingTop: 12, backgroundColor: Colors.white,
+        borderTopWidth: 1, borderTopColor: Colors.border,
     },
     priceColumn: {},
-    priceLabelBottom: {
-        fontSize: 12,
-        color: Colors.textSecondary,
-    },
-    priceAmount: {
-        fontSize: 22,
-        fontWeight: "800" as const,
-        color: Colors.text,
-    },
-    confirmButton: {
-        backgroundColor: Colors.primary,
-        borderRadius: 16,
-        paddingVertical: 16,
-        paddingHorizontal: 32,
-    },
-    confirmText: {
-        color: Colors.white,
-        fontSize: 15,
-        fontWeight: "700" as const,
-    },
-    inputRow: {
-        marginBottom: 12,
-    },
-    inputLabel: {
-        fontSize: 12,
-        color: Colors.textSecondary,
-        marginBottom: 4,
-        marginLeft: 4,
-    },
-    textInput: {
-        backgroundColor: Colors.white,
-        borderRadius: 12,
-        paddingHorizontal: 12,
-        paddingVertical: 10,
-        fontSize: 14,
-        color: Colors.text,
-        borderWidth: 1,
-        borderColor: Colors.border,
-    },
-    timeRow: {
-        flexDirection: "row",
-        alignItems: "center",
-    },
-    modalOverlay: {
-        flex: 1,
-        backgroundColor: "rgba(0,0,0,0.45)",
-        alignItems: "center",
-        justifyContent: "center",
-        paddingHorizontal: 24,
-    },
-    modalContent: {
-        backgroundColor: Colors.white,
-        borderRadius: 24,
-        padding: 28,
-        alignItems: "center",
-        width: "100%",
-        shadowColor: "#000",
-        shadowOffset: { width: 0, height: 8 },
-        shadowOpacity: 0.15,
-        shadowRadius: 20,
-        elevation: 10,
-    },
-    iconCircle: {
-        width: 80,
-        height: 80,
-        borderRadius: 40,
-        alignItems: "center",
-        justifyContent: "center",
-        marginBottom: 16,
-    },
-    modalTitle: {
-        fontSize: 20,
-        fontWeight: "700" as const,
-        color: Colors.text,
-        marginBottom: 8,
-        textAlign: "center",
-    },
-    modalSubtitle: {
-        fontSize: 14,
-        color: Colors.textSecondary,
-        textAlign: "center",
-        marginBottom: 24,
-        lineHeight: 20,
-    },
-    primaryButton: {
-        borderRadius: 14,
-        paddingVertical: 14,
-        alignItems: "center",
-        justifyContent: "center",
-    },
-    primaryButtonText: {
-        color: Colors.white,
-        fontSize: 15,
-        fontWeight: "700" as const,
-    },
-    // Subscription warning banner styles
-    warningBanner: {
-        flexDirection: "row",
-        alignItems: "center",
-        backgroundColor: "#FFF3E0",
-        padding: 12,
-        marginHorizontal: 20,
-        marginBottom: 12,
-        borderRadius: 12,
-        gap: 12,
-    },
-    warningIconContainer: {
-        width: 40,
-        height: 40,
-        borderRadius: 20,
-        backgroundColor: "#FFE0B2",
-        alignItems: "center",
-        justifyContent: "center",
-    },
-    warningTextContainer: {
-        flex: 1,
-    },
-    warningTitle: {
-        fontSize: 14,
-        fontWeight: "700" as const,
-        color: "#E65100",
-        marginBottom: 2,
-    },
-    warningMessage: {
-        fontSize: 12,
-        color: "#F57C00",
-        lineHeight: 16,
-    },
-    warningButton: {
-        backgroundColor: Colors.primary,
-        paddingHorizontal: 16,
-        paddingVertical: 8,
-        borderRadius: 8,
-    },
-    warningButtonText: {
-        color: Colors.white,
-        fontSize: 12,
-        fontWeight: "700" as const,
+    priceLabelBottom: { fontSize: 12, color: Colors.textSecondary },
+    priceAmount: { fontSize: 22, fontWeight: "800", color: Colors.text },
+    confirmButton: { backgroundColor: Colors.primary, borderRadius: 16, paddingVertical: 16, paddingHorizontal: 28 },
+    confirmText: { color: Colors.white, fontSize: 15, fontWeight: "700" },
+    // Modal
+    modalOverlay: { flex: 1, backgroundColor: "rgba(0,0,0,0.45)", alignItems: "center", justifyContent: "center", paddingHorizontal: 24 },
+    modalContent: { backgroundColor: Colors.white, borderRadius: 24, padding: 28, alignItems: "center", width: "100%" },
+    iconCircle: { width: 80, height: 80, borderRadius: 40, alignItems: "center", justifyContent: "center", marginBottom: 16 },
+    modalTitle: { fontSize: 20, fontWeight: "700", color: Colors.text, marginBottom: 8 },
+    modalSubtitle: { fontSize: 14, color: Colors.textSecondary, textAlign: "center", marginBottom: 24, lineHeight: 20 },
+    modalButton: { backgroundColor: Colors.primary, borderRadius: 14, paddingVertical: 14, paddingHorizontal: 32, width: "100%", alignItems: "center" },
+    modalButtonText: { color: Colors.white, fontSize: 15, fontWeight: "700" },
+    // Payment modal
+    paymentModalHeader: {
+        flexDirection: "row", alignItems: "center", justifyContent: "space-between",
+        paddingHorizontal: 16, paddingVertical: 12, borderBottomWidth: 1, borderBottomColor: Colors.border,
     },
 });

@@ -1,13 +1,16 @@
 import { useAuth } from "@/context/AuthContext";
 import { router } from "expo-router";
+import AsyncStorage from "@react-native-async-storage/async-storage";
 import React, { useEffect, useRef } from "react";
 import { Animated, Image, StyleSheet, View } from "react-native";
 import Colors from "@/constants/colors";
 
+const ONBOARDING_SEEN_KEY = "zvenue_onboarding_seen";
+
 export default function SplashScreen() {
   const scaleAnim = useRef(new Animated.Value(0.5)).current;
   const opacityAnim = useRef(new Animated.Value(0)).current;
-  const { isLoaded, isSignedIn } = useAuth();
+  const { isLoaded, isSignedIn, hasAccess, subscriptionInfo } = useAuth();
 
   useEffect(() => {
     Animated.parallel([
@@ -23,14 +26,34 @@ export default function SplashScreen() {
       }),
     ]).start();
 
-    const timer = setTimeout(() => {
-      if (isLoaded) {
-        // BYPASS AUTH FOR TESTING
-        router.replace("/(tabs)/home");
+    const timer = setTimeout(async () => {
+      if (!isLoaded) return;
+
+      // Check if onboarding has been seen before
+      const onboardingSeen = await AsyncStorage.getItem(ONBOARDING_SEEN_KEY);
+
+      if (!isSignedIn) {
+        // Not logged in: show onboarding if first time, otherwise login
+        if (!onboardingSeen) {
+          router.replace("/onboarding");
+        } else {
+          router.replace("/login");
+        }
+      } else {
+        // Logged in: check access
+        if (hasAccess) {
+          router.replace("/(tabs)/home");
+        } else if (subscriptionInfo && !hasAccess) {
+          // Trial expired, no subscription → subscription page
+          router.replace("/subscription");
+        } else {
+          // Still loading subscription info, go to home (tabs layout will gate)
+          router.replace("/(tabs)/home");
+        }
       }
-    }, 2500);
+    }, 2200);
     return () => clearTimeout(timer);
-  }, [scaleAnim, opacityAnim, isLoaded, isSignedIn]);
+  }, [isLoaded, isSignedIn, hasAccess, subscriptionInfo]);
 
   return (
     <View style={styles.container}>

@@ -109,7 +109,10 @@ export function BookingsPage() {
       queryClient.invalidateQueries({ queryKey: ['dashboard-stats'] })
       toast.success('Booking updated successfully!')
     },
-    onError: (err: any) => toast.error(err.response?.data?.error || 'Failed to update booking'),
+    onError: (err: any) => {
+      const message = err.response?.data?.message || err.response?.data?.error || 'Failed to update booking'
+      toast.error(message)
+    },
   })
 
   const deleteMutation = useMutation({

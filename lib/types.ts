@@ -8,7 +8,6 @@ export interface DbUser {
   email: string | null;
   phone_number: string | null;
   avatar_url: string | null;
-  dob: string | null;
   // Subscription & Trial fields
   is_trial_used: boolean;
   trial_ends_at: string | null;

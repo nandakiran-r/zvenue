@@ -1,6 +1,6 @@
 import { router } from "expo-router";
 import { safeBack } from "@/constants/navigation";
-import { Calendar, Camera, ChevronLeft, Mail, Phone, User } from "lucide-react-native";
+import { Camera, ChevronLeft, Mail, Phone, User } from "lucide-react-native";
 import React, { useEffect, useState } from "react";
 import {
     Alert,
@@ -27,7 +27,6 @@ export default function EditProfileScreen() {
     const [lastName, setLastName] = useState("");
     const [email, setEmail] = useState("");
     const [phoneNumber, setPhoneNumber] = useState("");
-    const [dob, setDob] = useState("");
     const [saving, setSaving] = useState(false);
 
     useEffect(() => {
@@ -36,7 +35,6 @@ export default function EditProfileScreen() {
             setLastName(dbUser.last_name ?? "");
             setEmail(dbUser.email ?? "");
             setPhoneNumber(dbUser.phone_number ?? "");
-            setDob(dbUser.dob ?? "");
         }
     }, [dbUser]);
 
@@ -45,12 +43,9 @@ export default function EditProfileScreen() {
         try {
             setSaving(true);
             await updateUser(userId, {
-                first_name: firstName,
-                last_name: lastName,
                 full_name: `${firstName} ${lastName}`,
                 email,
                 phone_number: phoneNumber,
-                dob,
             });
             await refreshProfile();
             safeBack("/(tabs)/home");
@@ -155,20 +150,6 @@ export default function EditProfileScreen() {
                                     placeholder="Enter your phone number"
                                     placeholderTextColor={Colors.textTertiary}
                                     keyboardType="phone-pad"
-                                />
-                            </View>
-                        </View>
-
-                        <View style={styles.inputGroup}>
-                            <Text style={styles.label}>Date of Birth</Text>
-                            <View style={styles.inputContainer}>
-                                <Calendar size={20} color={Colors.textSecondary} />
-                                <TextInput
-                                    style={styles.input}
-                                    value={dob}
-                                    onChangeText={setDob}
-                                    placeholder="Enter your date of birth"
-                                    placeholderTextColor={Colors.textTertiary}
                                 />
                             </View>
                         </View>

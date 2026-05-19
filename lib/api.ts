@@ -76,6 +76,11 @@ export async function fetchVenueById(id: string): Promise<DbVenue | null> {
   }
 }
 
+export async function fetchVenueBookedDates(venueId: string): Promise<{ booking_date: string; start_time: string; end_time: string }[]> {
+  const { data } = await api.get(`/api/venues/${venueId}/booked-dates`);
+  return data;
+}
+
 export async function fetchVenuesByCategory(categoryName: string): Promise<DbVenue[]> {
   const { data } = await api.get('/api/venues');
   return (data as DbVenue[]).filter(v => v.category?.name === categoryName);
@@ -172,6 +177,11 @@ export async function getSubscriptionStatus(): Promise<UserSubscriptionInfo> {
 
 export async function cancelSubscription(): Promise<{ success: boolean; message: string }> {
   const { data } = await api.post('/api/subscriptions/cancel');
+  return data;
+}
+
+export async function confirmSubscription(): Promise<{ success: boolean; subscription_status: string; has_access: boolean }> {
+  const { data } = await api.post('/api/subscriptions/confirm');
   return data;
 }
 

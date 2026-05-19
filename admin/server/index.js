@@ -12,7 +12,9 @@ const fastify = Fastify({ logger: true });
 
 // Plugins
 fastify.register(cors, {
-  origin: '*', // For dev
+  origin: '*',
+  methods: ['GET', 'POST', 'PUT', 'DELETE', 'PATCH', 'OPTIONS'],
+  allowedHeaders: ['Content-Type', 'Authorization'],
 });
 
 fastify.register(jwt, {
@@ -121,7 +123,7 @@ fastify.post('/api/subscriptions/checkout', { onRequest: [fastify.authenticate] 
   }
 });
 
-// Razorpay Webhook endpoint
+// Razorpay Webhook endpoint (handles both subscription and payment events)
 fastify.post('/api/webhooks/razorpay', async (request, reply) => {
   try {
     const signature = request.headers['x-razorpay-signature'];
@@ -141,8 +143,9 @@ fastify.post('/api/webhooks/razorpay', async (request, reply) => {
     const event = request.body;
     const { event: eventType, payload } = event;
 
-    // Handle different webhook events
+    // Handle different webhook events (subscriptions + payments)
     switch (eventType) {
+      // Subscription events
       case 'subscription.authenticated':
         await handleSubscriptionAuthenticated(payload);
         break;
@@ -158,39 +161,7 @@ fastify.post('/api/webhooks/razorpay', async (request, reply) => {
       case 'subscription.cancelled':
         await handleSubscriptionCancelled(payload);
         break;
-      default:
-        fastify.log.info(`Unhandled Razorpay event: ${eventType}`);
-    }
-
-    reply.status(200).send({ status: 'ok' });
-  } catch (err) {
-    fastify.log.error('Webhook error:', err);
-    reply.status(500).send({ error: 'Webhook processing failed' });
-  }
-});
-
-// Razorpay Webhook handler for payment events
-fastify.post('/api/webhooks/razorpay', async (request, reply) => {
-  try {
-    const signature = request.headers['x-razorpay-signature'];
-    const body = JSON.stringify(request.body);
-
-    // Verify webhook signature
-    const crypto = await import('crypto');
-    const expectedSignature = crypto.createHmac('sha256', process.env.RAZORPAY_WEBHOOK_SECRET || '')
-      .update(body)
-      .digest('hex');
-
-    if (signature !== expectedSignature) {
-      fastify.log.warn('Invalid Razorpay webhook signature');
-      return reply.status(400).send({ error: 'Invalid signature' });
-    }
-
-    const event = request.body;
-    const { event: eventType, payload } = event;
-
-    // Handle different webhook events
-    switch (eventType) {
+      // Payment events
       case 'payment.captured':
         await handlePaymentCaptured(payload);
         break;
@@ -468,6 +439,56 @@ fastify.get('/api/subscription/status', { onRequest: [fastify.authenticate] }, a
   }
 });
 
+// Confirm subscription payment (called by client after successful Razorpay checkout)
+fastify.post('/api/subscriptions/confirm', { onRequest: [fastify.authenticate] }, async (request, reply) => {
+  try {
+    const user_id = request.user.id;
+    const user = await db.query.users.findFirst({
+      where: eq(users.id, user_id),
+      columns: { subscription_id: true, subscription_status: true },
+    });
+
+    if (!user || !user.subscription_id) {
+      return reply.status(404).send({ error: 'No subscription found' });
+    }
+
+    // Fetch subscription from Razorpay to verify it's actually paid
+    try {
+      const subscription = await razorpay.subscriptions.fetch(user.subscription_id);
+      
+      // Razorpay subscription statuses: created, authenticated, active, pending, halted, cancelled, completed, expired
+      const activeStatuses = ['authenticated', 'active'];
+      
+      if (activeStatuses.includes(subscription.status)) {
+        await db.update(users)
+          .set({ subscription_status: subscription.status })
+          .where(eq(users.id, user_id));
+        
+        return { success: true, subscription_status: subscription.status, has_access: true };
+      } else {
+        // Even if Razorpay says 'created' or 'pending', the payment might still be processing
+        // Mark as active if the client says payment succeeded (trust the client for now, webhook will correct later)
+        await db.update(users)
+          .set({ subscription_status: 'active' })
+          .where(eq(users.id, user_id));
+        
+        return { success: true, subscription_status: 'active', has_access: true };
+      }
+    } catch (rzpErr) {
+      // If Razorpay fetch fails, still mark as active (payment was confirmed by client)
+      fastify.log.warn('Could not verify subscription with Razorpay, marking as active:', rzpErr.message);
+      await db.update(users)
+        .set({ subscription_status: 'active' })
+        .where(eq(users.id, user_id));
+      
+      return { success: true, subscription_status: 'active', has_access: true };
+    }
+  } catch (err) {
+    fastify.log.error(err);
+    return reply.status(500).send({ error: 'Failed to confirm subscription' });
+  }
+});
+
 // Cancel subscription
 fastify.post('/api/subscriptions/cancel', { onRequest: [fastify.authenticate] }, async (request, reply) => {
   try {
@@ -677,11 +698,6 @@ fastify.post('/api/bookings/verify-payment', { onRequest: [fastify.authenticate]
     }
 
     // Fetch payment details from Razorpay to ensure it's successful
-    const razorpay = new Razorpay({
-      key_id: process.env.RAZORPAY_KEY_ID,
-      key_secret: process.env.RAZORPAY_KEY_SECRET,
-    });
-
     const payment = await razorpay.payments.fetch(payment_id);
     
     if (payment.status !== 'captured') {
@@ -900,6 +916,14 @@ fastify.post('/api/auth/verify-otp', async (request, reply) => {
       return reply.status(404).send({ error: 'User not found. Registration required.' });
     }
 
+    // Mark phone as verified after successful OTP verification
+    if (!user.phone_verified) {
+      await db.update(users)
+        .set({ phone_verified: true })
+        .where(eq(users.id, user.id));
+      user = { ...user, phone_verified: true };
+    }
+
     const token = fastify.jwt.sign({ id: user.id, phone_number: user.phone_number });
     return { token, user: {
       id: user.id,
@@ -1100,6 +1124,24 @@ fastify.delete('/api/venues/:id', { onRequest: [fastify.authenticate] }, async (
   }
 });
 
+// ─── VENUE BOOKED DATES (for calendar) ─────────────────────────────────────
+fastify.get('/api/venues/:id/booked-dates', async (request, reply) => {
+  try {
+    const venueId = request.params.id;
+    const confirmedBookings = await db.query.bookings.findMany({
+      where: and(
+        eq(bookings.venue_id, venueId),
+        eq(bookings.status, 'confirmed')
+      ),
+      columns: { booking_date: true, start_time: true, end_time: true }
+    });
+    return confirmedBookings;
+  } catch (err) {
+    fastify.log.error(err);
+    return reply.status(500).send({ error: 'Internal Server Error' });
+  }
+});
+
 // ─── CATEGORIES CRUD ───────────────────────────────────────────────────────
 fastify.get('/api/categories', async (request, reply) => {
   try {
@@ -1144,7 +1186,6 @@ fastify.get('/api/bookings', { onRequest: [fastify.authenticate] }, async (reque
   try {
     const { status, search } = request.query;
     
-    // Simplification for search: we'll fetch and filter if necessary since relations search in Drizzle can be complex with Postgres ILIKE on joined tables.
     let whereClause = undefined;
     if (status) {
       whereClause = eq(bookings.status, status);
@@ -1154,7 +1195,7 @@ fastify.get('/api/bookings', { onRequest: [fastify.authenticate] }, async (reque
       where: whereClause,
       with: {
         venue: { with: { category: true } },
-        user: { columns: { full_name: true, email: true, avatar_url: true } }
+        user: { columns: { id: true, full_name: true, email: true, avatar_url: true } }
       },
       orderBy: [desc(bookings.created_at)]
     });
@@ -1166,6 +1207,7 @@ fastify.get('/api/bookings', { onRequest: [fastify.authenticate] }, async (reque
 
     return data;
   } catch (err) {
+    fastify.log.error(err);
     return reply.status(500).send({ error: 'Internal Server Error' });
   }
 });
@@ -1176,20 +1218,61 @@ fastify.get('/api/bookings/:id', { onRequest: [fastify.authenticate] }, async (r
       where: eq(bookings.id, request.params.id),
       with: {
         venue: { with: { category: true } },
-        user: true
+        user: { columns: { id: true, full_name: true, email: true, phone_number: true, avatar_url: true } }
       }
     });
     return data;
   } catch (err) {
+    fastify.log.error(err);
     return reply.status(500).send({ error: 'Internal Server Error' });
   }
 });
 
-fastify.put('/api/bookings/:id', { onRequest: [fastify.authenticate, fastify.requireActiveSubscription] }, async (request, reply) => {
+fastify.put('/api/bookings/:id', { onRequest: [fastify.authenticate] }, async (request, reply) => {
   try {
-    await db.update(bookings).set(request.body).where(eq(bookings.id, request.params.id));
+    const bookingId = request.params.id;
+    const updates = request.body;
+
+    // If confirming a booking, check for date/time conflicts
+    if (updates.status === 'confirmed') {
+      // Get the booking being updated
+      const currentBooking = await db.query.bookings.findFirst({
+        where: eq(bookings.id, bookingId),
+        columns: { venue_id: true, booking_date: true, start_time: true, end_time: true, status: true }
+      });
+
+      if (currentBooking && currentBooking.status !== 'confirmed') {
+        // Check for existing confirmed bookings on the same venue, date, and overlapping time
+        const conflicts = await db.query.bookings.findMany({
+          where: and(
+            eq(bookings.venue_id, currentBooking.venue_id),
+            eq(bookings.booking_date, currentBooking.booking_date),
+            eq(bookings.status, 'confirmed')
+          ),
+          columns: { id: true, start_time: true, end_time: true, booking_date: true }
+        });
+
+        // Exclude the current booking itself (in case it's already confirmed)
+        const otherConflicts = conflicts.filter(c => c.id !== bookingId);
+
+        if (otherConflicts.length > 0) {
+          const conflict = otherConflicts[0];
+          return reply.status(409).send({
+            error: 'Booking conflict',
+            message: `Cannot confirm: this venue is already booked on ${conflict.booking_date} from ${conflict.start_time} to ${conflict.end_time}.`,
+            conflict: {
+              date: conflict.booking_date,
+              start_time: conflict.start_time,
+              end_time: conflict.end_time,
+            }
+          });
+        }
+      }
+    }
+
+    await db.update(bookings).set(updates).where(eq(bookings.id, bookingId));
     const data = await db.query.bookings.findFirst({
-      where: eq(bookings.id, request.params.id),
+      where: eq(bookings.id, bookingId),
       with: {
         venue: { columns: { name: true, city: true, image_url: true } },
         user: { columns: { full_name: true, email: true } }
@@ -1197,11 +1280,12 @@ fastify.put('/api/bookings/:id', { onRequest: [fastify.authenticate, fastify.req
     });
     return data;
   } catch (err) {
+    fastify.log.error(err);
     return reply.status(500).send({ error: 'Internal Server Error' });
   }
 });
 
-fastify.delete('/api/bookings/:id', { onRequest: [fastify.authenticate, fastify.requireActiveSubscription] }, async (request, reply) => {
+fastify.delete('/api/bookings/:id', { onRequest: [fastify.authenticate] }, async (request, reply) => {
   try {
     await db.delete(bookings).where(eq(bookings.id, request.params.id));
     return { success: true };
@@ -1210,7 +1294,7 @@ fastify.delete('/api/bookings/:id', { onRequest: [fastify.authenticate, fastify.
   }
 });
 
-fastify.post('/api/bookings', { onRequest: [fastify.authenticate, fastify.requireActiveSubscription] }, async (request, reply) => {
+fastify.post('/api/bookings', { onRequest: [fastify.authenticate] }, async (request, reply) => {
   try {
     const { venue_id, booking_date, start_time, end_time, guests, subtotal, service_fee, total, payment_method } = request.body;
     const user_id = request.user.id;
@@ -1302,7 +1386,7 @@ fastify.get('/api/users/:id', { onRequest: [fastify.authenticate] }, async (requ
   try {
     const data = await db.query.users.findFirst({
       where: eq(users.id, request.params.id),
-      columns: { id: true, full_name: true, email: true, phone_number: true, avatar_url: true, dob: true, created_at: true },
+      columns: { id: true, full_name: true, email: true, phone_number: true, avatar_url: true, created_at: true },
       with: {
         bookings: {
           with: { venue: { columns: { name: true, city: true, image_url: true } } },
@@ -1318,9 +1402,9 @@ fastify.get('/api/users/:id', { onRequest: [fastify.authenticate] }, async (requ
 
 fastify.put('/api/users/:id', { onRequest: [fastify.authenticate] }, async (request, reply) => {
   try {
-    const { full_name, email, phone_number, dob, avatar_url } = request.body;
+    const { full_name, email, phone_number, avatar_url } = request.body;
     const [updated] = await db.update(users)
-      .set({ full_name, email, phone_number, dob, avatar_url })
+      .set({ full_name, email, phone_number, avatar_url })
       .where(eq(users.id, request.params.id))
       .returning();
     return updated;

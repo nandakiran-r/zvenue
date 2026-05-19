@@ -27,6 +27,7 @@ export const fetchCityDistribution = () => api.get('/api/dashboard/city-distribu
 export const fetchVenues = (params?: { search?: string; category_id?: string }) =>
   api.get('/api/venues', { params }).then(r => r.data)
 export const fetchVenue = (id: string) => api.get(`/api/venues/${id}`).then(r => r.data)
+export const fetchVenueBookedDates = (id: string) => api.get(`/api/venues/${id}/booked-dates`).then(r => r.data)
 export const createVenue = (data: Record<string, unknown>) => api.post('/api/venues', data).then(r => r.data)
 export const updateVenue = (id: string, data: Record<string, unknown>) =>
   api.put(`/api/venues/${id}`, data).then(r => r.data)

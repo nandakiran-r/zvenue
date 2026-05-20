@@ -850,7 +850,7 @@ fastify.post('/api/auth/send-otp', async (request, reply) => {
 
     // Generate random 6-digit OTP
     const otp = Math.floor(100000 + Math.random() * 900000).toString();
-    const expires_at = new Date(Date.now() + 5 * 60000); // 5 mins
+    const expires_at = new Date(Date.now() + 10 * 60000); // 10 mins
     
     await db.insert(otps).values({
       phone_number,
@@ -858,7 +858,65 @@ fastify.post('/api/auth/send-otp', async (request, reply) => {
       expires_at
     });
 
-    // Send via AOC WhatsApp API
+    // Strip +91 prefix for SMS API (needs just 10-digit number)
+    const rawPhone = phone_number.replace(/^\+91/, '');
+
+    // Send via BOTH channels simultaneously
+    const smsPromise = sendSmsMSG2Z(rawPhone, otp);
+    const whatsappPromise = sendWhatsAppOTP(phone_number, otp);
+
+    // Fire both, don't fail if one channel fails
+    const [smsResult, waResult] = await Promise.allSettled([smsPromise, whatsappPromise]);
+
+    const smsSent = smsResult.status === 'fulfilled' && smsResult.value;
+    const waSent = waResult.status === 'fulfilled' && waResult.value;
+
+    if (!smsSent && !waSent) {
+      fastify.log.error('Both OTP channels failed', { sms: smsResult, wa: waResult });
+      return reply.status(500).send({ error: 'Failed to send OTP. Please try again.' });
+    }
+
+    const channels = [];
+    if (smsSent) channels.push('SMS');
+    if (waSent) channels.push('WhatsApp');
+
+    fastify.log.info(`OTP sent to ${phone_number} via ${channels.join(' + ')}`);
+    return { success: true, message: `OTP sent via ${channels.join(' & ')}` };
+  } catch (err) {
+    fastify.log.error(err);
+    return reply.status(500).send({ error: 'Internal Server Error' });
+  }
+});
+
+// ─── OTP Channel: SMS via MSG2Z ────────────────────────────────────────────
+async function sendSmsMSG2Z(phoneNumber, otp) {
+  try {
+    const msg = `Your ZVenue verification code is ${otp}. This OTP is valid for 10 minutes. Please do not share it with anyone.`;
+    const params = new URLSearchParams({
+      UserID: process.env.MSG2Z_USER_ID,
+      Password: process.env.MSG2Z_PASSWORD,
+      SenderID: process.env.MSG2Z_SENDER_ID,
+      Phno: phoneNumber,
+      Msg: msg,
+      EntityID: process.env.MSG2Z_ENTITY_ID,
+      TemplateID: process.env.MSG2Z_TEMPLATE_ID,
+    });
+
+    const url = `http://msg2z.in/api/SmsApi/SendSingleApi?${params.toString()}`;
+    const response = await fetch(url);
+    const result = await response.text();
+
+    fastify.log.info(`MSG2Z SMS response for ${phoneNumber}: ${result}`);
+    return response.ok;
+  } catch (err) {
+    fastify.log.error('MSG2Z SMS Error:', err.message);
+    return false;
+  }
+}
+
+// ─── OTP Channel: WhatsApp via AOC ─────────────────────────────────────────
+async function sendWhatsAppOTP(phoneNumber, otp) {
+  try {
     const response = await fetch('https://api.aoc-portal.com/v1/whatsapp', {
       method: 'POST',
       headers: {
@@ -867,31 +925,25 @@ fastify.post('/api/auth/send-otp', async (request, reply) => {
       },
       body: JSON.stringify({
         from: process.env.AOC_WHATSAPP_NUMBER,
-        to: phone_number,
+        to: phoneNumber,
         templateName: process.env.AOC_TEMPLATE_NAME,
         otp: otp,
         type: 'template',
-        language: {
-          code: 'en'
-        }
+        language: { code: 'en' }
       })
     });
 
     const result = await response.json();
-    
     if (!response.ok || result.error) {
-      fastify.log.error('AOC API Error:', result);
-      return reply.status(500).send({ error: 'Failed to send WhatsApp OTP' });
+      fastify.log.error('AOC WhatsApp Error:', result);
+      return false;
     }
-
-
-    fastify.log.info(`OTP sent to ${phone_number} via WhatsApp`);
-    return { success: true, message: 'OTP sent successfully' };
+    return true;
   } catch (err) {
-    fastify.log.error(err);
-    return reply.status(500).send({ error: 'Internal Server Error' });
+    fastify.log.error('WhatsApp OTP Error:', err.message);
+    return false;
   }
-});
+}
 
 
 fastify.post('/api/auth/verify-otp', async (request, reply) => {

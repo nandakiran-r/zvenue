@@ -116,7 +116,7 @@ const styles = StyleSheet.create({
   },
   scrollContent: {
     paddingHorizontal: 20,
-    paddingBottom: 24,
+    paddingBottom: 90,
   },
   venueCard: {
     flexDirection: "row",

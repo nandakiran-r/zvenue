@@ -5,6 +5,8 @@ import { MaterialIcons } from "@expo/vector-icons";
 import React, { useEffect, useState } from "react";
 import {
     ActivityIndicator,
+    Dimensions,
+    FlatList,
     Image,
     ScrollView,
     StyleSheet,
@@ -17,6 +19,7 @@ import Colors from "@/constants/colors";
 import { useAuth } from "@/context/AuthContext";
 import { useFavorites } from "@/context/FavoritesContext";
 import { fetchVenueById } from "@/lib/api";
+import { VenueMap } from "@/components/VenueMap";
 import type { DbVenue } from "@/lib/types";
 
 const AMENITY_ICONS: Record<string, any> = {
@@ -37,11 +40,27 @@ export default function VenueDetailScreen() {
 
     const [venue, setVenue] = useState<DbVenue | null>(null);
     const [loading, setLoading] = useState(true);
+    const [activeImageIndex, setActiveImageIndex] = useState(0);
+    const flatListRef = React.useRef<FlatList>(null);
 
     useEffect(() => {
         if (!id) return;
         loadVenue();
     }, [id]);
+
+    // Auto-scroll images every 3 seconds
+    useEffect(() => {
+        const images = venue?.images?.length || (venue?.image_url ? 1 : 0);
+        if (images <= 1) return;
+        const interval = setInterval(() => {
+            setActiveImageIndex((prev) => {
+                const next = (prev + 1) % images;
+                flatListRef.current?.scrollToIndex({ index: next, animated: true });
+                return next;
+            });
+        }, 3000);
+        return () => clearInterval(interval);
+    }, [venue]);
 
     const loadVenue = async () => {
         try {
@@ -76,12 +95,40 @@ export default function VenueDetailScreen() {
     const isFav = isFavorite(venue.id);
     const amenities = venue.amenities ?? [];
     const availableDates = venue.available_dates ?? [];
+    const venueImages = (venue.images && venue.images.length > 0) ? venue.images : (venue.image_url ? [venue.image_url] : []);
+    const screenWidth = Dimensions.get('window').width;
 
     return (
         <View style={styles.container}>
             <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={styles.scrollContent}>
+                {/* Image Gallery */}
                 <View style={styles.imageContainer}>
-                    <Image source={{ uri: venue.image_url ?? undefined }} style={styles.heroImage} />
+                    {venueImages.length > 0 ? (
+                        <FlatList
+                            ref={flatListRef}
+                            data={venueImages}
+                            horizontal
+                            pagingEnabled
+                            showsHorizontalScrollIndicator={false}
+                            onMomentumScrollEnd={(e) => setActiveImageIndex(Math.round(e.nativeEvent.contentOffset.x / screenWidth))}
+                            keyExtractor={(_, i) => String(i)}
+                            renderItem={({ item }) => (
+                                <Image source={{ uri: item }} style={[styles.heroImage, { width: screenWidth }]} />
+                            )}
+                            getItemLayout={(_, index) => ({ length: screenWidth, offset: screenWidth * index, index })}
+                        />
+                    ) : (
+                        <View style={[styles.heroImage, { backgroundColor: '#f0f0f0', justifyContent: 'center', alignItems: 'center' }]}>
+                            <Text style={{ color: Colors.textSecondary }}>No images</Text>
+                        </View>
+                    )}
+                    {venueImages.length > 1 && (
+                        <View style={styles.imageDots}>
+                            {venueImages.map((_, i) => (
+                                <View key={i} style={[styles.imageDot, i === activeImageIndex && styles.imageDotActive]} />
+                            ))}
+                        </View>
+                    )}
                     <View style={[styles.imageOverlay, { paddingTop: insets.top }]}>
                         <TouchableOpacity style={styles.iconButton} onPress={() => safeBack("/(tabs)/home")}>
                             <ChevronLeft size={22} color={Colors.white} />
@@ -89,9 +136,6 @@ export default function VenueDetailScreen() {
                         <TouchableOpacity style={styles.iconButton} onPress={() => toggleFavorite(venue.id)}>
                             <Heart size={22} color={isFav ? Colors.primary : Colors.white} fill={isFav ? Colors.primary : "none"} />
                         </TouchableOpacity>
-                    </View>
-                    <View style={styles.categoryBadge}>
-                        <Text style={styles.categoryBadgeText}>{venue.category?.name ?? "Venue"}</Text>
                     </View>
                 </View>
 
@@ -135,10 +179,44 @@ export default function VenueDetailScreen() {
                     </View>
                 </View>
 
+                {/* Map View */}
+                {(venue as any).latitude && (venue as any).longitude && (
+                    <View style={styles.section}>
+                        <Text style={styles.sectionTitle}>Location</Text>
+                        <VenueMap
+                            latitude={(venue as any).latitude}
+                            longitude={(venue as any).longitude}
+                            name={venue.name}
+                            height={180}
+                        />
+                    </View>
+                )}
+
                 <View style={styles.section}>
                     <Text style={styles.sectionTitle}>About This Venue</Text>
                     <Text style={styles.description}>{venue.description}</Text>
                 </View>
+
+                {venue.youtube_url && (
+                    <View style={styles.section}>
+                        <Text style={styles.sectionTitle}>📹 Venue Video</Text>
+                        <TouchableOpacity
+                            style={{ backgroundColor: '#F0F0F0', borderRadius: 12, padding: 16, flexDirection: 'row', alignItems: 'center', gap: 12 }}
+                            onPress={() => {
+                                const { Linking } = require('react-native');
+                                Linking.openURL(venue.youtube_url!);
+                            }}
+                        >
+                            <View style={{ width: 48, height: 48, borderRadius: 24, backgroundColor: '#FF0000', alignItems: 'center', justifyContent: 'center' }}>
+                                <Text style={{ color: '#fff', fontSize: 20 }}>▶</Text>
+                            </View>
+                            <View style={{ flex: 1 }}>
+                                <Text style={{ fontSize: 14, fontWeight: '600', color: Colors.text }}>Watch Venue Tour</Text>
+                                <Text style={{ fontSize: 12, color: Colors.textSecondary }}>Tap to open on YouTube</Text>
+                            </View>
+                        </TouchableOpacity>
+                    </View>
+                )}
 
                 <View style={styles.section}>
                     <Text style={styles.sectionTitle}>Amenities</Text>
@@ -154,6 +232,23 @@ export default function VenueDetailScreen() {
                         })}
                     </View>
                 </View>
+
+                {(venue.subscriber_benefits ?? []).length > 0 && (
+                    <View style={styles.section}>
+                        <Text style={styles.sectionTitle}>🎁 Subscriber Benefits</Text>
+                        <View style={{ backgroundColor: '#FFF8E1', borderRadius: 12, padding: 14, borderWidth: 1, borderColor: '#FFE082' }}>
+                            {(venue.subscriber_benefits as string[]).map((benefit, i) => (
+                                <View key={i} style={{ flexDirection: 'row', alignItems: 'center', marginBottom: i < (venue.subscriber_benefits as string[]).length - 1 ? 8 : 0 }}>
+                                    <Text style={{ fontSize: 13, color: '#F57F17', marginRight: 8 }}>★</Text>
+                                    <Text style={{ fontSize: 13, color: Colors.text, flex: 1 }}>{benefit}</Text>
+                                </View>
+                            ))}
+                            <Text style={{ fontSize: 11, color: Colors.textSecondary, marginTop: 10, fontStyle: 'italic' }}>
+                                Subscribe for ₹49/month to unlock these benefits with every booking
+                            </Text>
+                        </View>
+                    </View>
+                )}
 
                 <View style={styles.section}>
                     <Text style={styles.sectionTitle}>Venue Owner</Text>
@@ -213,6 +308,25 @@ const styles = StyleSheet.create({
     heroImage: {
         width: "100%",
         height: "100%",
+    },
+    imageDots: {
+        position: "absolute",
+        bottom: 40,
+        left: 0,
+        right: 0,
+        flexDirection: "row",
+        justifyContent: "center",
+        gap: 6,
+    },
+    imageDot: {
+        width: 8,
+        height: 8,
+        borderRadius: 4,
+        backgroundColor: "rgba(255,255,255,0.5)",
+    },
+    imageDotActive: {
+        backgroundColor: Colors.white,
+        width: 20,
     },
     imageOverlay: {
         position: "absolute",

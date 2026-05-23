@@ -1,6 +1,6 @@
 import React, { createContext, useContext, useEffect, useState, useCallback } from "react";
 import AsyncStorage from "@react-native-async-storage/async-storage";
-import { api, fetchUser, fetchUserWithSubscription, getSubscriptionStatus } from "@/lib/api";
+import { api, fetchUser, getSubscriptionStatus } from "@/lib/api";
 import type { DbUser, UserSubscriptionInfo } from "@/lib/types";
 
 interface AuthContextValue {
@@ -9,15 +9,12 @@ interface AuthContextValue {
   userId: string | null;
   signOut: () => Promise<void>;
   login: (token: string, user: DbUser) => Promise<void>;
-  /** The user row from the DB */
   dbUser: DbUser | null;
-  /** Re-fetch the DB user profile (call after edits) */
   refreshProfile: () => Promise<void>;
-  /** Subscription info */
   subscriptionInfo: UserSubscriptionInfo | null;
   refreshSubscriptionInfo: () => Promise<void>;
-  /** Check if user has access (trial or subscription active) */
-  hasAccess: boolean;
+  /** Whether user has an active subscription (for premium benefits) */
+  isSubscribed: boolean;
 }
 
 const AuthContext = createContext<AuthContextValue | null>(null);
@@ -62,6 +59,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       await AsyncStorage.removeItem("token");
       setToken(null);
       setDbUser(null);
+      setSubscriptionInfo(null);
     } catch (e) {
       console.log("Failed to remove token");
     }
@@ -78,20 +76,20 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   }, [dbUser?.id]);
 
   const refreshSubscriptionInfo = useCallback(async () => {
-    if (!dbUser?.id) return;
+    if (!token) return;
     try {
       const status = await getSubscriptionStatus();
       setSubscriptionInfo(status);
     } catch (err) {
       console.error("Failed to refresh subscription info:", err);
     }
-  }, [dbUser?.id]);
+  }, [token]);
 
   useEffect(() => {
-    if (dbUser?.id) {
+    if (token && dbUser?.id) {
       refreshSubscriptionInfo();
     }
-  }, [dbUser?.id, refreshSubscriptionInfo]);
+  }, [token, dbUser?.id]);
 
   const value: AuthContextValue = {
     isSignedIn: !!token,
@@ -103,7 +101,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     refreshProfile,
     subscriptionInfo,
     refreshSubscriptionInfo,
-    hasAccess: subscriptionInfo?.has_access || false,
+    isSubscribed: subscriptionInfo?.is_subscribed || false,
   };
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;

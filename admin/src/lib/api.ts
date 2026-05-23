@@ -24,8 +24,8 @@ export const fetchTopVenues = () => api.get('/api/dashboard/top-venues').then(r 
 export const fetchCityDistribution = () => api.get('/api/dashboard/city-distribution').then(r => r.data)
 
 // ─── Venues ────────────────────────────────────────────────────────────────
-export const fetchVenues = (params?: { search?: string; category_id?: string }) =>
-  api.get('/api/venues', { params }).then(r => r.data)
+export const fetchVenues = (params?: { search?: string; category_id?: string; all?: string }) =>
+  api.get('/api/venues', { params: { ...params, all: params?.all || 'true' } }).then(r => r.data)
 export const fetchVenue = (id: string) => api.get(`/api/venues/${id}`).then(r => r.data)
 export const fetchVenueBookedDates = (id: string) => api.get(`/api/venues/${id}/booked-dates`).then(r => r.data)
 export const createVenue = (data: Record<string, unknown>) => api.post('/api/venues', data).then(r => r.data)
@@ -56,8 +56,46 @@ export const fetchUserDetail = (id: string) => api.get(`/api/users/${id}`).then(
 export const deleteUser = (id: string) => api.delete(`/api/users/${id}`).then(r => r.data)
 
 // ─── Notifications ─────────────────────────────────────────────────────────
-export const fetchNotifications = (params?: { user_id?: string }) =>
+export const fetchNotifications = (params?: { user_id?: string; owner_id?: string }) =>
   api.get('/api/notifications', { params }).then(r => r.data)
+
+// ─── Subscribers ───────────────────────────────────────────────────────────
+export const fetchSubscribers = (params?: { status?: string; search?: string }) =>
+  api.get('/api/subscribers', { params }).then(r => r.data)
+export const cancelUserSubscription = (id: string) =>
+  api.post(`/api/subscribers/${id}/cancel`).then(r => r.data)
+export const activateUserSubscription = (id: string) =>
+  api.post(`/api/subscribers/${id}/activate`).then(r => r.data)
+
+// ─── Owners ────────────────────────────────────────────────────────────────
+export const fetchOwners = () => api.get('/api/owners').then(r => r.data)
+export const createOwner = (data: Record<string, unknown>) => api.post('/api/owners', data).then(r => r.data)
+export const updateOwner = (id: string, data: Record<string, unknown>) => api.put(`/api/owners/${id}`, data).then(r => r.data)
+export const deleteOwner = (id: string) => api.delete(`/api/owners/${id}`).then(r => r.data)
+export const approveVenue = (id: string) => api.post(`/api/venues/${id}/approve`).then(r => r.data)
+export const rejectVenue = (id: string, reason?: string) => api.post(`/api/venues/${id}/reject`, { reason }).then(r => r.data)
+
+// ─── Owner Portal ──────────────────────────────────────────────────────────
+export const ownerLogin = (data: { email: string; password: string }) => api.post('/api/owners/login', data).then(r => r.data)
+export const fetchOwnerProfile = () => api.get('/api/owners/me').then(r => r.data)
+export const fetchOwnerVenues = () => api.get('/api/owners/venues').then(r => r.data)
+export const createOwnerVenue = (data: Record<string, unknown>) => api.post('/api/owners/venues', data).then(r => r.data)
+export const updateOwnerVenue = (id: string, data: Record<string, unknown>) => api.put(`/api/owners/venues/${id}`, data).then(r => r.data)
+export const updateOwnerVenueBlockedDates = (id: string, blocked_dates: string[]) => api.put(`/api/owners/venues/${id}/blocked-dates`, { blocked_dates }).then(r => r.data)
+export const fetchOwnerBookings = () => api.get('/api/owners/bookings').then(r => r.data)
+export const fetchOwnerAnalytics = () => api.get('/api/owners/analytics').then(r => r.data)
+
+// ─── Support Tickets ───────────────────────────────────────────────────────
+export const fetchSupportTickets = (params?: { status?: string }) => api.get('/api/support-tickets', { params }).then(r => r.data)
+
+// ─── Push Notifications ────────────────────────────────────────────────────
+export const sendPushToUser = (user_id: string, title: string, body: string, data?: Record<string, unknown>) =>
+  api.post('/api/push/send', { user_id, title, body, data }).then(r => r.data)
+export const broadcastPush = (title: string, body: string, data?: Record<string, unknown>) =>
+  api.post('/api/push/broadcast', { title, body, data }).then(r => r.data)
+export const fetchMyTickets = () => api.get('/api/support-tickets/mine').then(r => r.data)
+export const createSupportTicket = (data: { subject: string; description: string; priority?: string }) => api.post('/api/support-tickets', data).then(r => r.data)
+export const replySupportTicket = (id: string, data: { admin_reply?: string; status?: string }) => api.put(`/api/support-tickets/${id}`, data).then(r => r.data)
 export const createNotification = (data: Record<string, unknown>) =>
   api.post('/api/notifications', data).then(r => r.data)
 export const broadcastNotification = (data: { title: string; body: string; type?: string }) =>

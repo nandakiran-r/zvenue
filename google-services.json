@@ -1,0 +1,29 @@
+{
+  "project_info": {
+    "project_number": "66593886409",
+    "project_id": "zvenue-76b80",
+    "storage_bucket": "zvenue-76b80.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:66593886409:android:af33a2eeb69e1b800e3d18",
+        "android_client_info": {
+          "package_name": "com.zvenue.app"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyAEL7LAkh-mCqR6cnXEQiFBqt0WS1Qp-QM"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}

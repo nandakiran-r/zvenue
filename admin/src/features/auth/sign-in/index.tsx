@@ -16,6 +16,7 @@ type FormValues = z.infer<typeof formSchema>;
 
 export function SignIn() {
   const [loading, setLoading] = useState(false);
+  const [loginMode, setLoginMode] = useState<'admin' | 'owner'>('admin');
   const navigate = useNavigate();
   const { login } = useAuth();
   
@@ -27,9 +28,17 @@ export function SignIn() {
   const onSubmit = async (data: FormValues) => {
     setLoading(true);
     try {
-      const response = await api.post('/api/auth/sign-in', data);
-      const { token, user } = response.data;
-      login(token, user);
+      const endpoint = loginMode === 'owner' ? '/api/owners/login' : '/api/auth/sign-in';
+      const response = await api.post(endpoint, data);
+      
+      if (loginMode === 'owner') {
+        const { token, owner } = response.data;
+        login(token, { ...owner, role: 'owner' });
+      } else {
+        const { token, user } = response.data;
+        login(token, { ...user, role: 'admin' });
+      }
+      
       toast.success('Logged in successfully');
       navigate({ to: '/' });
     } catch (error: any) {
@@ -42,11 +51,35 @@ export function SignIn() {
   return (
     <div className="flex min-h-svh items-center justify-center bg-muted/30 p-4">
       <div className="w-full max-w-md bg-white rounded-2xl p-8 shadow-[0_4px_24px_rgba(0,0,0,0.08)]">
-        <div className="mb-8 text-center">
+        <div className="mb-6 text-center">
           <h1 className="text-3xl font-bold tracking-tight" style={{ color: '#7a3317' }}>
             ZVenue
           </h1>
-          <p className="mt-1 text-sm text-muted-foreground">Admin Dashboard Login</p>
+          <p className="mt-1 text-sm text-muted-foreground">
+            {loginMode === 'admin' ? 'Admin Dashboard' : 'Owner Portal'}
+          </p>
+        </div>
+
+        {/* Role Toggle */}
+        <div className="flex rounded-lg border p-1 mb-6">
+          <button
+            type="button"
+            onClick={() => setLoginMode('admin')}
+            className={`flex-1 py-2 text-sm font-medium rounded-md transition-colors ${
+              loginMode === 'admin' ? 'bg-[#7a3317] text-white' : 'text-muted-foreground hover:text-foreground'
+            }`}
+          >
+            Admin
+          </button>
+          <button
+            type="button"
+            onClick={() => setLoginMode('owner')}
+            className={`flex-1 py-2 text-sm font-medium rounded-md transition-colors ${
+              loginMode === 'owner' ? 'bg-[#7a3317] text-white' : 'text-muted-foreground hover:text-foreground'
+            }`}
+          >
+            Venue Owner
+          </button>
         </div>
 
         <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4">
@@ -56,7 +89,7 @@ export function SignIn() {
               type="email"
               {...form.register('email')}
               className="w-full border rounded-md px-3 py-2 text-sm outline-none focus:ring-2 focus:ring-[#7a3317]"
-              placeholder="admin@example.com"
+              placeholder={loginMode === 'owner' ? 'owner@example.com' : 'admin@example.com'}
             />
             {form.formState.errors.email && (
               <p className="text-red-500 text-xs mt-1">{form.formState.errors.email.message}</p>
@@ -80,18 +113,9 @@ export function SignIn() {
             disabled={loading}
             className="w-full py-2 px-4 bg-[#7a3317] hover:bg-[#5c2511] text-white rounded-md text-sm font-medium transition-colors"
           >
-            {loading ? 'Signing in...' : 'Sign In'}
+            {loading ? 'Signing in...' : `Sign In as ${loginMode === 'owner' ? 'Owner' : 'Admin'}`}
           </button>
         </form>
-
-        <div className="mt-6 text-center text-sm">
-          <p className="text-muted-foreground">
-            Don't have an account?{' '}
-            <button onClick={() => navigate({ to: '/sign-up' })} className="text-[#7a3317] hover:underline font-medium">
-              Sign Up
-            </button>
-          </p>
-        </div>
       </div>
     </div>
   );

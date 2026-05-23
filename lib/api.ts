@@ -60,8 +60,7 @@ export async function fetchVenues(filters?: VenueFilters): Promise<DbVenue[]> {
     venues = venues.filter((v) => v.city?.toLowerCase().includes(filters.city!.toLowerCase()));
   }
   if (filters?.minCapacity) {
-    // Currently no capacity in DB, but if there is:
-    // venues = venues.filter((v) => v.capacity >= filters.minCapacity!);
+    venues = venues.filter((v) => v.capacity >= filters.minCapacity!);
   }
 
   return venues;
@@ -76,8 +75,12 @@ export async function fetchVenueById(id: string): Promise<DbVenue | null> {
   }
 }
 
-export async function fetchVenueBookedDates(venueId: string): Promise<{ booking_date: string; start_time: string; end_time: string }[]> {
+export async function fetchVenueBookedDates(venueId: string): Promise<{ bookings: { booking_date: string; start_time: string; end_time: string }[]; blocked_dates: string[] }> {
   const { data } = await api.get(`/api/venues/${venueId}/booked-dates`);
+  // Handle both old format (array) and new format (object with bookings + blocked_dates)
+  if (Array.isArray(data)) {
+    return { bookings: data, blocked_dates: [] };
+  }
   return data;
 }
 
@@ -88,12 +91,8 @@ export async function fetchVenuesByCategory(categoryName: string): Promise<DbVen
 
 // ─── Bookings ──────────────────────────────────────────────────────────────
 export async function fetchBookings(userId: string): Promise<DbBooking[]> {
-  // We fetch all bookings, but the backend currently returns all bookings if admin, 
-  // or maybe it doesn't filter by user. The Fastify backend doesn't filter by user yet,
-  // but let's assume we do it client side for now, or you can update the backend to filter.
-  // Actually, wait, let's filter client side since backend returns all.
-  const { data } = await api.get('/api/bookings');
-  return (data as DbBooking[]).filter(b => b.user_id === userId);
+  const { data } = await api.get('/api/bookings', { params: { user_id: userId } });
+  return data;
 }
 
 export async function fetchBookingById(id: string): Promise<DbBooking | null> {
@@ -129,7 +128,7 @@ export async function fetchNotifications(userId: string): Promise<DbNotification
 }
 
 export async function markNotificationRead(id: string): Promise<void> {
-  await api.delete(`/api/notifications/${id}`); // or mark as read if endpoint exists
+  await api.patch(`/api/notifications/${id}/read`);
 }
 
 // ─── Users ─────────────────────────────────────────────────────────────────

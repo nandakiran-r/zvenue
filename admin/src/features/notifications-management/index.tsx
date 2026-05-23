@@ -83,7 +83,7 @@ export function NotificationsPage() {
   const { data: notifications, isLoading } = useQuery({
     queryKey: ['admin-notifications'],
     queryFn: () => fetchNotifications(),
-    refetchInterval: 5000, // Sync lively every 5 seconds
+    refetchInterval: 15000, // Refresh every 15 seconds
   })
 
   const { data: users } = useQuery({

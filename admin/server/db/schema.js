@@ -11,12 +11,22 @@ export const users = pgTable('users', {
   password: text('password'),
   phone_verified: boolean('phone_verified').default(false),
   avatar_url: text('avatar_url'),
-  // Subscription & Trial fields
-  is_trial_used: boolean('is_trial_used').default(false),
-  trial_ends_at: timestamp('trial_ends_at'),
+  // Subscription fields
   subscription_id: varchar('subscription_id', { length: 255 }),
-  subscription_status: varchar('subscription_status', { length: 50 }).default('none'), // none, authenticated, active, pending, cancelled, halted
+  subscription_status: varchar('subscription_status', { length: 50 }).default('none'),
   next_billing_at: timestamp('next_billing_at'),
+  push_token: varchar('push_token', { length: 255 }),
+  created_at: timestamp('created_at').defaultNow(),
+});
+
+export const owners = pgTable('owners', {
+  id: uuid('id').primaryKey().defaultRandom(),
+  full_name: varchar('full_name', { length: 255 }).notNull(),
+  email: varchar('email', { length: 255 }).unique().notNull(),
+  phone_number: varchar('phone_number', { length: 20 }).unique().notNull(),
+  password: text('password').notNull(),
+  avatar_url: text('avatar_url'),
+  is_active: boolean('is_active').default(true),
   created_at: timestamp('created_at').defaultNow(),
 });
 
@@ -42,8 +52,14 @@ export const venues = pgTable('venues', {
   description: text('description'),
   location: varchar('location', { length: 255 }),
   city: varchar('city', { length: 255 }).notNull(),
-  image_url: text('image_url'),
+  latitude: real('latitude'),
+  longitude: real('longitude'),
+  // Multiple images (up to 6) - first is cover
+  images: jsonb('images').default('[]'),
+  image_url: text('image_url'), // kept for backward compat (cover image)
+  youtube_url: varchar('youtube_url', { length: 500 }),
   category_id: uuid('category_id').references(() => categories.id, { onDelete: 'set null' }),
+  owner_id: uuid('owner_id').references(() => owners.id, { onDelete: 'set null' }),
   price_per_hour: real('price_per_hour').default(0),
   price_per_day: real('price_per_day').default(0),
   capacity: integer('capacity').default(0),
@@ -51,6 +67,11 @@ export const venues = pgTable('venues', {
   review_count: integer('review_count').default(0),
   area: varchar('area', { length: 255 }),
   amenities: jsonb('amenities').default('[]'),
+  subscriber_benefits: jsonb('subscriber_benefits').default('[]'),
+  blocked_dates: jsonb('blocked_dates').default('[]'),
+  // Approval workflow
+  approval_status: varchar('approval_status', { length: 50 }).default('approved'), // pending_review, approved, pending_changes, rejected
+  pending_changes: jsonb('pending_changes'), // stores proposed changes when owner edits approved venue
   owner_name: varchar('owner_name', { length: 255 }),
   owner_image: text('owner_image'),
   available_dates: jsonb('available_dates').default('[]'),
@@ -89,10 +110,33 @@ export const notifications = pgTable('notifications', {
 });
 
 // Relations
+export const support_tickets = pgTable('support_tickets', {
+  id: uuid('id').primaryKey().defaultRandom(),
+  owner_id: uuid('owner_id').references(() => owners.id, { onDelete: 'cascade' }),
+  subject: varchar('subject', { length: 255 }).notNull(),
+  description: text('description').notNull(),
+  priority: varchar('priority', { length: 20 }).default('medium'), // low, medium, high
+  status: varchar('status', { length: 20 }).default('open'), // open, in_progress, resolved, closed
+  admin_reply: text('admin_reply'),
+  replied_at: timestamp('replied_at'),
+  created_at: timestamp('created_at').defaultNow(),
+  updated_at: timestamp('updated_at').defaultNow(),
+});
+
+// Relations
+export const ownersRelations = relations(owners, ({ many }) => ({
+  venues: many(venues),
+  tickets: many(support_tickets),
+}));
+
 export const venuesRelations = relations(venues, ({ one, many }) => ({
   category: one(categories, {
     fields: [venues.category_id],
     references: [categories.id],
+  }),
+  owner: one(owners, {
+    fields: [venues.owner_id],
+    references: [owners.id],
   }),
   bookings: many(bookings),
 }));
@@ -121,5 +165,12 @@ export const notificationsRelations = relations(notifications, ({ one }) => ({
   user: one(users, {
     fields: [notifications.user_id],
     references: [users.id],
+  }),
+}));
+
+export const supportTicketsRelations = relations(support_tickets, ({ one }) => ({
+  owner: one(owners, {
+    fields: [support_tickets.owner_id],
+    references: [owners.id],
   }),
 }));

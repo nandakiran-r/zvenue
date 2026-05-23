@@ -1,21 +1,13 @@
 import { useAuth } from "@/context/AuthContext";
 import { Redirect, Tabs } from "expo-router";
-import { Heart, Home, Search, User } from "lucide-react-native";
-import React, { useEffect } from "react";
+import { CalendarCheck, Heart, Home, Search, User } from "lucide-react-native";
+import React from "react";
 import { ActivityIndicator, View } from "react-native";
 import Colors from "@/constants/colors";
 
 export default function TabLayout() {
-  const { isSignedIn, isLoaded, hasAccess, subscriptionInfo, refreshSubscriptionInfo } = useAuth();
+  const { isSignedIn, isLoaded } = useAuth();
 
-  // Refresh subscription info when tab layout mounts
-  useEffect(() => {
-    if (isSignedIn) {
-      refreshSubscriptionInfo();
-    }
-  }, [isSignedIn]);
-
-  // Wait for auth to load
   if (!isLoaded) {
     return (
       <View style={{ flex: 1, justifyContent: 'center', alignItems: 'center', backgroundColor: Colors.background }}>
@@ -24,23 +16,8 @@ export default function TabLayout() {
     );
   }
 
-  // Redirect unauthenticated users to login
   if (!isSignedIn) {
     return <Redirect href="/login" />;
-  }
-
-  // If subscription info is still loading, show loading state
-  if (subscriptionInfo === null) {
-    return (
-      <View style={{ flex: 1, justifyContent: 'center', alignItems: 'center', backgroundColor: Colors.background }}>
-        <ActivityIndicator size="large" color={Colors.primary} />
-      </View>
-    );
-  }
-
-  // If user has no access (trial expired + no subscription), redirect to subscription
-  if (!hasAccess) {
-    return <Redirect href="/subscription" />;
   }
 
   return (
@@ -54,9 +31,12 @@ export default function TabLayout() {
           elevation: 0,
           shadowOpacity: 0,
           backgroundColor: Colors.white,
+          height: 60,
+          paddingBottom: 8,
+          paddingTop: 4,
         },
         tabBarLabelStyle: {
-          fontSize: 11,
+          fontSize: 10,
           fontWeight: "600" as const,
         },
       }}
@@ -65,28 +45,35 @@ export default function TabLayout() {
         name="home"
         options={{
           title: "Home",
-          tabBarIcon: ({ color, size }) => <Home size={size} color={color} />,
+          tabBarIcon: ({ color, size }) => <Home size={size - 2} color={color} />,
         }}
       />
       <Tabs.Screen
         name="search"
         options={{
           title: "Search",
-          tabBarIcon: ({ color, size }) => <Search size={size} color={color} />,
+          tabBarIcon: ({ color, size }) => <Search size={size - 2} color={color} />,
+        }}
+      />
+      <Tabs.Screen
+        name="my-bookings"
+        options={{
+          title: "Bookings",
+          tabBarIcon: ({ color, size }) => <CalendarCheck size={size - 2} color={color} />,
         }}
       />
       <Tabs.Screen
         name="favorites"
         options={{
           title: "Favorites",
-          tabBarIcon: ({ color, size }) => <Heart size={size} color={color} />,
+          tabBarIcon: ({ color, size }) => <Heart size={size - 2} color={color} />,
         }}
       />
       <Tabs.Screen
         name="profile"
         options={{
           title: "Profile",
-          tabBarIcon: ({ color, size }) => <User size={size} color={color} />,
+          tabBarIcon: ({ color, size }) => <User size={size - 2} color={color} />,
         }}
       />
     </Tabs>

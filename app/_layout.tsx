@@ -20,13 +20,7 @@ function RootLayoutNav() {
       <Stack.Screen name="onboarding" />
       <Stack.Screen name="login" />
       <Stack.Screen name="signup" />
-      <Stack.Screen name="forgot-password" />
       <Stack.Screen name="enter-otp" />
-      <Stack.Screen name="new-password" />
-      <Stack.Screen name="password-reset-success" options={{ presentation: "transparentModal", animation: "fade" }} />
-      <Stack.Screen name="create-username" />
-      <Stack.Screen name="select-profile" />
-      <Stack.Screen name="select-favourite" />
       <Stack.Screen name="(tabs)" />
       <Stack.Screen name="subscription" />
       <Stack.Screen name="edit-profile" />
@@ -37,6 +31,8 @@ function RootLayoutNav() {
       <Stack.Screen name="notifications" />
       <Stack.Screen name="bookings" />
       <Stack.Screen name="category-venues" />
+      <Stack.Screen name="settings" />
+      <Stack.Screen name="help" />
     </Stack>
   );
 }
@@ -47,14 +43,14 @@ export default function RootLayout() {
   }, []);
 
   return (
-        <AuthProvider>
-          <FavoritesProvider>
-            <QueryClientProvider client={queryClient}>
-              <GestureHandlerRootView style={{ flex: 1 }}>
-                <RootLayoutNav />
-              </GestureHandlerRootView>
-            </QueryClientProvider>
-          </FavoritesProvider>
-        </AuthProvider>
+    <AuthProvider>
+      <FavoritesProvider>
+        <QueryClientProvider client={queryClient}>
+          <GestureHandlerRootView style={{ flex: 1 }}>
+            <RootLayoutNav />
+          </GestureHandlerRootView>
+        </QueryClientProvider>
+      </FavoritesProvider>
+    </AuthProvider>
   );
 }

@@ -57,6 +57,13 @@ function formatINR(amount: number) {
   return `₹${(amount || 0).toLocaleString('en-IN')}`
 }
 
+function getSessionLabel(startTime: string, endTime: string) {
+  if (startTime === '08:00 AM' && endTime === '12:00 PM') return 'Morning'
+  if (startTime === '01:00 PM' && endTime === '05:00 PM') return 'Afternoon'
+  if (startTime === '08:00 AM' && endTime === '05:00 PM') return 'Full Day'
+  return `${startTime || ''} - ${endTime || ''}`
+}
+
 function statusVariant(status: string) {
   switch (status?.toLowerCase()) {
     case 'confirmed':
@@ -250,7 +257,7 @@ export function BookingsPage() {
                           <div className='flex items-center gap-1'>
                             <Clock className='h-3 w-3 text-muted-foreground' />
                             <span className='text-sm'>
-                              {booking.start_time || ''} - {booking.end_time || ''}
+                              {getSessionLabel(booking.start_time, booking.end_time)}
                             </span>
                           </div>
                         </TableCell>

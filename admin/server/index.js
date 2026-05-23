@@ -5,8 +5,9 @@ import jwt from '@fastify/jwt';
 import argon2 from 'argon2';
 import Razorpay from 'razorpay';
 import { db } from './db/index.js';
-import { users, venues, categories, bookings, notifications, otps } from './db/schema.js';
-import { eq, and, ilike, or, desc, asc, count, sum, sql, gte, lte } from 'drizzle-orm';
+import { users, venues, categories, bookings, notifications, otps, owners, support_tickets } from './db/schema.js';
+import { eq, and, ilike, or, desc, asc, count, sum, sql, gte, lte, ne } from 'drizzle-orm';
+import { geocodeAddress, buildAddress } from './lib/geocode.js';
 
 const fastify = Fastify({ logger: true });
 
@@ -359,46 +360,7 @@ async function handleSubscriptionCancelled(payload) {
     .where(eq(users.subscription_id, subscription_id));
 }
 
-// ─── TRIAL & ACCESS CONTROL ────────────────────────────────────────────────────
-
-// Middleware to check subscription/trial status
-fastify.decorate('requireActiveSubscription', async function (request, reply) {
-  try {
-    await request.jwtVerify();
-    const user = await db.query.users.findFirst({
-      where: eq(users.id, request.user.id),
-      columns: { trial_ends_at: true, subscription_status: true, is_trial_used: true },
-    });
-
-    if (!user) {
-      return reply.status(404).send({ error: 'User not found' });
-    }
-
-    const now = new Date();
-    const trialEndsAt = user.trial_ends_at ? new Date(user.trial_ends_at) : null;
-    const isTrialActive = trialEndsAt && now < trialEndsAt;
-    const isSubscriptionActive = user.subscription_status === 'active' || user.subscription_status === 'authenticated';
-
-    if (!isTrialActive && !isSubscriptionActive) {
-      return reply.status(403).send({
-        error: 'Subscription required',
-        code: 'SUBSCRIPTION_REQUIRED',
-        trial_ends_at: user.trial_ends_at,
-        subscription_status: user.subscription_status,
-      });
-    }
-
-    // Attach user access info to request
-    request.userAccess = {
-      isTrialActive,
-      isSubscriptionActive,
-      trial_ends_at: user.trial_ends_at,
-      subscription_status: user.subscription_status,
-    };
-  } catch (err) {
-    reply.send(err);
-  }
-});
+// ─── SUBSCRIPTION STATUS ────────────────────────────────────────────────────
 
 // Get current user's subscription status
 fastify.get('/api/subscription/status', { onRequest: [fastify.authenticate] }, async (request, reply) => {
@@ -406,8 +368,6 @@ fastify.get('/api/subscription/status', { onRequest: [fastify.authenticate] }, a
     const user = await db.query.users.findFirst({
       where: eq(users.id, request.user.id),
       columns: {
-        trial_ends_at: true,
-        is_trial_used: true,
         subscription_id: true,
         subscription_status: true,
         next_billing_at: true
@@ -418,20 +378,13 @@ fastify.get('/api/subscription/status', { onRequest: [fastify.authenticate] }, a
       return reply.status(404).send({ error: 'User not found' });
     }
 
-    const now = new Date();
-    const trialEndsAt = user.trial_ends_at ? new Date(user.trial_ends_at) : null;
-    const isTrialActive = trialEndsAt && now < trialEndsAt;
-    const isSubscriptionActive = user.subscription_status === 'active' || user.subscription_status === 'authenticated';
+    const isSubscribed = user.subscription_status === 'active' || user.subscription_status === 'authenticated';
 
     return {
-      is_trial_used: user.is_trial_used,
-      trial_ends_at: user.trial_ends_at,
-      is_trial_active: isTrialActive,
       subscription_id: user.subscription_id,
       subscription_status: user.subscription_status,
-      is_subscription_active: isSubscriptionActive,
+      is_subscribed: isSubscribed,
       next_billing_at: user.next_billing_at,
-      has_access: isTrialActive || isSubscriptionActive,
     };
   } catch (err) {
     fastify.log.error(err);
@@ -516,49 +469,435 @@ fastify.post('/api/subscriptions/cancel', { onRequest: [fastify.authenticate] },
   }
 });
 
-// Activate trial (called during onboarding after phone verification)
-fastify.post('/api/subscription/activate-trial', { onRequest: [fastify.authenticate] }, async (request, reply) => {
+
+// ─── OWNER AUTHENTICATION & MANAGEMENT ─────────────────────────────────────────
+
+// Admin creates an owner account
+fastify.post('/api/owners', { onRequest: [fastify.authenticate] }, async (request, reply) => {
   try {
-    const user = await db.query.users.findFirst({
-      where: eq(users.id, request.user.id),
-      columns: { phone_verified: true, is_trial_used: true, trial_ends_at: true },
-    });
-
-    if (!user) {
-      return reply.status(404).send({ error: 'User not found' });
+    const { full_name, email, phone_number, password } = request.body;
+    if (!full_name || !email || !phone_number || !password) {
+      return reply.status(400).send({ error: 'All fields are required' });
     }
-
-    // Check if phone is verified
-    if (!user.phone_verified) {
-      return reply.status(400).send({ error: 'Phone number must be verified before activating trial' });
-    }
-
-    // Check if trial already used
-    if (user.is_trial_used) {
-      return reply.status(400).send({ error: 'Trial already used' });
-    }
-
-    // Check if trial period is set
-    if (!user.trial_ends_at) {
-      return reply.status(400).send({ error: 'No trial period configured. Please contact support.' });
-    }
-
-    // Mark trial as active (is_trial_used remains false until trial expires or user subscribes)
-    // The trial is considered active if trial_ends_at is in the future and is_trial_used is false
-    // We just need to ensure phone is verified, trial period is set, and is_trial_used is false
-    
-    // Return success - trial is already set up from signup
-    return {
-      success: true,
-      message: 'Trial activated',
-      trial_ends_at: user.trial_ends_at
-    };
+    const hashedPassword = await argon2.hash(password);
+    const [owner] = await db.insert(owners).values({
+      full_name, email, phone_number, password: hashedPassword,
+    }).returning();
+    return { ...owner, password: undefined };
   } catch (err) {
+    if (err.code === '23505') return reply.status(400).send({ error: 'Email or phone already exists' });
     fastify.log.error(err);
-    return reply.status(500).send({ error: 'Failed to activate trial' });
+    return reply.status(500).send({ error: 'Internal Server Error' });
   }
 });
 
+// List all owners (admin)
+fastify.get('/api/owners', { onRequest: [fastify.authenticate] }, async (request, reply) => {
+  try {
+    const data = await db.query.owners.findMany({
+      columns: { password: false },
+      with: { venues: { columns: { id: true, name: true, approval_status: true } } },
+      orderBy: [desc(owners.created_at)],
+    });
+    return data;
+  } catch (err) {
+    fastify.log.error(err);
+    return reply.status(500).send({ error: 'Internal Server Error' });
+  }
+});
+
+// Owner login
+fastify.post('/api/owners/login', async (request, reply) => {
+  try {
+    const { email, password } = request.body;
+    const owner = await db.query.owners.findFirst({ where: eq(owners.email, email) });
+    if (!owner || !owner.password) return reply.status(401).send({ error: 'Invalid credentials' });
+    const valid = await argon2.verify(owner.password, password);
+    if (!valid) return reply.status(401).send({ error: 'Invalid credentials' });
+    if (!owner.is_active) return reply.status(403).send({ error: 'Account is deactivated' });
+    const token = fastify.jwt.sign({ id: owner.id, email: owner.email, role: 'owner' });
+    return { token, owner: { id: owner.id, full_name: owner.full_name, email: owner.email, role: 'owner' } };
+  } catch (err) {
+    fastify.log.error(err);
+    return reply.status(500).send({ error: 'Internal Server Error' });
+  }
+});
+
+// Owner: get own profile
+fastify.get('/api/owners/me', { onRequest: [fastify.authenticate] }, async (request, reply) => {
+  try {
+    if (request.user.role !== 'owner') return reply.status(403).send({ error: 'Not an owner' });
+    const owner = await db.query.owners.findFirst({
+      where: eq(owners.id, request.user.id),
+      columns: { password: false },
+    });
+    return owner || reply.status(404).send({ error: 'Owner not found' });
+  } catch (err) {
+    return reply.status(500).send({ error: 'Internal Server Error' });
+  }
+});
+
+// Owner: list own venues
+fastify.get('/api/owners/venues', { onRequest: [fastify.authenticate] }, async (request, reply) => {
+  try {
+    if (request.user.role !== 'owner') return reply.status(403).send({ error: 'Not an owner' });
+    const data = await db.query.venues.findMany({
+      where: eq(venues.owner_id, request.user.id),
+      with: { category: true },
+      orderBy: [desc(venues.created_at)],
+    });
+    return data;
+  } catch (err) {
+    fastify.log.error(err);
+    return reply.status(500).send({ error: 'Internal Server Error' });
+  }
+});
+
+// Owner: submit a new venue (pending_review)
+fastify.post('/api/owners/venues', { onRequest: [fastify.authenticate] }, async (request, reply) => {
+  try {
+    if (request.user.role !== 'owner') return reply.status(403).send({ error: 'Not an owner' });
+    const { subscriber_benefits, ...body } = request.body; // Strip subscriber_benefits (admin-only)
+    const venueData = {
+      ...body,
+      owner_id: request.user.id,
+      approval_status: 'pending_review',
+      image_url: body.images?.[0] || body.image_url || null,
+    };
+
+    // Geocode the address
+    if (venueData.location || venueData.city) {
+      const address = buildAddress(venueData.location, venueData.city);
+      const coords = await geocodeAddress(address);
+      if (coords) {
+        venueData.latitude = coords.latitude;
+        venueData.longitude = coords.longitude;
+      }
+    }
+
+    const [inserted] = await db.insert(venues).values(venueData).returning();
+    // Notify admin
+    await db.insert(notifications).values({
+      user_id: null,
+      title: 'New Venue Submitted',
+      body: `Owner submitted "${inserted.name}" for review.`,
+      type: 'venue_review',
+      data: { venue_id: inserted.id, owner_id: request.user.id },
+    });
+    return inserted;
+  } catch (err) {
+    fastify.log.error(err);
+    return reply.status(500).send({ error: 'Internal Server Error' });
+  }
+});
+
+// Owner: edit own venue (if approved, creates pending_changes; if pending_review, edits directly)
+fastify.put('/api/owners/venues/:id', { onRequest: [fastify.authenticate] }, async (request, reply) => {
+  try {
+    if (request.user.role !== 'owner') return reply.status(403).send({ error: 'Not an owner' });
+    const venueId = request.params.id;
+    const venue = await db.query.venues.findFirst({ where: and(eq(venues.id, venueId), eq(venues.owner_id, request.user.id)) });
+    if (!venue) return reply.status(404).send({ error: 'Venue not found or not yours' });
+
+    const { subscriber_benefits, ...ownerBody } = request.body; // Strip subscriber_benefits (admin-only)
+
+    if (venue.approval_status === 'approved') {
+      // Store changes as pending, don't apply directly
+      await db.update(venues).set({
+        pending_changes: ownerBody,
+        approval_status: 'pending_changes',
+      }).where(eq(venues.id, venueId));
+      // Notify admin
+      await db.insert(notifications).values({
+        user_id: null,
+        title: 'Venue Changes Pending',
+        body: `Owner updated "${venue.name}" — changes need approval.`,
+        type: 'venue_review',
+        data: { venue_id: venueId, owner_id: request.user.id },
+      });
+      return { message: 'Changes submitted for admin approval' };
+    } else {
+      // Not yet approved, edit directly
+      const updates = { ...ownerBody, image_url: ownerBody.images?.[0] || ownerBody.image_url || venue.image_url };
+      await db.update(venues).set(updates).where(eq(venues.id, venueId));
+      const updated = await db.query.venues.findFirst({ where: eq(venues.id, venueId), with: { category: true } });
+      return updated;
+    }
+  } catch (err) {
+    fastify.log.error(err);
+    return reply.status(500).send({ error: 'Internal Server Error' });
+  }
+});
+
+// Owner: block/unblock dates on own venue
+fastify.put('/api/owners/venues/:id/blocked-dates', { onRequest: [fastify.authenticate] }, async (request, reply) => {
+  try {
+    if (request.user.role !== 'owner') return reply.status(403).send({ error: 'Not an owner' });
+    const venueId = request.params.id;
+    const venue = await db.query.venues.findFirst({ where: and(eq(venues.id, venueId), eq(venues.owner_id, request.user.id)) });
+    if (!venue) return reply.status(404).send({ error: 'Venue not found or not yours' });
+    const { blocked_dates } = request.body;
+    await db.update(venues).set({ blocked_dates }).where(eq(venues.id, venueId));
+    return { success: true, blocked_dates };
+  } catch (err) {
+    fastify.log.error(err);
+    return reply.status(500).send({ error: 'Internal Server Error' });
+  }
+});
+
+// Owner: view bookings for own venues
+fastify.get('/api/owners/bookings', { onRequest: [fastify.authenticate] }, async (request, reply) => {
+  try {
+    if (request.user.role !== 'owner') return reply.status(403).send({ error: 'Not an owner' });
+    const ownerVenues = await db.query.venues.findMany({
+      where: eq(venues.owner_id, request.user.id),
+      columns: { id: true },
+    });
+    const venueIds = ownerVenues.map(v => v.id);
+    if (venueIds.length === 0) return [];
+    const data = await db.query.bookings.findMany({
+      where: sql`${bookings.venue_id} IN (${sql.join(venueIds.map(id => sql`${id}`), sql`, `)})`,
+      with: {
+        venue: { columns: { name: true, city: true, image_url: true } },
+        user: { columns: { id: true, full_name: true, email: true, avatar_url: true } },
+      },
+      orderBy: [desc(bookings.created_at)],
+    });
+    return data;
+  } catch (err) {
+    fastify.log.error(err);
+    return reply.status(500).send({ error: 'Internal Server Error' });
+  }
+});
+
+// ─── OWNER ANALYTICS ────────────────────────────────────────────────────────
+fastify.get('/api/owners/analytics', { onRequest: [fastify.authenticate] }, async (request, reply) => {
+  try {
+    if (request.user.role !== 'owner') return reply.status(403).send({ error: 'Not an owner' });
+    const ownerId = request.user.id;
+
+    // Get owner's venues
+    const ownerVenues = await db.query.venues.findMany({
+      where: eq(venues.owner_id, ownerId),
+      columns: { id: true, name: true },
+    });
+    const venueIds = ownerVenues.map(v => v.id);
+
+    if (venueIds.length === 0) {
+      return { total_bookings: 0, total_revenue: 0, confirmed_bookings: 0, pending_bookings: 0, venues_count: 0, monthly_revenue: [] };
+    }
+
+    // Get all bookings for owner's venues
+    const ownerBookings = await db.query.bookings.findMany({
+      where: sql`${bookings.venue_id} IN (${sql.join(venueIds.map(id => sql`${id}`), sql`, `)})`,
+      columns: { id: true, total: true, status: true, created_at: true, booking_date: true, start_time: true },
+    });
+
+    const totalRevenue = ownerBookings.filter(b => b.status === 'confirmed').reduce((sum, b) => sum + (b.total || 0), 0);
+    const confirmedCount = ownerBookings.filter(b => b.status === 'confirmed').length;
+    const pendingCount = ownerBookings.filter(b => b.status === 'pending').length;
+
+    // Monthly revenue
+    const monthly = {};
+    ownerBookings.filter(b => b.status === 'confirmed').forEach(b => {
+      const month = new Date(b.created_at).toLocaleString('en', { month: 'short', year: 'numeric' });
+      monthly[month] = (monthly[month] || 0) + (b.total || 0);
+    });
+
+    // Popular time slots
+    const timeSlots = {};
+    ownerBookings.forEach(b => {
+      if (b.start_time) timeSlots[b.start_time] = (timeSlots[b.start_time] || 0) + 1;
+    });
+    const popularSlots = Object.entries(timeSlots).sort((a, b) => b[1] - a[1]).slice(0, 5).map(([slot, count]) => ({ slot, count }));
+
+    return {
+      total_bookings: ownerBookings.length,
+      total_revenue: totalRevenue,
+      confirmed_bookings: confirmedCount,
+      pending_bookings: pendingCount,
+      venues_count: ownerVenues.length,
+      monthly_revenue: Object.entries(monthly).map(([month, revenue]) => ({ month, revenue })),
+      popular_time_slots: popularSlots,
+    };
+  } catch (err) {
+    fastify.log.error(err);
+    return reply.status(500).send({ error: 'Internal Server Error' });
+  }
+});
+
+// ─── SUPPORT TICKETS ────────────────────────────────────────────────────────
+
+// Owner: create ticket
+fastify.post('/api/support-tickets', { onRequest: [fastify.authenticate] }, async (request, reply) => {
+  try {
+    if (request.user.role !== 'owner') return reply.status(403).send({ error: 'Not an owner' });
+    const { subject, description, priority } = request.body;
+    if (!subject || !description) return reply.status(400).send({ error: 'Subject and description are required' });
+
+    const [ticket] = await db.insert(support_tickets).values({
+      owner_id: request.user.id,
+      subject,
+      description,
+      priority: priority || 'medium',
+    }).returning();
+
+    // Notify admin
+    await db.insert(notifications).values({
+      user_id: null,
+      title: 'New Support Ticket',
+      body: `Owner raised ticket: "${subject}"`,
+      type: 'support',
+      data: { ticket_id: ticket.id, owner_id: request.user.id },
+    });
+
+    return ticket;
+  } catch (err) {
+    fastify.log.error(err);
+    return reply.status(500).send({ error: 'Internal Server Error' });
+  }
+});
+
+// Owner: list own tickets
+fastify.get('/api/support-tickets/mine', { onRequest: [fastify.authenticate] }, async (request, reply) => {
+  try {
+    if (request.user.role !== 'owner') return reply.status(403).send({ error: 'Not an owner' });
+    const data = await db.query.support_tickets.findMany({
+      where: eq(support_tickets.owner_id, request.user.id),
+      orderBy: [desc(support_tickets.created_at)],
+    });
+    return data;
+  } catch (err) {
+    fastify.log.error(err);
+    return reply.status(500).send({ error: 'Internal Server Error' });
+  }
+});
+
+// Admin: list all tickets
+fastify.get('/api/support-tickets', { onRequest: [fastify.authenticate] }, async (request, reply) => {
+  try {
+    const { status } = request.query;
+    let whereClause = undefined;
+    if (status && status !== 'all') whereClause = eq(support_tickets.status, status);
+
+    const data = await db.query.support_tickets.findMany({
+      where: whereClause,
+      with: { owner: { columns: { id: true, full_name: true, email: true } } },
+      orderBy: [desc(support_tickets.created_at)],
+    });
+    return data;
+  } catch (err) {
+    fastify.log.error(err);
+    return reply.status(500).send({ error: 'Internal Server Error' });
+  }
+});
+
+// Admin: reply to ticket
+fastify.put('/api/support-tickets/:id', { onRequest: [fastify.authenticate] }, async (request, reply) => {
+  try {
+    const { admin_reply, status } = request.body;
+    const updates = { updated_at: new Date() };
+    if (admin_reply) { updates.admin_reply = admin_reply; updates.replied_at = new Date(); }
+    if (status) updates.status = status;
+
+    await db.update(support_tickets).set(updates).where(eq(support_tickets.id, request.params.id));
+    const updated = await db.query.support_tickets.findFirst({
+      where: eq(support_tickets.id, request.params.id),
+      with: { owner: { columns: { id: true, full_name: true, email: true } } },
+    });
+    return updated;
+  } catch (err) {
+    fastify.log.error(err);
+    return reply.status(500).send({ error: 'Internal Server Error' });
+  }
+});
+
+// Admin: approve venue
+fastify.post('/api/venues/:id/approve', { onRequest: [fastify.authenticate] }, async (request, reply) => {
+  try {
+    const venueId = request.params.id;
+    const venue = await db.query.venues.findFirst({ where: eq(venues.id, venueId) });
+    if (!venue) return reply.status(404).send({ error: 'Venue not found' });
+
+    if (venue.approval_status === 'pending_changes' && venue.pending_changes) {
+      // Apply pending changes
+      const changes = venue.pending_changes;
+      await db.update(venues).set({
+        ...changes,
+        image_url: changes.images?.[0] || changes.image_url || venue.image_url,
+        approval_status: 'approved',
+        pending_changes: null,
+      }).where(eq(venues.id, venueId));
+    } else {
+      await db.update(venues).set({ approval_status: 'approved', pending_changes: null }).where(eq(venues.id, venueId));
+    }
+    return { success: true, message: 'Venue approved' };
+  } catch (err) {
+    fastify.log.error(err);
+    return reply.status(500).send({ error: 'Internal Server Error' });
+  }
+});
+
+// Admin: reject venue (with reason notification to owner)
+fastify.post('/api/venues/:id/reject', { onRequest: [fastify.authenticate] }, async (request, reply) => {
+  try {
+    const venueId = request.params.id;
+    const { reason } = request.body || {};
+
+    // Get venue details for notification
+    const venue = await db.query.venues.findFirst({
+      where: eq(venues.id, venueId),
+      columns: { name: true, owner_id: true },
+    });
+
+    await db.update(venues).set({ approval_status: 'rejected', pending_changes: null }).where(eq(venues.id, venueId));
+
+    // Notify the owner with the rejection reason
+    if (venue?.owner_id) {
+      // Store as a notification in the notifications table (using owner_id in data since notifications.user_id is for app users)
+      await db.insert(notifications).values({
+        user_id: null,
+        title: 'Venue Rejected',
+        body: `Your venue "${venue.name}" has been rejected.${reason ? ` Reason: ${reason}` : ''}`,
+        type: 'venue_rejected',
+        data: { venue_id: venueId, owner_id: venue.owner_id, reason: reason || null },
+      });
+    }
+
+    return { success: true, message: 'Venue rejected and owner notified' };
+  } catch (err) {
+    fastify.log.error(err);
+    return reply.status(500).send({ error: 'Internal Server Error' });
+  }
+});
+
+// Admin: deactivate/activate owner
+fastify.put('/api/owners/:id', { onRequest: [fastify.authenticate] }, async (request, reply) => {
+  try {
+    const { is_active, full_name, email, phone_number } = request.body;
+    const updates = {};
+    if (is_active !== undefined) updates.is_active = is_active;
+    if (full_name) updates.full_name = full_name;
+    if (email) updates.email = email;
+    if (phone_number) updates.phone_number = phone_number;
+    const [updated] = await db.update(owners).set(updates).where(eq(owners.id, request.params.id)).returning();
+    return { ...updated, password: undefined };
+  } catch (err) {
+    fastify.log.error(err);
+    return reply.status(500).send({ error: 'Internal Server Error' });
+  }
+});
+
+// Admin: delete owner
+fastify.delete('/api/owners/:id', { onRequest: [fastify.authenticate] }, async (request, reply) => {
+  try {
+    await db.delete(owners).where(eq(owners.id, request.params.id));
+    return { success: true };
+  } catch (err) {
+    fastify.log.error(err);
+    return reply.status(500).send({ error: 'Internal Server Error' });
+  }
+});
 
 // ─── BOOKING PAYMENTS WITH RAZORPAY ───────────────────────────────────────────
 
@@ -725,6 +1064,20 @@ fastify.post('/api/bookings/verify-payment', { onRequest: [fastify.authenticate]
       data: { booking_id, payment_id }
     });
 
+    // Send push notification
+    const userForPush = await db.query.users.findFirst({
+      where: eq(users.id, user_id),
+      columns: { push_token: true },
+    });
+    if (userForPush?.push_token) {
+      sendPushNotification(
+        userForPush.push_token,
+        'Booking Confirmed! 🎉',
+        `Your booking for ${booking.booking_date} has been confirmed.`,
+        { booking_id }
+      );
+    }
+
     // Return updated booking
     const updatedBooking = await db.query.bookings.findFirst({
       where: eq(bookings.id, booking_id),
@@ -778,9 +1131,6 @@ fastify.post('/api/auth/sign-up', async (request, reply) => {
       hashedPassword = await argon2.hash(password);
     }
 
-    // Set 7-day trial period
-    const trial_ends_at = new Date(Date.now() + 7 * 24 * 60 * 60 * 1000); // 7 days from now
-
     const [newUser] = await db.insert(users).values({
       first_name,
       last_name,
@@ -788,8 +1138,6 @@ fastify.post('/api/auth/sign-up', async (request, reply) => {
       email,
       phone_number,
       password: hashedPassword,
-      trial_ends_at,
-      is_trial_used: false,
     }).returning();
 
     const token = fastify.jwt.sign({ id: newUser.id, email: newUser.email, phone_number: newUser.phone_number });
@@ -800,8 +1148,7 @@ fastify.post('/api/auth/sign-up', async (request, reply) => {
       full_name: newUser.full_name,
       email: newUser.email,
       phone_number: newUser.phone_number,
-      trial_ends_at: newUser.trial_ends_at,
-      is_trial_used: newUser.is_trial_used,
+      subscription_status: newUser.subscription_status || 'none',
     } };
   } catch (err) {
     fastify.log.error(err);
@@ -1105,22 +1452,29 @@ fastify.get('/api/dashboard/bookings-by-category', { onRequest: [fastify.authent
 });
 
 // ─── VENUES CRUD ───────────────────────────────────────────────────────────
+// Public: only approved venues
 fastify.get('/api/venues', async (request, reply) => {
   try {
-    const { search, category_id } = request.query;
+    const { search, category_id, all } = request.query;
     
-    let whereClause = undefined;
+    // If 'all' param is passed (admin panel), return all venues
+    const approvalFilter = all ? undefined : eq(venues.approval_status, 'approved');
+
+    let whereClause = approvalFilter;
     if (search && category_id) {
-      whereClause = sql`(name ILIKE ${'%' + search + '%'} OR city ILIKE ${'%' + search + '%'}) AND category_id = ${category_id}`;
+      const searchFilter = sql`(name ILIKE ${'%' + search + '%'} OR city ILIKE ${'%' + search + '%'}) AND category_id = ${category_id}`;
+      whereClause = approvalFilter ? and(approvalFilter, searchFilter) : searchFilter;
     } else if (search) {
-      whereClause = sql`name ILIKE ${'%' + search + '%'} OR city ILIKE ${'%' + search + '%'}`;
+      const searchFilter = sql`name ILIKE ${'%' + search + '%'} OR city ILIKE ${'%' + search + '%'}`;
+      whereClause = approvalFilter ? and(approvalFilter, searchFilter) : searchFilter;
     } else if (category_id) {
-      whereClause = eq(venues.category_id, category_id);
+      const catFilter = eq(venues.category_id, category_id);
+      whereClause = approvalFilter ? and(approvalFilter, catFilter) : catFilter;
     }
 
     const data = await db.query.venues.findMany({
       where: whereClause,
-      with: { category: true },
+      with: { category: true, owner: { columns: { id: true, full_name: true, email: true } } },
       orderBy: [desc(venues.created_at)]
     });
     return data;
@@ -1133,7 +1487,7 @@ fastify.get('/api/venues/:id', async (request, reply) => {
   try {
     const data = await db.query.venues.findFirst({
       where: eq(venues.id, request.params.id),
-      with: { category: true }
+      with: { category: true, owner: { columns: { id: true, full_name: true } } }
     });
     return data || {};
   } catch (err) {
@@ -1143,26 +1497,55 @@ fastify.get('/api/venues/:id', async (request, reply) => {
 
 fastify.post('/api/venues', { onRequest: [fastify.authenticate] }, async (request, reply) => {
   try {
-    const [inserted] = await db.insert(venues).values(request.body).returning();
+    const venueData = { ...request.body };
+    
+    // Geocode the address if location/city provided
+    if (venueData.location || venueData.city) {
+      const address = buildAddress(venueData.location, venueData.city);
+      const coords = await geocodeAddress(address);
+      if (coords) {
+        venueData.latitude = coords.latitude;
+        venueData.longitude = coords.longitude;
+        fastify.log.info(`Geocoded "${address}" → ${coords.latitude}, ${coords.longitude}`);
+      } else {
+        fastify.log.warn(`Geocoding failed for "${address}" — saving with null coordinates`);
+      }
+    }
+
+    const [inserted] = await db.insert(venues).values(venueData).returning();
     const data = await db.query.venues.findFirst({
       where: eq(venues.id, inserted.id),
       with: { category: true }
     });
     return data;
   } catch (err) {
+    fastify.log.error(err);
     return reply.status(500).send({ error: 'Internal Server Error' });
   }
 });
 
 fastify.put('/api/venues/:id', { onRequest: [fastify.authenticate] }, async (request, reply) => {
   try {
-    await db.update(venues).set(request.body).where(eq(venues.id, request.params.id));
+    const updates = { ...request.body };
+    
+    // Re-geocode if location or city changed
+    if (updates.location || updates.city) {
+      const address = buildAddress(updates.location, updates.city);
+      const coords = await geocodeAddress(address);
+      if (coords) {
+        updates.latitude = coords.latitude;
+        updates.longitude = coords.longitude;
+      }
+    }
+
+    await db.update(venues).set(updates).where(eq(venues.id, request.params.id));
     const data = await db.query.venues.findFirst({
       where: eq(venues.id, request.params.id),
       with: { category: true }
     });
     return data;
   } catch (err) {
+    fastify.log.error(err);
     return reply.status(500).send({ error: 'Internal Server Error' });
   }
 });
@@ -1180,6 +1563,8 @@ fastify.delete('/api/venues/:id', { onRequest: [fastify.authenticate] }, async (
 fastify.get('/api/venues/:id/booked-dates', async (request, reply) => {
   try {
     const venueId = request.params.id;
+    
+    // Get confirmed bookings
     const confirmedBookings = await db.query.bookings.findMany({
       where: and(
         eq(bookings.venue_id, venueId),
@@ -1187,7 +1572,17 @@ fastify.get('/api/venues/:id/booked-dates', async (request, reply) => {
       ),
       columns: { booking_date: true, start_time: true, end_time: true }
     });
-    return confirmedBookings;
+
+    // Get blocked dates from venue
+    const venue = await db.query.venues.findFirst({
+      where: eq(venues.id, venueId),
+      columns: { blocked_dates: true }
+    });
+
+    return {
+      bookings: confirmedBookings,
+      blocked_dates: venue?.blocked_dates || [],
+    };
   } catch (err) {
     fastify.log.error(err);
     return reply.status(500).send({ error: 'Internal Server Error' });
@@ -1236,12 +1631,13 @@ fastify.delete('/api/categories/:id', { onRequest: [fastify.authenticate] }, asy
 // ─── BOOKINGS CRUD ─────────────────────────────────────────────────────────
 fastify.get('/api/bookings', { onRequest: [fastify.authenticate] }, async (request, reply) => {
   try {
-    const { status, search } = request.query;
+    const { status, search, user_id } = request.query;
     
-    let whereClause = undefined;
-    if (status) {
-      whereClause = eq(bookings.status, status);
-    }
+    let conditions = [];
+    if (status) conditions.push(eq(bookings.status, status));
+    if (user_id) conditions.push(eq(bookings.user_id, user_id));
+    
+    const whereClause = conditions.length > 0 ? (conditions.length === 1 ? conditions[0] : and(...conditions)) : undefined;
     
     const data = await db.query.bookings.findMany({
       where: whereClause,
@@ -1474,10 +1870,224 @@ fastify.delete('/api/users/:id', { onRequest: [fastify.authenticate] }, async (r
   }
 });
 
+// ─── PUSH NOTIFICATIONS ────────────────────────────────────────────────────
+
+// Save push token for a user
+fastify.post('/api/push-token', { onRequest: [fastify.authenticate] }, async (request, reply) => {
+  try {
+    const { push_token } = request.body;
+    if (!push_token) return reply.status(400).send({ error: 'push_token is required' });
+    
+    await db.update(users)
+      .set({ push_token })
+      .where(eq(users.id, request.user.id));
+    
+    return { success: true };
+  } catch (err) {
+    fastify.log.error(err);
+    return reply.status(500).send({ error: 'Internal Server Error' });
+  }
+});
+
+// Utility: Send push notification to a user via Expo Push API
+async function sendPushNotification(pushToken, title, body, data = {}) {
+  if (!pushToken) return;
+  
+  try {
+    await fetch('https://exp.host/--/api/v2/push/send', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({
+        to: pushToken,
+        title,
+        body,
+        data,
+        sound: 'default',
+        priority: 'high',
+      }),
+    });
+  } catch (err) {
+    fastify.log.error('Push notification failed:', err.message);
+  }
+}
+
+// Admin: Send push notification to a specific user
+fastify.post('/api/push/send', { onRequest: [fastify.authenticate] }, async (request, reply) => {
+  try {
+    const { user_id, title, body, data } = request.body;
+    
+    if (!user_id || !title || !body) {
+      return reply.status(400).send({ error: 'user_id, title, and body are required' });
+    }
+
+    const user = await db.query.users.findFirst({
+      where: eq(users.id, user_id),
+      columns: { push_token: true },
+    });
+
+    if (!user?.push_token) {
+      return reply.status(404).send({ error: 'User has no push token registered' });
+    }
+
+    await sendPushNotification(user.push_token, title, body, data || {});
+    return { success: true, message: 'Push notification sent' };
+  } catch (err) {
+    fastify.log.error(err);
+    return reply.status(500).send({ error: 'Internal Server Error' });
+  }
+});
+
+// Admin: Broadcast push notification to all users with tokens
+fastify.post('/api/push/broadcast', { onRequest: [fastify.authenticate] }, async (request, reply) => {
+  try {
+    const { title, body, data } = request.body;
+    if (!title || !body) return reply.status(400).send({ error: 'title and body are required' });
+
+    const usersWithTokens = await db.query.users.findMany({
+      where: sql`${users.push_token} IS NOT NULL AND ${users.push_token} != ''`,
+      columns: { push_token: true },
+    });
+
+    const messages = usersWithTokens.map(u => ({
+      to: u.push_token,
+      title,
+      body,
+      data: data || {},
+      sound: 'default',
+      priority: 'high',
+    }));
+
+    // Expo push API supports batch (up to 100 per request)
+    const chunks = [];
+    for (let i = 0; i < messages.length; i += 100) {
+      chunks.push(messages.slice(i, i + 100));
+    }
+
+    for (const chunk of chunks) {
+      await fetch('https://exp.host/--/api/v2/push/send', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(chunk),
+      });
+    }
+
+    return { success: true, sent_to: messages.length };
+  } catch (err) {
+    fastify.log.error(err);
+    return reply.status(500).send({ error: 'Internal Server Error' });
+  }
+});
+
+// ─── SUBSCRIBERS ───────────────────────────────────────────────────────────
+fastify.get('/api/subscribers', { onRequest: [fastify.authenticate] }, async (request, reply) => {
+  try {
+    const { status, search } = request.query;
+
+    // Get all users with subscription data
+    const allUsers = await db.query.users.findMany({
+      columns: {
+        id: true,
+        full_name: true,
+        email: true,
+        phone_number: true,
+        avatar_url: true,
+        subscription_id: true,
+        subscription_status: true,
+        next_billing_at: true,
+        created_at: true,
+      },
+      with: {
+        bookings: { columns: { id: true } }
+      },
+      orderBy: [desc(users.created_at)]
+    });
+
+    let result = allUsers.map(u => ({
+      ...u,
+      booking_count: u.bookings?.length || 0,
+      bookings: undefined,
+      is_subscribed: u.subscription_status === 'active' || u.subscription_status === 'authenticated',
+    }));
+
+    // Filter by subscription status
+    if (status === 'active') {
+      result = result.filter(u => u.is_subscribed);
+    } else if (status === 'free') {
+      result = result.filter(u => !u.is_subscribed);
+    }
+
+    // Search filter
+    if (search) {
+      const lowerSearch = search.toLowerCase();
+      result = result.filter(u =>
+        u.full_name?.toLowerCase().includes(lowerSearch) ||
+        u.email?.toLowerCase().includes(lowerSearch) ||
+        u.phone_number?.includes(search)
+      );
+    }
+
+    return result;
+  } catch (err) {
+    fastify.log.error(err);
+    return reply.status(500).send({ error: 'Internal Server Error' });
+  }
+});
+
+// Cancel a user's subscription (admin action)
+fastify.post('/api/subscribers/:id/cancel', { onRequest: [fastify.authenticate] }, async (request, reply) => {
+  try {
+    const userId = request.params.id;
+    const user = await db.query.users.findFirst({
+      where: eq(users.id, userId),
+      columns: { subscription_id: true, subscription_status: true },
+    });
+
+    if (!user) {
+      return reply.status(404).send({ error: 'User not found' });
+    }
+
+    // Cancel in Razorpay if subscription exists
+    if (user.subscription_id) {
+      try {
+        await razorpay.subscriptions.cancel(user.subscription_id);
+      } catch (err) {
+        fastify.log.warn('Razorpay cancel failed (may already be cancelled):', err.message);
+      }
+    }
+
+    // Update DB
+    await db.update(users)
+      .set({ subscription_status: 'cancelled' })
+      .where(eq(users.id, userId));
+
+    return { success: true, message: 'Subscription cancelled' };
+  } catch (err) {
+    fastify.log.error(err);
+    return reply.status(500).send({ error: 'Failed to cancel subscription' });
+  }
+});
+
+// Activate a user's subscription (admin action - manual override)
+fastify.post('/api/subscribers/:id/activate', { onRequest: [fastify.authenticate] }, async (request, reply) => {
+  try {
+    const userId = request.params.id;
+    await db.update(users)
+      .set({ subscription_status: 'active' })
+      .where(eq(users.id, userId));
+
+    return { success: true, message: 'Subscription activated' };
+  } catch (err) {
+    fastify.log.error(err);
+    return reply.status(500).send({ error: 'Failed to activate subscription' });
+  }
+});
+
 // ─── NOTIFICATIONS ─────────────────────────────────────────────────────────
 fastify.get('/api/notifications', { onRequest: [fastify.authenticate] }, async (request, reply) => {
   try {
-    const { user_id } = request.query;
+    const { user_id, owner_id } = request.query;
     
     let whereClause = undefined;
     if (user_id) {
@@ -1492,6 +2102,15 @@ fastify.get('/api/notifications', { onRequest: [fastify.authenticate] }, async (
       orderBy: [desc(notifications.created_at)],
       limit: 100
     });
+
+    // If owner_id is provided, filter to only show notifications for that owner
+    if (owner_id) {
+      return data.filter(n => {
+        const nData = n.data || {};
+        return nData.owner_id === owner_id || n.type === 'announcement';
+      });
+    }
+
     return data;
   } catch (err) {
     return reply.status(500).send({ error: 'Internal Server Error' });
@@ -1530,6 +2149,15 @@ fastify.post('/api/notifications/broadcast', { onRequest: [fastify.authenticate]
     }
 
     return { success: true, count: notificationsData.length };
+  } catch (err) {
+    return reply.status(500).send({ error: 'Internal Server Error' });
+  }
+});
+
+fastify.patch('/api/notifications/:id/read', { onRequest: [fastify.authenticate] }, async (request, reply) => {
+  try {
+    await db.update(notifications).set({ is_read: true }).where(eq(notifications.id, request.params.id));
+    return { success: true };
   } catch (err) {
     return reply.status(500).send({ error: 'Internal Server Error' });
   }

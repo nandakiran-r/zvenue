@@ -8,9 +8,6 @@ export interface DbUser {
   email: string | null;
   phone_number: string | null;
   avatar_url: string | null;
-  // Subscription & Trial fields
-  is_trial_used: boolean;
-  trial_ends_at: string | null;
   subscription_id: string | null;
   subscription_status: string | null;
   next_billing_at: string | null;
@@ -33,6 +30,8 @@ export interface DbVenue {
   city: string | null;
   category_id: string | null;
   image_url: string | null;
+  images: string[];
+  youtube_url: string | null;
   price_per_hour: number;
   price_per_day: number;
   capacity: number;
@@ -40,6 +39,8 @@ export interface DbVenue {
   review_count: number;
   area: string | null;
   amenities: string[];
+  subscriber_benefits: string[];
+  blocked_dates: string[];
   owner_name: string | null;
   owner_image: string | null;
   available_dates: string[];
@@ -146,14 +147,10 @@ export interface VerifyPaymentResponse {
 export type SubscriptionStatus = 'none' | 'authenticated' | 'active' | 'pending' | 'cancelled' | 'halted';
 
 export interface UserSubscriptionInfo {
-  is_trial_used: boolean;
-  trial_ends_at: string | null;
   subscription_id: string | null;
   subscription_status: SubscriptionStatus | null;
+  is_subscribed: boolean;
   next_billing_at: string | null;
-  is_trial_active: boolean;
-  is_subscription_active: boolean;
-  has_access: boolean;
 }
 
 export interface RazorpaySubscription {

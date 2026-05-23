@@ -1,6 +1,6 @@
 import { router, useLocalSearchParams } from "expo-router";
 import { safeBack } from "@/constants/navigation";
-import { Calendar, ChevronLeft, ChevronRight, Clock, MapPin, Users, XCircle, X } from "lucide-react-native";
+import { Calendar, ChevronLeft, ChevronRight, Clock, Crown, MapPin, Users, XCircle, X } from "lucide-react-native";
 import React, { useEffect, useState, useMemo } from "react";
 import {
     ActivityIndicator,
@@ -21,11 +21,10 @@ import { useAuth } from "@/context/AuthContext";
 import { fetchVenueById, fetchVenueBookedDates, createBookingOrder, verifyPayment } from "@/lib/api";
 import type { DbVenue } from "@/lib/types";
 
-const TIME_SLOTS = [
-    "09:00 AM", "10:00 AM", "11:00 AM", "12:00 PM",
-    "01:00 PM", "02:00 PM", "03:00 PM", "04:00 PM",
-    "05:00 PM", "06:00 PM", "07:00 PM", "08:00 PM",
-    "09:00 PM", "10:00 PM",
+const SESSIONS = [
+    { id: 'morning', label: 'Morning Session', time: '08:00 AM – 12:00 PM', start: '08:00 AM', end: '12:00 PM', hours: 4 },
+    { id: 'afternoon', label: 'Afternoon Session', time: '01:00 PM – 05:00 PM', start: '01:00 PM', end: '05:00 PM', hours: 4 },
+    { id: 'fullday', label: 'Full Day', time: '08:00 AM – 05:00 PM', start: '08:00 AM', end: '05:00 PM', hours: 9 },
 ];
 
 const DAYS = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"];
@@ -41,7 +40,7 @@ function formatDateKey(date: Date): string {
 export default function BookingDetailScreen() {
     const { id } = useLocalSearchParams<{ id: string }>();
     const insets = useSafeAreaInsets();
-    const { dbUser, hasAccess } = useAuth();
+    const { dbUser, isSubscribed } = useAuth();
 
     const [venue, setVenue] = useState<DbVenue | null>(null);
     const [loading, setLoading] = useState(true);
@@ -51,10 +50,10 @@ export default function BookingDetailScreen() {
     const [currentMonth, setCurrentMonth] = useState(new Date());
     const [selectedDate, setSelectedDate] = useState<string | null>(null);
     const [bookedDates, setBookedDates] = useState<{ booking_date: string; start_time: string; end_time: string }[]>([]);
+    const [blockedDates, setBlockedDates] = useState<string[]>([]);
 
-    // Time slot state
-    const [startTime, setStartTime] = useState<string | null>(null);
-    const [endTime, setEndTime] = useState<string | null>(null);
+    // Session state
+    const [selectedSession, setSelectedSession] = useState<string | null>(null);
 
     // Guests
     const [guests, setGuests] = useState("50");
@@ -67,6 +66,9 @@ export default function BookingDetailScreen() {
     const [paymentModalVisible, setPaymentModalVisible] = useState(false);
     const [paymentHtml, setPaymentHtml] = useState<string | null>(null);
     const [pendingBookingId, setPendingBookingId] = useState<string | null>(null);
+
+    // Subscribe prompt (shown to non-subscribers before booking)
+    const [showSubscribePrompt, setShowSubscribePrompt] = useState(false);
 
     useEffect(() => {
         if (!id) return;
@@ -89,7 +91,8 @@ export default function BookingDetailScreen() {
     const loadBookedDates = async () => {
         try {
             const data = await fetchVenueBookedDates(id!);
-            setBookedDates(data);
+            setBookedDates(data.bookings);
+            setBlockedDates(data.blocked_dates || []);
         } catch (err) {
             console.error("Failed to load booked dates:", err);
         }
@@ -103,7 +106,7 @@ export default function BookingDetailScreen() {
         const daysInMonth = new Date(year, month + 1, 0).getDate();
         const today = formatDateKey(new Date());
 
-        const days: { date: string; day: number; isCurrentMonth: boolean; isPast: boolean; isBooked: boolean; isToday: boolean }[] = [];
+        const days: { date: string; day: number; isCurrentMonth: boolean; isPast: boolean; isBooked: boolean; isToday: boolean; isBlocked?: boolean }[] = [];
 
         // Empty slots for days before the 1st
         for (let i = 0; i < firstDay; i++) {
@@ -115,12 +118,13 @@ export default function BookingDetailScreen() {
             const dateKey = formatDateKey(dateObj);
             const isPast = dateKey < today;
             const isBooked = bookedDates.some(b => b.booking_date === dateKey);
+            const isBlocked = blockedDates.includes(dateKey);
             const isToday = dateKey === today;
-            days.push({ date: dateKey, day: d, isCurrentMonth: true, isPast, isBooked, isToday });
+            days.push({ date: dateKey, day: d, isCurrentMonth: true, isPast: isPast || isBlocked, isBooked, isToday, isBlocked });
         }
 
         return days;
-    }, [currentMonth, bookedDates]);
+    }, [currentMonth, bookedDates, blockedDates]);
 
     const goToPrevMonth = () => {
         setCurrentMonth(prev => new Date(prev.getFullYear(), prev.getMonth() - 1, 1));
@@ -132,41 +136,36 @@ export default function BookingDetailScreen() {
 
     const handleDateSelect = (dateKey: string) => {
         setSelectedDate(dateKey);
-        setStartTime(null);
-        setEndTime(null);
+        setSelectedSession(null);
     };
 
-    // Get booked time slots for selected date
-    const bookedTimesForDate = useMemo(() => {
+    // Check which sessions are booked for selected date
+    const bookedSessionsForDate = useMemo(() => {
         if (!selectedDate) return [];
-        return bookedDates
-            .filter(b => b.booking_date === selectedDate)
-            .map(b => ({ start: b.start_time, end: b.end_time }));
+        const dateBookings = bookedDates.filter(b => b.booking_date === selectedDate);
+        const booked: string[] = [];
+        
+        for (const session of SESSIONS) {
+            // A session is booked if any existing booking overlaps with it
+            const isBooked = dateBookings.some(b => {
+                // Full day blocks everything
+                if (b.start_time === '08:00 AM' && b.end_time === '05:00 PM') return true;
+                if (session.id === 'fullday') return dateBookings.length > 0;
+                // Morning/afternoon check
+                return b.start_time === session.start && b.end_time === session.end;
+            });
+            if (isBooked) booked.push(session.id);
+        }
+        return booked;
     }, [selectedDate, bookedDates]);
 
-    const isTimeSlotBooked = (slot: string) => {
-        return bookedTimesForDate.some(b => b.start === slot || b.end === slot);
-    };
+    const isSessionBooked = (sessionId: string) => bookedSessionsForDate.includes(sessionId);
 
-    const handleStartTimeSelect = (slot: string) => {
-        setStartTime(slot);
-        // Auto-select end time 2 slots later
-        const idx = TIME_SLOTS.indexOf(slot);
-        if (idx >= 0 && idx + 2 < TIME_SLOTS.length) {
-            setEndTime(TIME_SLOTS[idx + 2]);
-        } else {
-            setEndTime(null);
-        }
-    };
+    // Get selected session details
+    const currentSession = SESSIONS.find(s => s.id === selectedSession);
 
     // Pricing calculation
-    const hoursBooked = useMemo(() => {
-        if (!startTime || !endTime) return 0;
-        const startIdx = TIME_SLOTS.indexOf(startTime);
-        const endIdx = TIME_SLOTS.indexOf(endTime);
-        return Math.max(0, endIdx - startIdx);
-    }, [startTime, endTime]);
-
+    const hoursBooked = currentSession?.hours ?? 0;
     const hourlyRate = venue?.price_per_hour ?? 0;
     const subtotal = hourlyRate * hoursBooked;
     const serviceFee = hoursBooked > 0 ? 500 : 0;
@@ -174,7 +173,7 @@ export default function BookingDetailScreen() {
 
     const formatPrice = (amount: number) => `₹${amount.toLocaleString("en-IN")}`;
 
-    const canBook = selectedDate && startTime && endTime && hoursBooked > 0 && parseInt(guests) > 0;
+    const canBook = selectedDate && selectedSession && hoursBooked > 0 && parseInt(guests) > 0;
 
     const handleConfirm = async () => {
         if (!dbUser) {
@@ -185,24 +184,28 @@ export default function BookingDetailScreen() {
             return;
         }
 
-        if (!hasAccess) {
-            Alert.alert("Subscription Required", "You need an active trial or subscription to book venues.", [
-                { text: "Cancel", style: "cancel" },
-                { text: "Subscribe", onPress: () => router.push("/subscription" as any) }
-            ]);
+        if (!canBook || submitting) return;
+
+        // If user is NOT subscribed, show the benefits prompt (they can skip)
+        if (!isSubscribed && !showSubscribePrompt) {
+            setShowSubscribePrompt(true);
             return;
         }
 
-        if (!canBook || submitting) return;
+        await proceedWithBooking();
+    };
 
+    const proceedWithBooking = async () => {
+        setShowSubscribePrompt(false);
+        
         try {
             setSubmitting(true);
 
             const orderData = {
                 venue_id: venue!.id,
                 booking_date: selectedDate!,
-                start_time: startTime!,
-                end_time: endTime!,
+                start_time: currentSession!.start,
+                end_time: currentSession!.end,
                 guests: parseInt(guests),
                 subtotal,
                 service_fee: serviceFee,
@@ -228,7 +231,7 @@ export default function BookingDetailScreen() {
                     </div>
                     <script>
                         var options = {
-                            key: "rzp_test_SpDyznKPQ9nviQ",
+                            key: "${process.env.EXPO_PUBLIC_RAZORPAY_KEY || 'rzp_test_SpDyznKPQ9nviQ'}",
                             amount: ${order.amount},
                             currency: "INR",
                             name: "Zvenue",
@@ -278,11 +281,6 @@ export default function BookingDetailScreen() {
             if (errorData?.error === 'venue_unavailable') {
                 setConflictDetails(errorData.conflict);
                 setUnavailableModal(true);
-            } else if (errorData?.code === 'SUBSCRIPTION_REQUIRED') {
-                Alert.alert("Subscription Required", "Please subscribe to continue.", [
-                    { text: "Cancel", style: "cancel" },
-                    { text: "Subscribe", onPress: () => router.push("/subscription" as any) }
-                ]);
             } else {
                 Alert.alert("Booking Failed", errorData?.error || errorData?.message || "Failed to create booking.");
             }
@@ -436,60 +434,44 @@ export default function BookingDetailScreen() {
                     </View>
                 </View>
 
-                {/* Time Slots */}
+                {/* Session Selection */}
                 {selectedDate && (
                     <View style={styles.timeSection}>
                         <Text style={styles.sectionTitle}>
-                            <Clock size={16} color={Colors.primary} /> Select Time
+                            <Clock size={16} color={Colors.primary} /> Select Session
                         </Text>
-                        <Text style={styles.timeSubtitle}>Start Time</Text>
-                        <ScrollView horizontal showsHorizontalScrollIndicator={false} style={styles.timeSlotsRow}>
-                            {TIME_SLOTS.map(slot => {
-                                const booked = isTimeSlotBooked(slot);
-                                const isActive = slot === startTime;
+                        <View style={{ gap: 10 }}>
+                            {SESSIONS.map(session => {
+                                const booked = isSessionBooked(session.id);
+                                const isActive = selectedSession === session.id;
                                 return (
                                     <TouchableOpacity
-                                        key={`start-${slot}`}
-                                        style={[styles.timeChip, isActive && styles.timeChipActive, booked && styles.timeChipBooked]}
-                                        onPress={() => !booked && handleStartTimeSelect(slot)}
+                                        key={session.id}
+                                        style={[styles.sessionCard, isActive && styles.sessionCardActive, booked && styles.sessionCardBooked]}
+                                        onPress={() => !booked && setSelectedSession(session.id)}
                                         disabled={booked}
+                                        activeOpacity={0.7}
                                     >
-                                        <Text style={[styles.timeChipText, isActive && styles.timeChipTextActive, booked && styles.timeChipTextBooked]}>
-                                            {slot}
+                                        <View style={{ flex: 1 }}>
+                                            <Text style={[styles.sessionLabel, isActive && styles.sessionLabelActive, booked && styles.sessionLabelBooked]}>
+                                                {session.label}
+                                            </Text>
+                                            <Text style={[styles.sessionTime, booked && styles.sessionLabelBooked]}>
+                                                {session.time}
+                                            </Text>
+                                        </View>
+                                        <Text style={[styles.sessionHours, isActive && styles.sessionLabelActive, booked && styles.sessionLabelBooked]}>
+                                            {booked ? 'Booked' : `${session.hours} hrs`}
                                         </Text>
                                     </TouchableOpacity>
                                 );
                             })}
-                        </ScrollView>
-
-                        {startTime && (
-                            <>
-                                <Text style={[styles.timeSubtitle, { marginTop: 16 }]}>End Time</Text>
-                                <ScrollView horizontal showsHorizontalScrollIndicator={false} style={styles.timeSlotsRow}>
-                                    {TIME_SLOTS.filter(slot => TIME_SLOTS.indexOf(slot) > TIME_SLOTS.indexOf(startTime)).map(slot => {
-                                        const booked = isTimeSlotBooked(slot);
-                                        const isActive = slot === endTime;
-                                        return (
-                                            <TouchableOpacity
-                                                key={`end-${slot}`}
-                                                style={[styles.timeChip, isActive && styles.timeChipActive, booked && styles.timeChipBooked]}
-                                                onPress={() => !booked && setEndTime(slot)}
-                                                disabled={booked}
-                                            >
-                                                <Text style={[styles.timeChipText, isActive && styles.timeChipTextActive, booked && styles.timeChipTextBooked]}>
-                                                    {slot}
-                                                </Text>
-                                            </TouchableOpacity>
-                                        );
-                                    })}
-                                </ScrollView>
-                            </>
-                        )}
+                        </View>
                     </View>
                 )}
 
                 {/* Guests */}
-                {selectedDate && startTime && endTime && (
+                {selectedDate && selectedSession && (
                     <View style={styles.guestsSection}>
                         <Text style={styles.sectionTitle}>
                             <Users size={16} color={Colors.primary} /> Number of Guests
@@ -521,8 +503,12 @@ export default function BookingDetailScreen() {
                             <Text style={styles.summaryValue}>{selectedDate}</Text>
                         </View>
                         <View style={styles.summaryRow}>
+                            <Text style={styles.summaryLabel}>Session</Text>
+                            <Text style={styles.summaryValue}>{currentSession?.label}</Text>
+                        </View>
+                        <View style={styles.summaryRow}>
                             <Text style={styles.summaryLabel}>Time</Text>
-                            <Text style={styles.summaryValue}>{startTime} – {endTime}</Text>
+                            <Text style={styles.summaryValue}>{currentSession?.time}</Text>
                         </View>
                         <View style={styles.summaryRow}>
                             <Text style={styles.summaryLabel}>{hoursBooked} hrs × {formatPrice(hourlyRate)}</Text>
@@ -558,6 +544,40 @@ export default function BookingDetailScreen() {
                     <Text style={styles.confirmText}>{submitting ? "Processing..." : "Confirm & Pay"}</Text>
                 </TouchableOpacity>
             </View>
+
+            {/* Subscribe Benefits Prompt */}
+            <Modal visible={showSubscribePrompt} transparent animationType="fade" onRequestClose={() => setShowSubscribePrompt(false)}>
+                <View style={styles.modalOverlay}>
+                    <View style={styles.modalContent}>
+                        <View style={[styles.iconCircle, { backgroundColor: '#FFF8E1' }]}>
+                            <Crown size={48} color="#F9A825" />
+                        </View>
+                        <Text style={styles.modalTitle}>Unlock Premium Benefits!</Text>
+                        <Text style={styles.modalSubtitle}>
+                            Subscribe for ₹49/month to get exclusive benefits with every booking:
+                        </Text>
+                        {venue?.subscriber_benefits && venue.subscriber_benefits.length > 0 && (
+                            <View style={{ width: '100%', backgroundColor: '#F5F5F5', borderRadius: 12, padding: 14, marginBottom: 16 }}>
+                                {(venue.subscriber_benefits as string[]).map((benefit, i) => (
+                                    <Text key={i} style={{ fontSize: 13, color: Colors.text, marginBottom: 6 }}>✓ {benefit}</Text>
+                                ))}
+                            </View>
+                        )}
+                        <TouchableOpacity
+                            style={[styles.modalButton, { marginBottom: 10 }]}
+                            onPress={() => { setShowSubscribePrompt(false); router.push("/subscription" as any); }}
+                        >
+                            <Text style={styles.modalButtonText}>Subscribe Now — ₹49/mo</Text>
+                        </TouchableOpacity>
+                        <TouchableOpacity
+                            style={[styles.modalButton, { backgroundColor: Colors.surface, borderWidth: 1, borderColor: Colors.border }]}
+                            onPress={proceedWithBooking}
+                        >
+                            <Text style={[styles.modalButtonText, { color: Colors.text }]}>Skip & Continue Booking</Text>
+                        </TouchableOpacity>
+                    </View>
+                </View>
+            </Modal>
 
             {/* Payment WebView Modal */}
             <Modal visible={paymentModalVisible} animationType="slide" onRequestClose={handlePaymentClose}>
@@ -662,20 +682,20 @@ const styles = StyleSheet.create({
     legendItem: { flexDirection: "row", alignItems: "center", gap: 6 },
     legendDot: { width: 8, height: 8, borderRadius: 4 },
     legendText: { fontSize: 11, color: Colors.textSecondary },
-    // Time slots
+    // Time/Session
     timeSection: { backgroundColor: Colors.white, borderRadius: 16, padding: 16, marginBottom: 20 },
     sectionTitle: { fontSize: 16, fontWeight: "700", color: Colors.text, marginBottom: 12 },
-    timeSubtitle: { fontSize: 13, fontWeight: "600", color: Colors.textSecondary, marginBottom: 8 },
-    timeSlotsRow: { flexDirection: "row" },
-    timeChip: {
-        paddingHorizontal: 14, paddingVertical: 10, borderRadius: 10, backgroundColor: Colors.surface,
-        marginRight: 8, borderWidth: 1, borderColor: Colors.border,
+    sessionCard: {
+        flexDirection: "row", alignItems: "center", justifyContent: "space-between",
+        padding: 16, borderRadius: 12, borderWidth: 1.5, borderColor: Colors.border, backgroundColor: Colors.surface,
     },
-    timeChipActive: { backgroundColor: Colors.primary, borderColor: Colors.primary },
-    timeChipBooked: { backgroundColor: "#FFEBEE", borderColor: "#FFCDD2" },
-    timeChipText: { fontSize: 13, fontWeight: "500", color: Colors.text },
-    timeChipTextActive: { color: Colors.white, fontWeight: "700" },
-    timeChipTextBooked: { color: "#EF5350", textDecorationLine: "line-through" },
+    sessionCardActive: { borderColor: Colors.primary, backgroundColor: '#FFF0F0' },
+    sessionCardBooked: { borderColor: '#FFCDD2', backgroundColor: '#FFEBEE', opacity: 0.7 },
+    sessionLabel: { fontSize: 15, fontWeight: "600", color: Colors.text, marginBottom: 2 },
+    sessionLabelActive: { color: Colors.primary },
+    sessionLabelBooked: { color: '#EF5350', textDecorationLine: "line-through" },
+    sessionTime: { fontSize: 12, color: Colors.textSecondary },
+    sessionHours: { fontSize: 14, fontWeight: "700", color: Colors.text },
     // Guests
     guestsSection: { backgroundColor: Colors.white, borderRadius: 16, padding: 16, marginBottom: 20 },
     guestsRow: { flexDirection: "row", alignItems: "center", gap: 12 },

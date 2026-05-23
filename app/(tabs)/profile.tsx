@@ -17,8 +17,8 @@ const MENU_ITEMS = [
   { icon: User, label: "Edit Profile", route: "/edit-profile" },
   { icon: Calendar, label: "My Bookings", route: "/bookings" },
   { icon: Bell, label: "Notifications", route: "/notifications" },
-  { icon: Settings, label: "Settings", route: "" },
-  { icon: HelpCircle, label: "Help & Support", route: "" },
+  { icon: Settings, label: "Settings", route: "/settings" },
+  { icon: HelpCircle, label: "Help & Support", route: "/help" },
 ];
 
 export default function ProfileScreen() {
@@ -91,7 +91,7 @@ const styles = StyleSheet.create({
     backgroundColor: Colors.white,
   },
   scrollContent: {
-    paddingBottom: 32,
+    paddingBottom: 90,
   },
   headerTitle: {
     fontSize: 22,

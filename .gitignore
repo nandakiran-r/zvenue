@@ -74,3 +74,4 @@ admin/*.ntvs*
 admin/*.njsproj
 admin/*.sln
 admin/*.sw?
+.idea/

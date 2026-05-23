@@ -231,15 +231,11 @@ export default function HomeScreen() {
         </Modal>
 
         <View style={styles.searchRow}>
-          <View style={styles.searchContainer}>
+          <TouchableOpacity style={styles.searchContainer} onPress={() => router.push("/(tabs)/search" as any)} activeOpacity={0.7}>
             <Search size={18} color={Colors.textSecondary} />
-            <TextInput
-              style={styles.searchInput}
-              placeholder="Search venues"
-              placeholderTextColor={Colors.textTertiary}
-            />
-          </View>
-          <TouchableOpacity style={styles.filterButton}>
+            <Text style={[styles.searchInput, { color: Colors.textTertiary }]}>Search venues</Text>
+          </TouchableOpacity>
+          <TouchableOpacity style={styles.filterButton} onPress={() => router.push("/(tabs)/search" as any)}>
             <SlidersHorizontal size={18} color={Colors.text} />
           </TouchableOpacity>
         </View>

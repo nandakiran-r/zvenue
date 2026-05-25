@@ -35,6 +35,7 @@ export interface DbVenue {
   price_per_hour: number;
   price_per_day: number;
   capacity: number;
+  registration_fee: number;
   rating: number;
   review_count: number;
   area: string | null;

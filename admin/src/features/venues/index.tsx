@@ -84,7 +84,7 @@ function approvalBadge(status: string) {
 
 const defaultVenueForm = {
   name: '', description: '', location: '', city: '', category_id: '', image_url: '',
-  price_per_hour: 0, price_per_day: 0, capacity: 0, rating: 0, review_count: 0,
+  price_per_hour: 0, price_per_day: 0, capacity: 0, registration_fee: 0, rating: 0, review_count: 0,
   area: '', amenities: [] as string[], subscriber_benefits: [] as string[], owner_name: '', owner_image: '', available_dates: [] as string[],
   images: [] as string[], youtube_url: '',
 }
@@ -148,7 +148,7 @@ export function VenuesPage() {
 
   const openEdit = (venue: any) => {
     setSelectedVenue(venue); setEditMode(true)
-    setForm({ name: venue.name||'', description: venue.description||'', location: venue.location||'', city: venue.city||'', category_id: venue.category_id||'', image_url: venue.image_url||'', price_per_hour: venue.price_per_hour||0, price_per_day: venue.price_per_day||0, capacity: venue.capacity||0, rating: venue.rating||0, review_count: venue.review_count||0, area: venue.area||'', amenities: venue.amenities||[], subscriber_benefits: venue.subscriber_benefits||[], owner_name: venue.owner_name||'', owner_image: venue.owner_image||'', available_dates: venue.available_dates||[], images: venue.images||[], youtube_url: venue.youtube_url||'' })
+    setForm({ name: venue.name||'', description: venue.description||'', location: venue.location||'', city: venue.city||'', category_id: venue.category_id||'', image_url: venue.image_url||'', price_per_hour: venue.price_per_hour||0, price_per_day: venue.price_per_day||0, capacity: venue.capacity||0, registration_fee: venue.registration_fee||0, rating: venue.rating||0, review_count: venue.review_count||0, area: venue.area||'', amenities: venue.amenities||[], subscriber_benefits: venue.subscriber_benefits||[], owner_name: venue.owner_name||'', owner_image: venue.owner_image||'', available_dates: venue.available_dates||[], images: venue.images||[], youtube_url: venue.youtube_url||'' })
     setDialogOpen(true)
   }
 
@@ -319,6 +319,11 @@ export function VenuesPage() {
               <div className='space-y-2'><Label>Price/Hour (₹)</Label><Input type='number' value={form.price_per_hour} onChange={e => setForm(p => ({ ...p, price_per_hour: Number(e.target.value) }))} /></div>
               <div className='space-y-2'><Label>Price/Day (₹)</Label><Input type='number' value={form.price_per_day} onChange={e => setForm(p => ({ ...p, price_per_day: Number(e.target.value) }))} /></div>
               <div className='space-y-2'><Label>Capacity</Label><Input type='number' value={form.capacity} onChange={e => setForm(p => ({ ...p, capacity: Number(e.target.value) }))} /></div>
+            </div>
+            <div className='space-y-2'>
+              <Label>Registration Fee (₹) — Amount customer pays to reserve</Label>
+              <Input type='number' value={form.registration_fee} onChange={e => setForm(p => ({ ...p, registration_fee: Number(e.target.value) }))} placeholder='e.g., 2000 (0 = full payment)' />
+              <p className='text-xs text-muted-foreground'>If set, customer pays only this amount to confirm booking. Balance is paid at venue. Set to 0 for full payment.</p>
             </div>
             <div className='grid grid-cols-2 gap-4'>
               <div className='space-y-2'><Label>Area</Label><Input value={form.area} onChange={e => setForm(p => ({ ...p, area: e.target.value }))} placeholder='5000 sq ft' /></div>

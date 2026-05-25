@@ -557,7 +557,7 @@ fastify.get('/api/owners/venues', { onRequest: [fastify.authenticate] }, async (
 fastify.post('/api/owners/venues', { onRequest: [fastify.authenticate] }, async (request, reply) => {
   try {
     if (request.user.role !== 'owner') return reply.status(403).send({ error: 'Not an owner' });
-    const { subscriber_benefits, ...body } = request.body; // Strip subscriber_benefits (admin-only)
+    const { subscriber_benefits, registration_fee, ...body } = request.body; // Strip admin-only fields
     const venueData = {
       ...body,
       owner_id: request.user.id,
@@ -599,7 +599,7 @@ fastify.put('/api/owners/venues/:id', { onRequest: [fastify.authenticate] }, asy
     const venue = await db.query.venues.findFirst({ where: and(eq(venues.id, venueId), eq(venues.owner_id, request.user.id)) });
     if (!venue) return reply.status(404).send({ error: 'Venue not found or not yours' });
 
-    const { subscriber_benefits, ...ownerBody } = request.body; // Strip subscriber_benefits (admin-only)
+    const { subscriber_benefits, registration_fee, ...ownerBody } = request.body; // Strip admin-only fields
 
     if (venue.approval_status === 'approved') {
       // Store changes as pending, don't apply directly
@@ -947,16 +947,20 @@ fastify.post('/api/bookings/create-order', { onRequest: [fastify.authenticate] }
     // Get venue details
     const venue = await db.query.venues.findFirst({
       where: eq(venues.id, venue_id),
-      columns: { name: true, city: true },
+      columns: { name: true, city: true, registration_fee: true },
     });
 
     if (!venue) {
       return reply.status(404).send({ error: 'Venue not found' });
     }
 
+    // Determine payment amount: registration_fee if set, otherwise full total
+    const registrationFee = venue.registration_fee && venue.registration_fee > 0 ? venue.registration_fee : null;
+    const paymentAmount = registrationFee || total;
+
     // Create Razorpay order
     const order = await razorpay.orders.create({
-      amount: Math.round(total * 100), // Convert to paise
+      amount: Math.round(paymentAmount * 100), // Convert to paise
       currency: 'INR',
       receipt: `booking_${Date.now()}`,
       notes: {
@@ -968,6 +972,8 @@ fastify.post('/api/bookings/create-order', { onRequest: [fastify.authenticate] }
         guests,
         subtotal,
         service_fee,
+        registration_fee: registrationFee,
+        total_venue_price: total,
       },
     });
 
@@ -991,7 +997,10 @@ fastify.post('/api/bookings/create-order', { onRequest: [fastify.authenticate] }
     return {
       order,
       booking,
-      venue: { name: venue.name, city: venue.city }
+      venue: { name: venue.name, city: venue.city },
+      registration_fee: registrationFee,
+      payment_amount: paymentAmount,
+      balance_remaining: registrationFee ? total - registrationFee : 0,
     };
   } catch (err) {
     fastify.log.error('Create order error:', err);

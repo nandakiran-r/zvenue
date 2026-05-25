@@ -170,6 +170,11 @@ export default function BookingDetailScreen() {
     const subtotal = hourlyRate * hoursBooked;
     const serviceFee = hoursBooked > 0 ? 500 : 0;
     const total = subtotal + serviceFee;
+    
+    // Registration fee: what customer pays now (if set by admin)
+    const registrationFee = (venue as any)?.registration_fee || 0;
+    const payNow = registrationFee > 0 ? registrationFee : total;
+    const balanceAtVenue = registrationFee > 0 ? total - registrationFee : 0;
 
     const formatPrice = (amount: number) => `₹${amount.toLocaleString("en-IN")}`;
 
@@ -520,9 +525,23 @@ export default function BookingDetailScreen() {
                         </View>
                         <View style={styles.divider} />
                         <View style={styles.summaryRow}>
-                            <Text style={styles.totalLabel}>Total</Text>
+                            <Text style={styles.totalLabel}>Venue Total</Text>
                             <Text style={styles.totalValue}>{formatPrice(total)}</Text>
                         </View>
+
+                        {registrationFee > 0 && (
+                            <>
+                                <View style={[styles.divider, { marginTop: 8 }]} />
+                                <View style={[styles.summaryRow, { backgroundColor: '#E8F5E9', marginHorizontal: -16, paddingHorizontal: 16, paddingVertical: 12, borderRadius: 10, marginTop: 8 }]}>
+                                    <Text style={[styles.totalLabel, { color: '#2E7D32' }]}>💳 Pay Now (Registration)</Text>
+                                    <Text style={[styles.totalValue, { color: '#2E7D32' }]}>{formatPrice(payNow)}</Text>
+                                </View>
+                                <View style={[styles.summaryRow, { marginTop: 8 }]}>
+                                    <Text style={styles.summaryLabel}>🏛️ Pay at Venue (Balance)</Text>
+                                    <Text style={styles.summaryValue}>{formatPrice(balanceAtVenue)}</Text>
+                                </View>
+                            </>
+                        )}
                     </View>
                 )}
 
@@ -532,8 +551,8 @@ export default function BookingDetailScreen() {
             {/* Bottom Bar */}
             <View style={[styles.bottomBar, { paddingBottom: insets.bottom + 12 }]}>
                 <View style={styles.priceColumn}>
-                    <Text style={styles.priceLabelBottom}>Total</Text>
-                    <Text style={styles.priceAmount}>{canBook ? formatPrice(total) : "—"}</Text>
+                    <Text style={styles.priceLabelBottom}>{registrationFee > 0 ? 'Registration Fee' : 'Total'}</Text>
+                    <Text style={styles.priceAmount}>{canBook ? formatPrice(payNow) : "—"}</Text>
                 </View>
                 <TouchableOpacity
                     style={[styles.confirmButton, (!canBook || submitting) && { opacity: 0.5 }]}

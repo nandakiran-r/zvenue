@@ -63,6 +63,7 @@ export const venues = pgTable('venues', {
   price_per_hour: real('price_per_hour').default(0),
   price_per_day: real('price_per_day').default(0),
   capacity: integer('capacity').default(0),
+  registration_fee: real('registration_fee').default(0),
   rating: real('rating').default(0),
   review_count: integer('review_count').default(0),
   area: varchar('area', { length: 255 }),

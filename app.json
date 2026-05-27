@@ -44,6 +44,13 @@
       "expo-web-browser",
       "expo-secure-store",
       [
+        "expo-image-picker",
+        {
+          "photosPermission": "Allow ZVenue to access your gallery to set a profile picture.",
+          "cameraPermission": "Allow ZVenue to use your camera to take a profile picture."
+        }
+      ],
+      [
         "expo-location",
         {
           "locationAlwaysAndWhenInUsePermission": "Allow Zvenue to use your location to find nearby venues.",

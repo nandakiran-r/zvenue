@@ -1,11 +1,15 @@
 import { router } from "expo-router";
 import { safeBack } from "@/constants/navigation";
-import { Camera, ChevronLeft, Mail, Phone, User } from "lucide-react-native";
-import React, { useEffect, useState } from "react";
+import { Camera, ChevronLeft, ImageIcon, Mail, Phone, User, X } from "lucide-react-native";
+import React, { useCallback, useEffect, useRef, useState } from "react";
 import {
+    ActivityIndicator,
+    Animated,
     Image,
     KeyboardAvoidingView,
+    Modal,
     Platform,
+    Pressable,
     ScrollView,
     StyleSheet,
     Text,
@@ -18,7 +22,7 @@ import { useSafeAreaInsets } from "react-native-safe-area-context";
 import Colors from "@/constants/colors";
 import { useAuth } from "@/context/AuthContext";
 import { useToast } from "@/context/ToastContext";
-import { updateUser } from "@/lib/api";
+import { updateUser, fetchUser } from "@/lib/api";
 
 export default function EditProfileScreen() {
     const insets = useSafeAreaInsets();
@@ -30,22 +34,94 @@ export default function EditProfileScreen() {
     const [phoneNumber, setPhoneNumber] = useState("");
     const [avatarUrl, setAvatarUrl] = useState<string | null>(null);
     const [saving, setSaving] = useState(false);
+    const [loading, setLoading] = useState(true);
+    const [imageSheetVisible, setImageSheetVisible] = useState(false);
+    const sheetAnim = useRef(new Animated.Value(0)).current;
     const { success, error: showError, warning, showAlert } = useToast();
 
-    useEffect(() => {
-        if (dbUser) {
-            setFirstName(dbUser.first_name ?? "");
-            setLastName(dbUser.last_name ?? "");
-            setEmail(dbUser.email ?? "");
-            setPhoneNumber(dbUser.phone_number ?? "");
-            setAvatarUrl(dbUser.avatar_url ?? null);
+    // Validation errors
+    const [errors, setErrors] = useState<{ firstName?: string; lastName?: string; email?: string }>({});
+
+    // Fetch fresh profile data from DB on mount
+    const loadProfile = useCallback(async () => {
+        if (!userId) return;
+        try {
+            setLoading(true);
+            const freshUser = await fetchUser(userId);
+            if (freshUser) {
+                setFirstName(freshUser.first_name ?? "");
+                setLastName(freshUser.last_name ?? "");
+                setEmail(freshUser.email ?? "");
+                setPhoneNumber(freshUser.phone_number ?? "");
+                setAvatarUrl(freshUser.avatar_url ?? null);
+            }
+        } catch (err) {
+            // Fallback to cached data from auth store
+            if (dbUser) {
+                setFirstName(dbUser.first_name ?? "");
+                setLastName(dbUser.last_name ?? "");
+                setEmail(dbUser.email ?? "");
+                setPhoneNumber(dbUser.phone_number ?? "");
+                setAvatarUrl(dbUser.avatar_url ?? null);
+            }
+        } finally {
+            setLoading(false);
         }
-    }, [dbUser]);
+    }, [userId, dbUser]);
+
+    useEffect(() => {
+        loadProfile();
+    }, [loadProfile]);
+
+    // Validation logic
+    const validate = (): boolean => {
+        const newErrors: typeof errors = {};
+
+        if (!firstName.trim()) {
+            newErrors.firstName = "First name is required";
+        } else if (firstName.trim().length < 2) {
+            newErrors.firstName = "Must be at least 2 characters";
+        }
+
+        if (!lastName.trim()) {
+            newErrors.lastName = "Last name is required";
+        } else if (lastName.trim().length < 1) {
+            newErrors.lastName = "Must be at least 1 character";
+        }
+
+        if (!email.trim()) {
+            newErrors.email = "Email is required";
+        } else {
+            const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+            if (!emailRegex.test(email.trim())) {
+                newErrors.email = "Enter a valid email address";
+            }
+        }
+
+        setErrors(newErrors);
+        return Object.keys(newErrors).length === 0;
+    };
+
+    // Clear individual field error on change
+    const handleFirstNameChange = (text: string) => {
+        setFirstName(text);
+        if (errors.firstName) setErrors(prev => ({ ...prev, firstName: undefined }));
+    };
+
+    const handleLastNameChange = (text: string) => {
+        setLastName(text);
+        if (errors.lastName) setErrors(prev => ({ ...prev, lastName: undefined }));
+    };
+
+    const handleEmailChange = (text: string) => {
+        setEmail(text);
+        if (errors.email) setErrors(prev => ({ ...prev, email: undefined }));
+    };
 
     const handlePickImage = async () => {
         const { status } = await ImagePicker.requestMediaLibraryPermissionsAsync();
         if (status !== "granted") {
-            warning("Permission Required", "Please allow access to your photo library to upload a profile picture.");
+            warning("Permission Required", "Please allow access to your gallery to set a profile picture.");
             return;
         }
 
@@ -95,21 +171,27 @@ export default function EditProfileScreen() {
         }
     };
 
-    const handleImagePress = () => {
-        showAlert({
-            type: "info",
-            title: "Profile Picture",
-            message: "Choose an option",
-            actions: [
-                { text: "Take Photo", style: "default", onPress: handleTakePhoto },
-                { text: "Library", style: "default", onPress: handlePickImage },
-                { text: "Cancel", style: "cancel" },
-            ],
+    const openImageSheet = () => {
+        setImageSheetVisible(true);
+        Animated.spring(sheetAnim, { toValue: 1, useNativeDriver: true, tension: 80, friction: 12 }).start();
+    };
+
+    const closeImageSheet = () => {
+        Animated.timing(sheetAnim, { toValue: 0, duration: 200, useNativeDriver: true }).start(() => {
+            setImageSheetVisible(false);
         });
+    };
+
+    const handleImagePress = () => {
+        openImageSheet();
     };
 
     const handleSave = async () => {
         if (!userId || saving) return;
+
+        // Run validation
+        if (!validate()) return;
+
         try {
             setSaving(true);
             await updateUser(userId, {
@@ -117,7 +199,6 @@ export default function EditProfileScreen() {
                 last_name: lastName.trim(),
                 full_name: `${firstName.trim()} ${lastName.trim()}`.trim(),
                 email: email.trim(),
-                phone_number: phoneNumber.trim(),
                 avatar_url: avatarUrl,
             });
             await refreshProfile();
@@ -150,6 +231,11 @@ export default function EditProfileScreen() {
                 behavior={Platform.OS === "ios" ? "padding" : "height"}
                 style={styles.flex}
             >
+                {loading ? (
+                    <View style={styles.loadingContainer}>
+                        <ActivityIndicator size="large" color={Colors.primary} />
+                    </View>
+                ) : (
                 <ScrollView
                     showsVerticalScrollIndicator={false}
                     contentContainerStyle={styles.scrollContent}
@@ -175,46 +261,52 @@ export default function EditProfileScreen() {
                         <View style={{ flexDirection: 'row', gap: 12 }}>
                             <View style={[styles.inputGroup, { flex: 1 }]}>
                                 <Text style={styles.label}>First Name</Text>
-                                <View style={styles.inputContainer}>
-                                    <User size={18} color={Colors.textSecondary} />
+                                <View style={[styles.inputContainer, errors.firstName ? styles.inputError : null]}>
+                                    <User size={18} color={errors.firstName ? Colors.error : Colors.textSecondary} />
                                     <TextInput
                                         style={styles.input}
                                         value={firstName}
-                                        onChangeText={setFirstName}
+                                        onChangeText={handleFirstNameChange}
                                         placeholder="First name"
                                         placeholderTextColor={Colors.textTertiary}
+                                        autoCapitalize="words"
                                     />
                                 </View>
+                                {errors.firstName && <Text style={styles.errorText}>{errors.firstName}</Text>}
                             </View>
                             <View style={[styles.inputGroup, { flex: 1 }]}>
                                 <Text style={styles.label}>Last Name</Text>
-                                <View style={styles.inputContainer}>
-                                    <User size={18} color={Colors.textSecondary} />
+                                <View style={[styles.inputContainer, errors.lastName ? styles.inputError : null]}>
+                                    <User size={18} color={errors.lastName ? Colors.error : Colors.textSecondary} />
                                     <TextInput
                                         style={styles.input}
                                         value={lastName}
-                                        onChangeText={setLastName}
+                                        onChangeText={handleLastNameChange}
                                         placeholder="Last name"
                                         placeholderTextColor={Colors.textTertiary}
+                                        autoCapitalize="words"
                                     />
                                 </View>
+                                {errors.lastName && <Text style={styles.errorText}>{errors.lastName}</Text>}
                             </View>
                         </View>
 
                         <View style={styles.inputGroup}>
                             <Text style={styles.label}>Email Address</Text>
-                            <View style={styles.inputContainer}>
-                                <Mail size={20} color={Colors.textSecondary} />
+                            <View style={[styles.inputContainer, errors.email ? styles.inputError : null]}>
+                                <Mail size={20} color={errors.email ? Colors.error : Colors.textSecondary} />
                                 <TextInput
                                     style={styles.input}
                                     value={email}
-                                    onChangeText={setEmail}
+                                    onChangeText={handleEmailChange}
                                     placeholder="Enter your email"
                                     placeholderTextColor={Colors.textTertiary}
                                     keyboardType="email-address"
                                     autoCapitalize="none"
+                                    autoCorrect={false}
                                 />
                             </View>
+                            {errors.email && <Text style={styles.errorText}>{errors.email}</Text>}
                         </View>
 
                         <View style={styles.inputGroup}>
@@ -239,10 +331,73 @@ export default function EditProfileScreen() {
                         activeOpacity={0.8}
                         disabled={saving}
                     >
-                        <Text style={styles.saveButtonText}>{saving ? "Saving..." : "Save Changes"}</Text>
+                        {saving ? (
+                            <ActivityIndicator size="small" color={Colors.white} />
+                        ) : (
+                            <Text style={styles.saveButtonText}>Save Changes</Text>
+                        )}
                     </TouchableOpacity>
                 </ScrollView>
+                )}
             </KeyboardAvoidingView>
+
+            {/* Profile Picture Bottom Sheet */}
+            <Modal visible={imageSheetVisible} transparent animationType="none" onRequestClose={closeImageSheet}>
+                <Pressable style={styles.sheetOverlay} onPress={closeImageSheet}>
+                    <Animated.View
+                        style={[
+                            styles.sheetContainer,
+                            {
+                                transform: [{
+                                    translateY: sheetAnim.interpolate({
+                                        inputRange: [0, 1],
+                                        outputRange: [300, 0],
+                                    }),
+                                }],
+                                opacity: sheetAnim,
+                            },
+                        ]}
+                    >
+                        {/* Handle indicator */}
+                        <View style={styles.sheetHandle} />
+
+                        {/* Title */}
+                        <Text style={styles.sheetTitle}>Profile Picture</Text>
+                        <Text style={styles.sheetMessage}>
+                            Choose how you'd like to update your profile photo
+                        </Text>
+
+                        {/* Take Photo Button */}
+                        <TouchableOpacity
+                            style={styles.sheetButtonPrimary}
+                            onPress={() => { closeImageSheet(); setTimeout(handleTakePhoto, 300); }}
+                            activeOpacity={0.8}
+                        >
+                            <Camera size={18} color={Colors.white} />
+                            <Text style={styles.sheetButtonPrimaryText}>Take Photo</Text>
+                        </TouchableOpacity>
+
+                        {/* Choose from Gallery Button */}
+                        <TouchableOpacity
+                            style={styles.sheetButtonOutline}
+                            onPress={() => { closeImageSheet(); setTimeout(handlePickImage, 300); }}
+                            activeOpacity={0.8}
+                        >
+                            <ImageIcon size={18} color={Colors.text} />
+                            <Text style={styles.sheetButtonOutlineText}>Choose from Gallery</Text>
+                        </TouchableOpacity>
+
+                        {/* Cancel Button */}
+                        <TouchableOpacity
+                            style={styles.sheetButtonCancel}
+                            onPress={closeImageSheet}
+                            activeOpacity={0.6}
+                        >
+                            <Text style={styles.sheetButtonCancelText}>Cancel</Text>
+                        </TouchableOpacity>
+                    </Animated.View>
+                </Pressable>
+            </Modal>
         </View>
     );
 }
@@ -355,6 +510,20 @@ const styles = StyleSheet.create({
         color: Colors.textSecondary,
         marginLeft: 4,
     },
+    errorText: {
+        fontSize: 11,
+        color: Colors.error,
+        marginLeft: 4,
+        marginTop: 2,
+    },
+    inputError: {
+        borderColor: Colors.error,
+    },
+    loadingContainer: {
+        flex: 1,
+        justifyContent: "center",
+        alignItems: "center",
+    },
     saveButton: {
         backgroundColor: Colors.primary,
         borderRadius: 16,
@@ -370,5 +539,91 @@ const styles = StyleSheet.create({
         color: Colors.white,
         fontSize: 16,
         fontWeight: "700" as const,
+    },
+    // Bottom Sheet Styles
+    sheetOverlay: {
+        flex: 1,
+        backgroundColor: "rgba(0,0,0,0.4)",
+        justifyContent: "flex-end",
+    },
+    sheetContainer: {
+        backgroundColor: Colors.white,
+        borderTopLeftRadius: 28,
+        borderTopRightRadius: 28,
+        paddingHorizontal: 24,
+        paddingTop: 12,
+        paddingBottom: 40,
+        alignItems: "center",
+    },
+    sheetHandle: {
+        width: 40,
+        height: 4,
+        borderRadius: 2,
+        backgroundColor: Colors.primary,
+        marginBottom: 24,
+    },
+    sheetTitle: {
+        fontSize: 22,
+        fontWeight: "700" as const,
+        color: Colors.text,
+        textAlign: "center",
+        marginBottom: 8,
+    },
+    sheetMessage: {
+        fontSize: 14,
+        color: Colors.textSecondary,
+        textAlign: "center",
+        lineHeight: 20,
+        marginBottom: 28,
+        paddingHorizontal: 16,
+    },
+    sheetButtonPrimary: {
+        flexDirection: "row",
+        alignItems: "center",
+        justifyContent: "center",
+        gap: 10,
+        width: "100%",
+        backgroundColor: Colors.primary,
+        paddingVertical: 18,
+        borderRadius: 50,
+        marginBottom: 14,
+        shadowColor: Colors.primary,
+        shadowOffset: { width: 0, height: 4 },
+        shadowOpacity: 0.25,
+        shadowRadius: 8,
+        elevation: 4,
+    },
+    sheetButtonPrimaryText: {
+        color: Colors.white,
+        fontSize: 16,
+        fontWeight: "700" as const,
+    },
+    sheetButtonOutline: {
+        flexDirection: "row",
+        alignItems: "center",
+        justifyContent: "center",
+        gap: 10,
+        width: "100%",
+        backgroundColor: Colors.white,
+        paddingVertical: 18,
+        borderRadius: 50,
+        borderWidth: 1.5,
+        borderColor: Colors.text,
+        marginBottom: 14,
+    },
+    sheetButtonOutlineText: {
+        color: Colors.text,
+        fontSize: 16,
+        fontWeight: "600" as const,
+    },
+    sheetButtonCancel: {
+        width: "100%",
+        paddingVertical: 14,
+        alignItems: "center",
+    },
+    sheetButtonCancelText: {
+        color: Colors.textSecondary,
+        fontSize: 15,
+        fontWeight: "500" as const,
     },
 });

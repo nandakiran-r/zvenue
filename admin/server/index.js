@@ -2368,7 +2368,7 @@ fastify.get('/api/users/:id', { onRequest: [fastify.authenticate] }, async (requ
   try {
     const data = await db.query.users.findFirst({
       where: eq(users.id, request.params.id),
-      columns: { id: true, full_name: true, email: true, phone_number: true, avatar_url: true, created_at: true },
+      columns: { id: true, first_name: true, last_name: true, full_name: true, email: true, phone_number: true, avatar_url: true, created_at: true },
       with: {
         bookings: {
           with: { venue: { columns: { name: true, city: true, image_url: true } } },

@@ -23,25 +23,30 @@ import { useToast } from "@/context/ToastContext";
 export default function EnterOtpScreen() {
   const { phone, full_name } = useLocalSearchParams<{ phone: string; full_name?: string }>();
   const [otp, setOtp] = useState<string[]>(["", "", "", "", "", ""]);
-  const [timer, setTimer] = useState<number>(52);
+  const [timer, setTimer] = useState<number>(30);
   const [loading, setLoading] = useState<boolean>(false);
   const inputRefs = useRef<(TextInput | null)[]>([]);
+  const timerRef = useRef<ReturnType<typeof setInterval> | null>(null);
   const insets = useSafeAreaInsets();
   const { success, error: showError, warning } = useToast();
   
   const { login } = useAuth();
 
+  // Robust countdown timer using ref
   useEffect(() => {
-    const interval = setInterval(() => {
+    timerRef.current = setInterval(() => {
       setTimer((prev) => {
-        if (prev <= 0) {
-          clearInterval(interval);
+        if (prev <= 1) {
+          if (timerRef.current) clearInterval(timerRef.current);
           return 0;
         }
         return prev - 1;
       });
     }, 1000);
-    return () => clearInterval(interval);
+
+    return () => {
+      if (timerRef.current) clearInterval(timerRef.current);
+    };
   }, []);
 
   const handleOtpChange = (value: string, index: number) => {
@@ -68,26 +73,39 @@ export default function EnterOtpScreen() {
     return `${mins}:${secs}s`;
   };
 
+  const startTimer = useCallback((seconds: number) => {
+    if (timerRef.current) clearInterval(timerRef.current);
+    setTimer(seconds);
+    timerRef.current = setInterval(() => {
+      setTimer((prev) => {
+        if (prev <= 1) {
+          if (timerRef.current) clearInterval(timerRef.current);
+          return 0;
+        }
+        return prev - 1;
+      });
+    }, 1000);
+  }, []);
+
   const handleResend = useCallback(async () => {
     try {
       if (phone) {
         await api.post("/api/auth/send-otp", { phone_number: phone });
       }
-      setTimer(52);
+      startTimer(30);
       success("Code Sent", "A new verification code has been sent.");
     } catch (err: any) {
       if (err.response?.status === 429) {
         const retryAfter = err.response?.data?.retry_after || 30;
-        setTimer(retryAfter);
+        startTimer(retryAfter);
         warning("Please Wait", err.response?.data?.error || `Try again in ${retryAfter} seconds.`);
       } else if (!err.response) {
-        // Network error
         showError("Connection Issue", "Check your internet connection and try again.");
       } else {
         showError("Error", err.response?.data?.error || "Could not resend code. Please try again.");
       }
     }
-  }, [phone]);
+  }, [phone, startTimer]);
 
   const handleVerify = useCallback(async () => {
     const code = otp.join("");

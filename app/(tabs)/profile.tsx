@@ -1,7 +1,7 @@
-import { router } from "expo-router";
+import { router, useFocusEffect } from "expo-router";
 import { Bell, Calendar, ChevronRight, HelpCircle, LogOut, Settings, Trash2, User } from "lucide-react-native";
 import { useAuth } from "@/context/AuthContext";
-import React, { useState } from "react";
+import React, { useCallback, useState } from "react";
 import {
   Image,
   Modal,
@@ -28,8 +28,15 @@ const MENU_ITEMS = [
 
 export default function ProfileScreen() {
   const insets = useSafeAreaInsets();
-  const { signOut, dbUser } = useAuth();
+  const { signOut, dbUser, refreshProfile } = useAuth();
   const { error: showError, showAlert } = useToast();
+
+  // Refresh profile from DB when screen gains focus
+  useFocusEffect(
+    useCallback(() => {
+      refreshProfile();
+    }, [])
+  );
 
   const displayName = dbUser?.full_name ?? "User";
   const displayEmail = dbUser?.email ?? "";

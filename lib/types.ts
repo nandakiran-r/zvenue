@@ -65,6 +65,7 @@ export interface DbNotification {
 
 export interface DbBooking {
   id: string;
+  booking_id_display: string | null;
   user_id: string;
   venue_id: string;
   booking_date: string;
@@ -80,6 +81,10 @@ export interface DbBooking {
   order_id: string | null;
   payment_id: string | null;
   signature: string | null;
+  // Pre-booking fields
+  transaction_id: string | null;
+  registration_fee_paid: number;
+  remaining_balance: number;
   paid_at: string | null;
   created_at: string;
   /** Joined from venues table */
@@ -148,6 +153,9 @@ export interface VerifyPaymentResponse {
   success: boolean;
   message: string;
   booking: DbBooking;
+  is_pre_booking?: boolean;
+  registration_fee_paid?: number;
+  remaining_balance?: number;
 }
 
 export type SubscriptionStatus = 'none' | 'authenticated' | 'active' | 'pending' | 'cancelled' | 'halted';

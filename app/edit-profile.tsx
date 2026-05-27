@@ -14,6 +14,7 @@ import {
     TouchableOpacity,
     View,
 } from "react-native";
+import * as ImagePicker from "expo-image-picker";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import Colors from "@/constants/colors";
 import { useAuth } from "@/context/AuthContext";
@@ -27,6 +28,7 @@ export default function EditProfileScreen() {
     const [lastName, setLastName] = useState("");
     const [email, setEmail] = useState("");
     const [phoneNumber, setPhoneNumber] = useState("");
+    const [avatarUrl, setAvatarUrl] = useState<string | null>(null);
     const [saving, setSaving] = useState(false);
 
     useEffect(() => {
@@ -35,34 +37,100 @@ export default function EditProfileScreen() {
             setLastName(dbUser.last_name ?? "");
             setEmail(dbUser.email ?? "");
             setPhoneNumber(dbUser.phone_number ?? "");
+            setAvatarUrl(dbUser.avatar_url ?? null);
         }
     }, [dbUser]);
+
+    const handlePickImage = async () => {
+        const { status } = await ImagePicker.requestMediaLibraryPermissionsAsync();
+        if (status !== "granted") {
+            Alert.alert("Permission Required", "Please allow access to your photo library to upload a profile picture.");
+            return;
+        }
+
+        const result = await ImagePicker.launchImageLibraryAsync({
+            mediaTypes: ['images'],
+            allowsEditing: true,
+            aspect: [1, 1],
+            quality: 0.5,
+            base64: true,
+        });
+
+        if (!result.canceled && result.assets[0]) {
+            const asset = result.assets[0];
+            if (asset.base64) {
+                const mimeType = asset.mimeType || "image/jpeg";
+                const dataUri = `data:${mimeType};base64,${asset.base64}`;
+                setAvatarUrl(dataUri);
+            } else if (asset.uri) {
+                setAvatarUrl(asset.uri);
+            }
+        }
+    };
+
+    const handleTakePhoto = async () => {
+        const { status } = await ImagePicker.requestCameraPermissionsAsync();
+        if (status !== "granted") {
+            Alert.alert("Permission Required", "Please allow camera access to take a profile picture.");
+            return;
+        }
+
+        const result = await ImagePicker.launchCameraAsync({
+            allowsEditing: true,
+            aspect: [1, 1],
+            quality: 0.5,
+            base64: true,
+        });
+
+        if (!result.canceled && result.assets[0]) {
+            const asset = result.assets[0];
+            if (asset.base64) {
+                const mimeType = asset.mimeType || "image/jpeg";
+                const dataUri = `data:${mimeType};base64,${asset.base64}`;
+                setAvatarUrl(dataUri);
+            } else if (asset.uri) {
+                setAvatarUrl(asset.uri);
+            }
+        }
+    };
+
+    const handleImagePress = () => {
+        Alert.alert("Profile Picture", "Choose an option", [
+            { text: "Take Photo", onPress: handleTakePhoto },
+            { text: "Choose from Library", onPress: handlePickImage },
+            { text: "Cancel", style: "cancel" },
+        ]);
+    };
 
     const handleSave = async () => {
         if (!userId || saving) return;
         try {
             setSaving(true);
             await updateUser(userId, {
-                full_name: `${firstName} ${lastName}`,
-                email,
-                phone_number: phoneNumber,
+                first_name: firstName.trim(),
+                last_name: lastName.trim(),
+                full_name: `${firstName.trim()} ${lastName.trim()}`.trim(),
+                email: email.trim(),
+                phone_number: phoneNumber.trim(),
+                avatar_url: avatarUrl,
             });
             await refreshProfile();
-            safeBack("/(tabs)/home");
-        } catch (err) {
+            Alert.alert("Success", "Profile updated successfully!", [
+                { text: "OK", onPress: () => safeBack("/(tabs)/profile") }
+            ]);
+        } catch (err: any) {
             console.error("Failed to save profile:", err);
-            Alert.alert("Error", "Failed to save profile. Please try again.");
+            const msg = err.response?.data?.error || "Failed to save profile. Please try again.";
+            Alert.alert("Error", msg);
         } finally {
             setSaving(false);
         }
     };
 
-    const displayAvatar = dbUser?.avatar_url ?? null;
-
     return (
         <View style={[styles.container, { paddingTop: insets.top }]}>
             <View style={styles.header}>
-                <TouchableOpacity onPress={() => safeBack("/(tabs)/home")} style={styles.backButton}>
+                <TouchableOpacity onPress={() => safeBack("/(tabs)/profile")} style={styles.backButton}>
                     <ChevronLeft size={24} color={Colors.text} />
                 </TouchableOpacity>
                 <Text style={styles.headerTitle}>Edit Profile</Text>
@@ -80,17 +148,18 @@ export default function EditProfileScreen() {
                 >
                     <View style={styles.imageSection}>
                         <View style={styles.imageWrapper}>
-                            {displayAvatar ? (
-                                <Image source={{ uri: displayAvatar }} style={styles.profileImage} />
+                            {avatarUrl ? (
+                                <Image source={{ uri: avatarUrl }} style={styles.profileImage} />
                             ) : (
                                 <View style={[styles.profileImage, styles.profilePlaceholder]}>
                                     <User size={40} color={Colors.textSecondary} />
                                 </View>
                             )}
-                            <TouchableOpacity style={styles.cameraButton} activeOpacity={0.8}>
+                            <TouchableOpacity style={styles.cameraButton} activeOpacity={0.8} onPress={handleImagePress}>
                                 <Camera size={20} color={Colors.white} />
                             </TouchableOpacity>
                         </View>
+                        <Text style={styles.changePhotoText}>Tap camera to change photo</Text>
                     </View>
 
                     <View style={styles.form}>
@@ -141,17 +210,17 @@ export default function EditProfileScreen() {
 
                         <View style={styles.inputGroup}>
                             <Text style={styles.label}>Phone Number</Text>
-                            <View style={styles.inputContainer}>
+                            <View style={[styles.inputContainer, styles.inputDisabled]}>
                                 <Phone size={20} color={Colors.textSecondary} />
                                 <TextInput
-                                    style={styles.input}
+                                    style={[styles.input, { color: Colors.textSecondary }]}
                                     value={phoneNumber}
-                                    onChangeText={setPhoneNumber}
-                                    placeholder="Enter your phone number"
+                                    editable={false}
+                                    placeholder="Phone number"
                                     placeholderTextColor={Colors.textTertiary}
-                                    keyboardType="phone-pad"
                                 />
                             </View>
+                            <Text style={styles.hintText}>Phone number cannot be changed</Text>
                         </View>
                     </View>
 
@@ -234,6 +303,11 @@ const styles = StyleSheet.create({
         borderWidth: 3,
         borderColor: Colors.white,
     },
+    changePhotoText: {
+        fontSize: 12,
+        color: Colors.textSecondary,
+        marginTop: 10,
+    },
     form: {
         gap: 20,
         marginBottom: 32,
@@ -258,10 +332,19 @@ const styles = StyleSheet.create({
         backgroundColor: Colors.white,
         gap: 12,
     },
+    inputDisabled: {
+        backgroundColor: Colors.surface,
+        opacity: 0.7,
+    },
     input: {
         flex: 1,
         fontSize: 15,
         color: Colors.text,
+    },
+    hintText: {
+        fontSize: 11,
+        color: Colors.textSecondary,
+        marginLeft: 4,
     },
     saveButton: {
         backgroundColor: Colors.primary,

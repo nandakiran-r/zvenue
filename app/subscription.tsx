@@ -1,4 +1,4 @@
-import { router } from "expo-router";
+import { router, useLocalSearchParams } from "expo-router";
 import { Check, X, Shield, ArrowRight, Crown } from "lucide-react-native";
 import React, { useEffect, useState } from "react";
 import {
@@ -19,15 +19,24 @@ import Colors from "@/constants/colors";
 
 export default function SubscriptionScreen() {
   const { dbUser, refreshSubscriptionInfo, isSubscribed } = useAuth();
+  const { returnTo } = useLocalSearchParams<{ returnTo?: string }>();
   const [loading, setLoading] = useState(false);
   const [checkoutModalVisible, setCheckoutModalVisible] = useState(false);
   const [checkoutHtml, setCheckoutHtml] = useState<string | null>(null);
 
   useEffect(() => {
     if (isSubscribed) {
-      router.replace("/(tabs)/home");
+      navigateBack();
     }
   }, [isSubscribed]);
+
+  const navigateBack = () => {
+    if (returnTo) {
+      router.replace(returnTo as any);
+    } else {
+      router.replace("/(tabs)/home");
+    }
+  };
 
   const handleSubscribe = async () => {
     setLoading(true);
@@ -70,11 +79,11 @@ export default function SubscriptionScreen() {
       await confirmSubscription();
       await refreshSubscriptionInfo();
       Alert.alert("Subscribed!", "You now have access to premium benefits with every booking.", [
-        { text: "Let's Go!", onPress: () => router.replace("/(tabs)/home") }
+        { text: "Let's Go!", onPress: () => navigateBack() }
       ]);
     } catch (err) {
       await refreshSubscriptionInfo();
-      router.replace("/(tabs)/home");
+      navigateBack();
     }
   };
 
@@ -85,8 +94,8 @@ export default function SubscriptionScreen() {
           <Shield size={64} color={Colors.success} />
           <Text style={styles.successTitle}>You're Subscribed!</Text>
           <Text style={styles.successMessage}>Enjoy premium benefits with every venue booking.</Text>
-          <TouchableOpacity style={styles.continueButton} onPress={() => router.replace("/(tabs)/home")}>
-            <Text style={styles.continueButtonText}>Continue to App</Text>
+          <TouchableOpacity style={styles.continueButton} onPress={() => navigateBack()}>
+            <Text style={styles.continueButtonText}>Continue</Text>
           </TouchableOpacity>
         </View>
       </SafeAreaView>

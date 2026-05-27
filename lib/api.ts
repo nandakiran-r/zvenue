@@ -123,6 +123,15 @@ export async function verifyPayment(input: VerifyPaymentInput): Promise<VerifyPa
   return data;
 }
 
+// ─── PRE-BOOKING ────────────────────────────────────────────────────────────
+
+// ─── ACCOUNT ────────────────────────────────────────────────────────────────
+
+export async function deleteMyAccount(): Promise<{ success: boolean; message: string }> {
+  const { data } = await api.delete('/api/auth/delete-account');
+  return data;
+}
+
 // ─── Notifications ─────────────────────────────────────────────────────────
 export async function fetchNotifications(userId: string): Promise<DbNotification[]> {
   const { data } = await api.get(`/api/notifications`, { params: { user_id: userId } });

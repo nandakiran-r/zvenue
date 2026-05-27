@@ -66,7 +66,7 @@ const styles = StyleSheet.create({
     contactCard: { flex: 1, backgroundColor: Colors.surface, borderRadius: 16, padding: 16, alignItems: "center", gap: 8, borderWidth: 1, borderColor: Colors.border },
     contactLabel: { fontSize: 12, color: Colors.textSecondary },
     contactValue: { fontSize: 13, fontWeight: "600", color: Colors.text, textAlign: "center" },
-    whatsappBtn: { backgroundColor: "#25D366", borderRadius: 14, paddingVertical: 14, flexDirection: "row", alignItems: "center", justifyContent: "center", gap: 10 },
+    whatsappBtn: { backgroundColor: "#7a3317", borderRadius: 14, paddingVertical: 14, flexDirection: "row", alignItems: "center", justifyContent: "center", gap: 10 },
     whatsappText: { color: Colors.white, fontSize: 15, fontWeight: "700" },
     faqItem: { marginBottom: 16, backgroundColor: Colors.surface, borderRadius: 12, padding: 16 },
     faqQ: { fontSize: 14, fontWeight: "600", color: Colors.text, marginBottom: 6 },

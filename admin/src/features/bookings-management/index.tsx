@@ -51,10 +51,22 @@ import { Main } from '@/components/layout/main'
 import { ProfileDropdown } from '@/components/profile-dropdown'
 import { Search } from '@/components/search'
 import { ThemeSwitch } from '@/components/theme-switch'
-import { fetchBookings, updateBooking, deleteBooking } from '@/lib/api'
+import { fetchBookings, updateBooking, deleteBooking, confirmBookingPayment } from '@/lib/api'
 
 function formatINR(amount: number) {
   return `₹${(amount || 0).toLocaleString('en-IN')}`
+}
+
+function formatStatus(status: string) {
+  switch (status?.toLowerCase()) {
+    case 'pre_booked': return 'Pre-Booked'
+    case 'confirmed': return 'Confirmed'
+    case 'pending': return 'Pending'
+    case 'cancelled': return 'Cancelled'
+    case 'payment_failed': return 'Failed'
+    case 'refunded': return 'Refunded'
+    default: return status
+  }
 }
 
 function getSessionLabel(startTime: string, endTime: string) {
@@ -68,6 +80,8 @@ function statusVariant(status: string) {
   switch (status?.toLowerCase()) {
     case 'confirmed':
       return 'default' as const
+    case 'pre_booked':
+      return 'secondary' as const
     case 'pending':
       return 'secondary' as const
     case 'cancelled':
@@ -81,6 +95,8 @@ function StatusIcon({ status }: { status: string }) {
   switch (status?.toLowerCase()) {
     case 'confirmed':
       return <CheckCircle className='h-4 w-4 text-emerald-500' />
+    case 'pre_booked':
+      return <AlertCircle className='h-4 w-4 text-orange-500' />
     case 'pending':
       return <AlertCircle className='h-4 w-4 text-amber-500' />
     case 'cancelled':
@@ -97,6 +113,9 @@ export function BookingsPage() {
   const [detailDialogOpen, setDetailDialogOpen] = useState(false)
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false)
   const [selectedBooking, setSelectedBooking] = useState<any>(null)
+  const [confirmPaymentDialogOpen, setConfirmPaymentDialogOpen] = useState(false)
+  const [transactionId, setTransactionId] = useState('')
+  const [txnError, setTxnError] = useState('')
 
   const { data: bookings, isLoading } = useQuery({
     queryKey: ['admin-bookings', statusFilter, search],
@@ -132,6 +151,21 @@ export function BookingsPage() {
       toast.success('Booking deleted successfully!')
     },
     onError: (err: any) => toast.error(err.response?.data?.error || 'Failed to delete booking'),
+  })
+
+  const confirmPaymentMutation = useMutation({
+    mutationFn: () => confirmBookingPayment(selectedBooking!.id, transactionId.trim()),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['admin-bookings'] })
+      queryClient.invalidateQueries({ queryKey: ['dashboard-stats'] })
+      setConfirmPaymentDialogOpen(false)
+      setTransactionId('')
+      setTxnError('')
+      toast.success('Booking fully confirmed!')
+    },
+    onError: (err: any) => {
+      setTxnError(err.response?.data?.error || 'Failed to confirm payment')
+    },
   })
 
   const handleStatusChange = (bookingId: string, newStatus: string) => {
@@ -175,6 +209,7 @@ export function BookingsPage() {
             <SelectContent>
               <SelectItem value='all'>All Status</SelectItem>
               <SelectItem value='pending'>Pending</SelectItem>
+              <SelectItem value='pre_booked'>Pre-Booked</SelectItem>
               <SelectItem value='confirmed'>Confirmed</SelectItem>
               <SelectItem value='cancelled'>Cancelled</SelectItem>
             </SelectContent>
@@ -187,6 +222,7 @@ export function BookingsPage() {
             <Table>
               <TableHeader>
                 <TableRow>
+                  <TableHead>Booking ID</TableHead>
                   <TableHead>Customer</TableHead>
                   <TableHead>Venue</TableHead>
                   <TableHead>Date</TableHead>
@@ -202,13 +238,18 @@ export function BookingsPage() {
                 {isLoading
                   ? Array.from({ length: 5 }).map((_, i) => (
                       <TableRow key={i}>
-                        {Array.from({ length: 9 }).map((_, j) => (
+                        {Array.from({ length: 10 }).map((_, j) => (
                           <TableCell key={j}><Skeleton className='h-4 w-20' /></TableCell>
                         ))}
                       </TableRow>
                     ))
                   : (bookings || []).map((booking: any) => (
                       <TableRow key={booking.id}>
+                        <TableCell>
+                          <span className='font-mono text-xs font-bold text-primary'>
+                            {booking.booking_id_display || `#${booking.id.slice(0, 8)}`}
+                          </span>
+                        </TableCell>
                         <TableCell>
                           <div className='flex items-center gap-3'>
                             <Avatar className='h-8 w-8'>
@@ -278,7 +319,7 @@ export function BookingsPage() {
                         <TableCell className='text-center'>
                           <Badge variant={statusVariant(booking.status)}>
                             <StatusIcon status={booking.status} />
-                            <span className='ml-1'>{booking.status}</span>
+                            <span className='ml-1'>{formatStatus(booking.status)}</span>
                           </Badge>
                         </TableCell>
                         <TableCell>
@@ -330,7 +371,7 @@ export function BookingsPage() {
                     ))}
                 {!isLoading && (bookings || []).length === 0 && (
                   <TableRow>
-                    <TableCell colSpan={9} className='h-24 text-center text-muted-foreground'>
+                    <TableCell colSpan={10} className='h-24 text-center text-muted-foreground'>
                       No bookings found
                     </TableCell>
                   </TableRow>
@@ -343,7 +384,7 @@ export function BookingsPage() {
 
       {/* Detail Dialog */}
       <Dialog open={detailDialogOpen} onOpenChange={setDetailDialogOpen}>
-        <DialogContent className='max-w-lg'>
+        <DialogContent className='max-w-2xl max-h-[85vh] overflow-y-auto'>
           <DialogHeader>
             <DialogTitle>Booking Details</DialogTitle>
           </DialogHeader>
@@ -358,10 +399,10 @@ export function BookingsPage() {
                 </Avatar>
                 <div>
                   <p className='font-medium'>{selectedBooking.user?.full_name || 'Unknown'}</p>
-                  <p className='text-sm text-muted-foreground'>{selectedBooking.user?.email}</p>
+                  <p className='text-sm text-muted-foreground'>{selectedBooking.booking_id_display || selectedBooking.user?.email}</p>
                 </div>
                 <Badge variant={statusVariant(selectedBooking.status)} className='ml-auto'>
-                  {selectedBooking.status}
+                  {formatStatus(selectedBooking.status)}
                 </Badge>
               </div>
 
@@ -384,8 +425,8 @@ export function BookingsPage() {
                   <p className='font-medium text-sm'>{selectedBooking.booking_date}</p>
                 </div>
                 <div className='rounded-lg bg-muted p-3'>
-                  <p className='text-xs text-muted-foreground'>Duration</p>
-                  <p className='font-medium text-sm'>{selectedBooking.duration_hours}h</p>
+                  <p className='text-xs text-muted-foreground'>Session</p>
+                  <p className='font-medium text-sm'>{getSessionLabel(selectedBooking.start_time, selectedBooking.end_time)}</p>
                 </div>
                 <div className='rounded-lg bg-muted p-3'>
                   <p className='text-xs text-muted-foreground'>Guests</p>
@@ -406,6 +447,24 @@ export function BookingsPage() {
                   <span>Total</span>
                   <span>{formatINR(selectedBooking.total || 0)}</span>
                 </div>
+                {selectedBooking.registration_fee_paid > 0 && (
+                  <>
+                    <div className='border-t pt-2 flex justify-between text-sm'>
+                      <span className='text-muted-foreground'>Registration Fee Paid</span>
+                      <span className='text-emerald-600 font-medium'>{formatINR(selectedBooking.registration_fee_paid)}</span>
+                    </div>
+                    <div className='flex justify-between text-sm'>
+                      <span className='text-muted-foreground'>Remaining Balance</span>
+                      <span className='text-orange-600 font-medium'>{formatINR(selectedBooking.remaining_balance || 0)}</span>
+                    </div>
+                  </>
+                )}
+                {selectedBooking.transaction_id && (
+                  <div className='flex justify-between text-sm'>
+                    <span className='text-muted-foreground'>Transaction ID</span>
+                    <span className='font-mono text-xs'>{selectedBooking.transaction_id}</span>
+                  </div>
+                )}
                 <div className='flex justify-between text-sm'>
                   <span className='text-muted-foreground'>Payment Method</span>
                   <Badge variant='outline'>{selectedBooking.payment_method || 'N/A'}</Badge>
@@ -429,6 +488,32 @@ export function BookingsPage() {
                   </div>
                 )}
               </div>
+
+              {selectedBooking.status === 'pre_booked' && (
+                <div className='flex gap-2'>
+                  <Button
+                    className='flex-1'
+                    onClick={() => {
+                      setConfirmPaymentDialogOpen(true)
+                      setDetailDialogOpen(false)
+                    }}
+                  >
+                    <CheckCircle className='mr-2 h-4 w-4' />
+                    Confirm Full Payment
+                  </Button>
+                  <Button
+                    variant='destructive'
+                    className='flex-1'
+                    onClick={() => {
+                      handleStatusChange(selectedBooking.id, 'cancelled')
+                      setDetailDialogOpen(false)
+                    }}
+                  >
+                    <XCircle className='mr-2 h-4 w-4' />
+                    Cancel
+                  </Button>
+                </div>
+              )}
 
               {selectedBooking.status === 'pending' && (
                 <div className='flex gap-2'>
@@ -479,6 +564,54 @@ export function BookingsPage() {
               disabled={deleteMutation.isPending}
             >
               {deleteMutation.isPending ? 'Deleting...' : 'Delete'}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* Confirm Payment Dialog */}
+      <Dialog open={confirmPaymentDialogOpen} onOpenChange={(open) => { setConfirmPaymentDialogOpen(open); if (!open) { setTransactionId(''); setTxnError(''); } }}>
+        <DialogContent className='max-w-md'>
+          <DialogHeader>
+            <DialogTitle>Confirm Full Payment</DialogTitle>
+            <DialogDescription>
+              Enter the transaction ID to confirm the remaining balance has been received.
+            </DialogDescription>
+          </DialogHeader>
+          {selectedBooking && (
+            <div className='space-y-4'>
+              <div className='rounded-lg bg-muted p-3 space-y-1 text-sm'>
+                <p><span className='text-muted-foreground'>Venue:</span> <span className='font-medium'>{selectedBooking.venue?.name}</span></p>
+                <p><span className='text-muted-foreground'>Customer:</span> <span className='font-medium'>{selectedBooking.user?.full_name}</span></p>
+                <p><span className='text-muted-foreground'>Registration Fee Paid:</span> <span className='font-medium text-emerald-600'>{formatINR(selectedBooking.registration_fee_paid || 0)}</span></p>
+                <p><span className='text-muted-foreground'>Remaining Balance:</span> <span className='font-medium text-orange-600'>{formatINR(selectedBooking.remaining_balance || 0)}</span></p>
+                <p><span className='text-muted-foreground'>Total:</span> <span className='font-bold'>{formatINR(selectedBooking.total || 0)}</span></p>
+              </div>
+              <div className='space-y-2'>
+                <label className='text-sm font-medium'>Transaction ID</label>
+                <Input
+                  placeholder='Enter the payment transaction ID'
+                  value={transactionId}
+                  onChange={(e) => { setTransactionId(e.target.value); setTxnError(''); }}
+                  maxLength={64}
+                />
+                {txnError && <p className='text-sm text-destructive'>{txnError}</p>}
+              </div>
+            </div>
+          )}
+          <DialogFooter>
+            <Button variant='outline' onClick={() => { setConfirmPaymentDialogOpen(false); setTransactionId(''); setTxnError(''); }}>
+              Cancel
+            </Button>
+            <Button
+              onClick={() => {
+                if (!transactionId.trim()) { setTxnError('Transaction ID is required'); return; }
+                if (!/^[a-zA-Z0-9_-]{1,64}$/.test(transactionId.trim())) { setTxnError('Invalid format. Use 1-64 alphanumeric characters, hyphens, or underscores.'); return; }
+                confirmPaymentMutation.mutate()
+              }}
+              disabled={confirmPaymentMutation.isPending}
+            >
+              {confirmPaymentMutation.isPending ? 'Confirming...' : 'Confirm Payment'}
             </Button>
           </DialogFooter>
         </DialogContent>

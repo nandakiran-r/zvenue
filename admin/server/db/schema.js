@@ -81,6 +81,7 @@ export const venues = pgTable('venues', {
 
 export const bookings = pgTable('bookings', {
   id: uuid('id').primaryKey().defaultRandom(),
+  booking_id_display: varchar('booking_id_display', { length: 13 }).unique(),
   venue_id: uuid('venue_id').references(() => venues.id),
   user_id: uuid('user_id').references(() => users.id),
   booking_date: varchar('booking_date', { length: 50 }).notNull().default(''),
@@ -95,6 +96,10 @@ export const bookings = pgTable('bookings', {
   order_id: varchar('order_id', { length: 255 }),
   payment_id: varchar('payment_id', { length: 255 }),
   signature: varchar('signature', { length: 500 }),
+  // Pre-booking fields
+  transaction_id: varchar('transaction_id', { length: 64 }),
+  registration_fee_paid: real('registration_fee_paid').default(0),
+  remaining_balance: real('remaining_balance').default(0),
   paid_at: timestamp('paid_at'),
   created_at: timestamp('created_at').defaultNow(),
 });

@@ -194,12 +194,6 @@ export default function BookingDetailScreen() {
 
         if (!canBook || submitting) return;
 
-        // If user is NOT subscribed, show the benefits prompt (they can skip)
-        if (!isSubscribed && !showSubscribePrompt) {
-            setShowSubscribePrompt(true);
-            return;
-        }
-
         await proceedWithBooking();
     };
 
@@ -311,10 +305,27 @@ export default function BookingDetailScreen() {
                 });
 
                 if (response.success) {
-                    router.push({
-                        pathname: "/booking-confirmed",
-                        params: { id: response.booking.id, venueId: response.booking.venue_id }
-                    });
+                    if (response.is_pre_booking) {
+                        router.push({
+                            pathname: "/pre-booking-confirmed",
+                            params: {
+                                id: response.booking.id,
+                                venueId: response.booking.venue_id,
+                                venueName: venue!.name,
+                                bookingDate: selectedDate!,
+                                session: currentSession?.label || '',
+                                registrationFeePaid: String(response.registration_fee_paid || 0),
+                                remainingBalance: String(response.remaining_balance || 0),
+                                total: String(total),
+                                bookingDisplayId: response.booking.booking_id_display || '',
+                            }
+                        });
+                    } else {
+                        router.push({
+                            pathname: "/booking-confirmed",
+                            params: { id: response.booking.id, venueId: response.booking.venue_id }
+                        });
+                    }
                 } else {
                     Alert.alert("Verification Failed", "Payment received but verification failed. Contact support.");
                 }
@@ -373,13 +384,13 @@ export default function BookingDetailScreen() {
                 <View style={styles.calendarCard}>
                     <View style={styles.calendarHeader}>
                         <TouchableOpacity onPress={goToPrevMonth} style={styles.calNavBtn}>
-                            <ChevronLeft size={20} color={Colors.text} />
+                            <ChevronLeft size={22} color={Colors.primary} />
                         </TouchableOpacity>
                         <Text style={styles.calMonthText}>
                             {MONTHS[currentMonth.getMonth()]} {currentMonth.getFullYear()}
                         </Text>
                         <TouchableOpacity onPress={goToNextMonth} style={styles.calNavBtn}>
-                            <ChevronRight size={20} color={Colors.text} />
+                            <ChevronRight size={22} color={Colors.primary} />
                         </TouchableOpacity>
                     </View>
 
@@ -402,9 +413,9 @@ export default function BookingDetailScreen() {
                                     key={idx}
                                     style={[
                                         styles.calCell,
-                                        isSelected && styles.calCellSelected,
+                                        item.isBooked && !isSelected && styles.calCellBooked,
                                         item.isToday && !isSelected && styles.calCellToday,
-                                        item.isBooked && styles.calCellBooked,
+                                        isSelected && styles.calCellSelected,
                                     ]}
                                     onPress={() => !isDisabled && handleDateSelect(item.date)}
                                     disabled={isDisabled}
@@ -536,11 +547,11 @@ export default function BookingDetailScreen() {
                             <>
                                 <View style={[styles.divider, { marginTop: 8 }]} />
                                 <View style={[styles.summaryRow, { backgroundColor: '#E8F5E9', marginHorizontal: -16, paddingHorizontal: 16, paddingVertical: 12, borderRadius: 10, marginTop: 8 }]}>
-                                    <Text style={[styles.totalLabel, { color: '#2E7D32' }]}>💳 Pay Now (Registration)</Text>
+                                    <Text style={[styles.totalLabel, { color: '#2E7D32' }]}>💳 Pay Now (Registration Fee)</Text>
                                     <Text style={[styles.totalValue, { color: '#2E7D32' }]}>{formatPrice(payNow)}</Text>
                                 </View>
                                 <View style={[styles.summaryRow, { marginTop: 8 }]}>
-                                    <Text style={styles.summaryLabel}>🏛️ Pay at Venue (Balance)</Text>
+                                    <Text style={styles.summaryLabel}>🏛️ Balance Due (via Agent)</Text>
                                     <Text style={styles.summaryValue}>{formatPrice(balanceAtVenue)}</Text>
                                 </View>
                             </>
@@ -563,7 +574,7 @@ export default function BookingDetailScreen() {
                     activeOpacity={0.8}
                     disabled={!canBook || submitting}
                 >
-                    <Text style={styles.confirmText}>{submitting ? "Processing..." : "Confirm & Pay"}</Text>
+                    <Text style={styles.confirmText}>{submitting ? "Processing..." : registrationFee > 0 ? "Pre-Book & Pay" : "Confirm & Pay"}</Text>
                 </TouchableOpacity>
             </View>
 
@@ -672,35 +683,35 @@ const styles = StyleSheet.create({
     },
     venueImage: { width: 80, height: 80, borderRadius: 12 },
     venueInfo: { flex: 1, marginLeft: 14, justifyContent: "center" },
-    venueTitle: { fontSize: 16, fontWeight: "700", color: "#f0bc4d", marginBottom: 4 },
+    venueTitle: { fontSize: 16, fontWeight: "700", color: Colors.text, marginBottom: 4 },
     metaRow: { flexDirection: "row", alignItems: "center", gap: 4, marginBottom: 4 },
     metaText: { fontSize: 12, color: Colors.textSecondary },
     venuePrice: { fontSize: 14, fontWeight: "700", color: Colors.primary },
     // Calendar
     calendarCard: {
-        backgroundColor: Colors.white, borderRadius: 16, padding: 16, marginBottom: 20,
-        shadowColor: "#000", shadowOffset: { width: 0, height: 2 }, shadowOpacity: 0.04, shadowRadius: 6, elevation: 1,
+        backgroundColor: Colors.white, borderRadius: 16, padding: 20, marginBottom: 20,
+        borderWidth: 1.5, borderColor: Colors.primary,
     },
     calendarHeader: {
-        flexDirection: "row", alignItems: "center", justifyContent: "space-between", marginBottom: 16,
+        flexDirection: "row", alignItems: "center", justifyContent: "space-between", marginBottom: 20,
     },
-    calNavBtn: { padding: 8, borderRadius: 20, backgroundColor: Colors.surface },
-    calMonthText: { fontSize: 16, fontWeight: "700", color: Colors.text },
-    calDaysHeader: { flexDirection: "row", marginBottom: 8 },
-    calDayLabel: { flex: 1, textAlign: "center", fontSize: 12, fontWeight: "600", color: Colors.textSecondary },
-    calGrid: { flexDirection: "row", flexWrap: "wrap" },
+    calNavBtn: { padding: 8 },
+    calMonthText: { fontSize: 20, fontWeight: "700", color: Colors.text },
+    calDaysHeader: { flexDirection: "row", marginBottom: 16 },
+    calDayLabel: { flex: 1, textAlign: "center", fontSize: 14, fontWeight: "700", color: Colors.textSecondary },
+    calGrid: { flexDirection: "row", flexWrap: "wrap", rowGap: 8, paddingHorizontal: 4 },
     calCell: {
-        width: "14.28%", aspectRatio: 1, alignItems: "center", justifyContent: "center", borderRadius: 20,
+        width: "14.28%", height: 40, alignItems: "center", justifyContent: "center", borderRadius: 8, marginVertical: 2,
     },
-    calCellSelected: { backgroundColor: Colors.primary },
-    calCellToday: { borderWidth: 1.5, borderColor: Colors.primary },
-    calCellBooked: { backgroundColor: "#FFF3E0" },
-    calCellText: { fontSize: 14, fontWeight: "500", color: Colors.text },
+    calCellSelected: { backgroundColor: '#7a3317', width: "12%", marginHorizontal: "1.14%" },
+    calCellToday: { backgroundColor: Colors.primaryLight, width: "12%", marginHorizontal: "1.14%" },
+    calCellBooked: { backgroundColor: "#FFF3E0", width: "12%", marginHorizontal: "1.14%", borderRadius: 8 },
+    calCellText: { fontSize: 16, fontWeight: "500", color: Colors.text },
     calCellTextSelected: { color: Colors.white, fontWeight: "700" },
-    calCellTextDisabled: { color: Colors.border },
+    calCellTextDisabled: { color: "#CCCCCC" },
     calCellTextBooked: { color: "#F57C00" },
     bookedDot: { width: 5, height: 5, borderRadius: 3, backgroundColor: "#FF9800", marginTop: 2 },
-    calLegend: { flexDirection: "row", justifyContent: "center", gap: 16, marginTop: 12, paddingTop: 12, borderTopWidth: 1, borderTopColor: Colors.border },
+    calLegend: { flexDirection: "row", justifyContent: "center", gap: 16, marginTop: 16, paddingTop: 14, borderTopWidth: 1, borderTopColor: Colors.border },
     legendItem: { flexDirection: "row", alignItems: "center", gap: 6 },
     legendDot: { width: 8, height: 8, borderRadius: 4 },
     legendText: { fontSize: 11, color: Colors.textSecondary },

@@ -1,8 +1,9 @@
 import { safeBack } from "@/constants/navigation";
 import { ChevronLeft, Bell, Shield, Moon, Globe } from "lucide-react-native";
-import React, { useState } from "react";
-import { ScrollView, StyleSheet, Switch, Text, TouchableOpacity, View } from "react-native";
+import React, { useEffect, useState } from "react";
+import { Linking, ScrollView, StyleSheet, Switch, Text, TouchableOpacity, View } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
+import AsyncStorage from "@react-native-async-storage/async-storage";
 import Colors from "@/constants/colors";
 
 export default function SettingsScreen() {
@@ -10,10 +11,33 @@ export default function SettingsScreen() {
     const [pushNotifications, setPushNotifications] = useState(true);
     const [smsNotifications, setSmsNotifications] = useState(true);
 
+    useEffect(() => {
+        loadSettings();
+    }, []);
+
+    const loadSettings = async () => {
+        try {
+            const push = await AsyncStorage.getItem("settings_push_notifications");
+            const sms = await AsyncStorage.getItem("settings_sms_notifications");
+            if (push !== null) setPushNotifications(push === "true");
+            if (sms !== null) setSmsNotifications(sms === "true");
+        } catch {}
+    };
+
+    const togglePush = async (value: boolean) => {
+        setPushNotifications(value);
+        await AsyncStorage.setItem("settings_push_notifications", String(value));
+    };
+
+    const toggleSms = async (value: boolean) => {
+        setSmsNotifications(value);
+        await AsyncStorage.setItem("settings_sms_notifications", String(value));
+    };
+
     return (
         <View style={[styles.container, { paddingTop: insets.top }]}>
             <View style={styles.header}>
-                <TouchableOpacity onPress={() => safeBack("/(tabs)/home")} style={styles.backBtn}>
+                <TouchableOpacity onPress={() => safeBack("/(tabs)/profile")} style={styles.backBtn}>
                     <ChevronLeft size={24} color={Colors.text} />
                 </TouchableOpacity>
                 <Text style={styles.headerTitle}>Settings</Text>
@@ -26,23 +50,23 @@ export default function SettingsScreen() {
                         <Bell size={20} color={Colors.primary} />
                         <Text style={styles.settingLabel}>Push Notifications</Text>
                     </View>
-                    <Switch value={pushNotifications} onValueChange={setPushNotifications} trackColor={{ true: Colors.primary }} />
+                    <Switch value={pushNotifications} onValueChange={togglePush} trackColor={{ true: Colors.primary, false: '#ccc' }} thumbColor={pushNotifications ? '#FFFFFF' : '#f4f3f4'} ios_backgroundColor="#ccc" />
                 </View>
                 <View style={styles.settingRow}>
                     <View style={styles.settingInfo}>
                         <Globe size={20} color={Colors.primary} />
                         <Text style={styles.settingLabel}>SMS Notifications</Text>
                     </View>
-                    <Switch value={smsNotifications} onValueChange={setSmsNotifications} trackColor={{ true: Colors.primary }} />
+                    <Switch value={smsNotifications} onValueChange={toggleSms} trackColor={{ true: Colors.primary, false: '#ccc' }} thumbColor={smsNotifications ? '#FFFFFF' : '#f4f3f4'} ios_backgroundColor="#ccc" />
                 </View>
 
                 <Text style={[styles.sectionTitle, { marginTop: 24 }]}>Account</Text>
-                <View style={styles.settingRow}>
+                <TouchableOpacity style={styles.settingRow} onPress={() => Linking.openURL("https://zvenue.com/privacy")}>
                     <View style={styles.settingInfo}>
                         <Shield size={20} color={Colors.primary} />
                         <Text style={styles.settingLabel}>Privacy Policy</Text>
                     </View>
-                </View>
+                </TouchableOpacity>
                 <View style={styles.settingRow}>
                     <View style={styles.settingInfo}>
                         <Moon size={20} color={Colors.primary} />

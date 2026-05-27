@@ -48,6 +48,8 @@ export const fetchBooking = (id: string) => api.get(`/api/bookings/${id}`).then(
 export const updateBooking = (id: string, data: Record<string, unknown>) =>
   api.put(`/api/bookings/${id}`, data).then(r => r.data)
 export const deleteBooking = (id: string) => api.delete(`/api/bookings/${id}`).then(r => r.data)
+export const confirmBookingPayment = (bookingId: string, transactionId: string) =>
+  api.post('/api/admin/bookings/confirm-payment', { booking_id: bookingId, transaction_id: transactionId }).then(r => r.data)
 
 // ─── Users ─────────────────────────────────────────────────────────────────
 export const fetchUsers = (params?: { search?: string }) =>

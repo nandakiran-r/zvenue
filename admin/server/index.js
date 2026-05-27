@@ -23,6 +23,22 @@ function haversineDistance(lat1, lon1, lat2, lon2) {
 
 const fastify = Fastify({ logger: true });
 
+// Generate unique Booking ID in format ZBID-XXXXXXXX (8 random digits)
+async function generateBookingDisplayId() {
+  for (let attempt = 0; attempt < 10; attempt++) {
+    const digits = String(Math.floor(10000000 + Math.random() * 90000000));
+    const displayId = `ZBID-${digits}`;
+    // Check uniqueness
+    const existing = await db.query.bookings.findFirst({
+      where: eq(bookings.booking_id_display, displayId),
+      columns: { id: true },
+    });
+    if (!existing) return displayId;
+  }
+  // Fallback: use timestamp-based
+  return `ZBID-${Date.now().toString().slice(-8)}`;
+}
+
 // Plugins
 fastify.register(cors, {
   origin: '*',
@@ -200,35 +216,112 @@ async function handlePaymentCaptured(payload) {
   const paymentId = payload.payment.entity.id;
   const orderId = payload.payment.entity.order_id;
   const bookingId = payload.payment.entity.notes?.booking_id;
+  const registrationFee = parseFloat(payload.payment.entity.notes?.registration_fee) || 0;
+  const totalVenuePrice = parseFloat(payload.payment.entity.notes?.total_venue_price) || 0;
 
   fastify.log.info(`Payment captured for order: ${orderId}, booking: ${bookingId}`);
 
   if (bookingId) {
-    // Update booking to confirmed if payment is captured
+    const isPreBooking = registrationFee > 0;
+    const remainingBalance = isPreBooking ? totalVenuePrice - registrationFee : 0;
+
+    // Update booking status based on whether it's a pre-booking
     await db.update(bookings)
       .set({
-        status: 'confirmed',
+        status: isPreBooking ? 'pre_booked' : 'confirmed',
         payment_id: paymentId,
+        registration_fee_paid: isPreBooking ? registrationFee : totalVenuePrice,
+        remaining_balance: remainingBalance,
         paid_at: new Date(),
       })
       .where(eq(bookings.id, bookingId));
 
-    // Get user_id for notification
+    // Get booking details for notifications
     const booking = await db.query.bookings.findFirst({
       where: eq(bookings.id, bookingId),
       columns: { user_id: true, booking_date: true, venue_id: true }
     });
 
     if (booking) {
-      // Create notification for user
-      await db.insert(notifications).values({
-        user_id: booking.user_id,
-        title: 'Booking Confirmed!',
-        body: `Your booking for venue on ${booking.booking_date} has been confirmed and paid.`,
-        type: 'booking',
-        is_read: false,
-        data: { booking_id: bookingId, payment_id: paymentId }
+      // Get venue name
+      const venue = await db.query.venues.findFirst({
+        where: eq(venues.id, booking.venue_id),
+        columns: { name: true, owner_id: true },
       });
+
+      // Get user details
+      const user = await db.query.users.findFirst({
+        where: eq(users.id, booking.user_id),
+        columns: { push_token: true, full_name: true },
+      });
+
+      if (isPreBooking) {
+        // Pre-booking notifications
+        await db.insert(notifications).values({
+          user_id: booking.user_id,
+          title: 'Pre-Booking Confirmed',
+          body: `Your pre-booking for ${venue?.name || 'venue'} on ${booking.booking_date} is confirmed. Registration fee of ₹${registrationFee.toLocaleString('en-IN')} paid. Our agent will contact you for the remaining ₹${remainingBalance.toLocaleString('en-IN')}.`,
+          type: 'booking',
+          is_read: false,
+          data: { booking_id: bookingId, payment_id: paymentId, is_pre_booking: true }
+        });
+
+        // Admin notification
+        await db.insert(notifications).values({
+          user_id: null,
+          title: 'New Pre-Booking',
+          body: `${user?.full_name || 'A user'} has pre-booked ${venue?.name || 'a venue'} on ${booking.booking_date}. Remaining balance: ₹${remainingBalance.toLocaleString('en-IN')}. Please contact the customer.`,
+          type: 'pre_booking',
+          is_read: false,
+          data: { booking_id: bookingId, user_id: booking.user_id, venue_id: booking.venue_id, remaining_balance: remainingBalance }
+        });
+
+        // Push notification
+        if (user?.push_token) {
+          sendPushNotification(
+            user.push_token,
+            'Pre-Booking Confirmed! ✅',
+            `Your pre-booking for ${venue?.name || 'venue'} on ${booking.booking_date} is confirmed. Our agent will contact you soon.`,
+            { booking_id: bookingId, is_pre_booking: true }
+          );
+        }
+
+        // WhatsApp to venue owner (fire-and-forget)
+        if (venue?.owner_id) {
+          const owner = await db.query.owners.findFirst({
+            where: eq(owners.id, venue.owner_id),
+            columns: { phone_number: true },
+          });
+          if (owner?.phone_number) {
+            sendWhatsAppPreBookingAlert(owner.phone_number, {
+              venue_name: venue.name,
+              booking_date: booking.booking_date,
+              user_name: user?.full_name || 'A customer',
+              registration_fee: registrationFee,
+              remaining_balance: remainingBalance,
+            }).catch(err => fastify.log.error('Webhook WhatsApp alert failed:', err.message));
+          }
+        }
+      } else {
+        // Direct confirmation notification
+        await db.insert(notifications).values({
+          user_id: booking.user_id,
+          title: 'Booking Confirmed!',
+          body: `Your booking for ${venue?.name || 'venue'} on ${booking.booking_date} has been confirmed and paid.`,
+          type: 'booking',
+          is_read: false,
+          data: { booking_id: bookingId, payment_id: paymentId }
+        });
+
+        if (user?.push_token) {
+          sendPushNotification(
+            user.push_token,
+            'Booking Confirmed! 🎉',
+            `Your booking for ${booking.booking_date} has been confirmed.`,
+            { booking_id: bookingId }
+          );
+        }
+      }
     }
   } else if (orderId) {
     // Fallback: find booking by order_id
@@ -239,8 +332,10 @@ async function handlePaymentCaptured(payload) {
     if (booking) {
       await db.update(bookings)
         .set({
-          status: 'confirmed',
+          status: registrationFee > 0 ? 'pre_booked' : 'confirmed',
           payment_id: paymentId,
+          registration_fee_paid: registrationFee > 0 ? registrationFee : booking.total,
+          remaining_balance: registrationFee > 0 ? booking.total - registrationFee : 0,
           paid_at: new Date(),
         })
         .where(eq(bookings.id, booking.id));
@@ -248,11 +343,13 @@ async function handlePaymentCaptured(payload) {
       // Create notification
       await db.insert(notifications).values({
         user_id: booking.user_id,
-        title: 'Booking Confirmed!',
-        body: `Your booking for venue on ${booking.booking_date} has been confirmed and paid.`,
+        title: registrationFee > 0 ? 'Pre-Booking Confirmed' : 'Booking Confirmed!',
+        body: registrationFee > 0
+          ? `Your pre-booking on ${booking.booking_date} is confirmed. Our agent will contact you.`
+          : `Your booking on ${booking.booking_date} has been confirmed and paid.`,
         type: 'booking',
         is_read: false,
-        data: { booking_id: booking.id, payment_id: paymentId }
+        data: { booking_id: booking.id, payment_id: paymentId, is_pre_booking: registrationFee > 0 }
       });
     }
   }
@@ -831,6 +928,15 @@ fastify.post('/api/venues/:id/approve', { onRequest: [fastify.authenticate] }, a
     const venue = await db.query.venues.findFirst({ where: eq(venues.id, venueId) });
     if (!venue) return reply.status(404).send({ error: 'Venue not found' });
 
+    // Validate registration fee is set before approval
+    const effectiveFee = venue.pending_changes?.registration_fee ?? venue.registration_fee;
+    if (!effectiveFee || effectiveFee <= 0) {
+      return reply.status(400).send({
+        error: 'Registration fee is required',
+        message: 'A registration fee greater than zero must be set before the venue can be approved.'
+      });
+    }
+
     if (venue.approval_status === 'pending_changes' && venue.pending_changes) {
       // Apply pending changes
       const changes = venue.pending_changes;
@@ -924,12 +1030,12 @@ fastify.post('/api/bookings/create-order', { onRequest: [fastify.authenticate] }
       return reply.status(400).send({ error: 'Missing required booking details' });
     }
 
-    // Check for booking conflicts (confirmed bookings only)
+    // Check for booking conflicts (confirmed and pre_booked bookings)
     const conflicts = await db.query.bookings.findMany({
       where: and(
         eq(bookings.venue_id, venue_id),
         eq(bookings.booking_date, booking_date),
-        eq(bookings.status, 'confirmed')
+        or(eq(bookings.status, 'confirmed'), eq(bookings.status, 'pre_booked'))
       )
     });
 
@@ -990,7 +1096,9 @@ fastify.post('/api/bookings/create-order', { onRequest: [fastify.authenticate] }
     });
 
     // Create a pending booking record
+    const bookingDisplayId = await generateBookingDisplayId();
     const [booking] = await db.insert(bookings).values({
+      booking_id_display: bookingDisplayId,
       venue_id,
       user_id,
       booking_date,
@@ -1064,39 +1172,106 @@ fastify.post('/api/bookings/verify-payment', { onRequest: [fastify.authenticate]
       return reply.status(400).send({ error: 'Payment not captured' });
     }
 
-    // Update booking status to confirmed
+    // Fetch venue to determine registration fee
+    const venue = await db.query.venues.findFirst({
+      where: eq(venues.id, booking.venue_id),
+      columns: { name: true, registration_fee: true, owner_id: true },
+    });
+
+    const registrationFee = venue?.registration_fee || 0;
+    const isPreBooking = registrationFee > 0;
+    const registrationFeePaid = isPreBooking ? registrationFee : booking.total;
+    const remainingBalance = isPreBooking ? booking.total - registrationFee : 0;
+
+    // Update booking status: pre_booked if registration fee applies, otherwise confirmed
     await db.update(bookings)
       .set({
-        status: 'confirmed',
+        status: isPreBooking ? 'pre_booked' : 'confirmed',
         payment_method: 'razorpay',
         payment_id: payment_id,
         order_id: order_id,
+        signature: signature,
+        registration_fee_paid: registrationFeePaid,
+        remaining_balance: remainingBalance,
         paid_at: new Date(),
       })
       .where(eq(bookings.id, booking_id));
 
-    // Create notification for user
-    await db.insert(notifications).values({
-      user_id,
-      title: 'Booking Confirmed!',
-      body: `Your booking for venue on ${booking.booking_date} has been confirmed and paid.`,
-      type: 'booking',
-      is_read: false,
-      data: { booking_id, payment_id }
+    // Get user details for notifications
+    const userForNotif = await db.query.users.findFirst({
+      where: eq(users.id, user_id),
+      columns: { push_token: true, full_name: true },
     });
 
-    // Send push notification
-    const userForPush = await db.query.users.findFirst({
-      where: eq(users.id, user_id),
-      columns: { push_token: true },
-    });
-    if (userForPush?.push_token) {
-      sendPushNotification(
-        userForPush.push_token,
-        'Booking Confirmed! 🎉',
-        `Your booking for ${booking.booking_date} has been confirmed.`,
-        { booking_id }
-      );
+    if (isPreBooking) {
+      // Pre-booking notifications
+      // 1. In-app notification for user
+      await db.insert(notifications).values({
+        user_id,
+        title: 'Pre-Booking Confirmed',
+        body: `Your pre-booking for ${venue.name} on ${booking.booking_date} is confirmed. Booking ID: ${booking.booking_id_display}. Registration fee of ₹${registrationFeePaid.toLocaleString('en-IN')} paid. Our agent will contact you for the remaining ₹${remainingBalance.toLocaleString('en-IN')}.`,
+        type: 'booking',
+        is_read: false,
+        data: { booking_id, booking_id_display: booking.booking_id_display, payment_id, is_pre_booking: true }
+      });
+
+      // 2. In-app notification for admin
+      await db.insert(notifications).values({
+        user_id: null,
+        title: 'New Pre-Booking',
+        body: `${userForNotif?.full_name || 'A user'} has pre-booked ${venue.name} on ${booking.booking_date}. Booking ID: ${booking.booking_id_display}. Remaining balance: ₹${remainingBalance.toLocaleString('en-IN')}. Please contact the customer.`,
+        type: 'pre_booking',
+        is_read: false,
+        data: { booking_id, booking_id_display: booking.booking_id_display, user_id, venue_id: booking.venue_id, remaining_balance: remainingBalance }
+      });
+
+      // 3. Push notification for user
+      if (userForNotif?.push_token) {
+        sendPushNotification(
+          userForNotif.push_token,
+          'Pre-Booking Confirmed! ✅',
+          `Booking ID: ${booking.booking_id_display}. Your pre-booking for ${venue.name} on ${booking.booking_date} is confirmed. Our agent will contact you soon.`,
+          { booking_id, booking_id_display: booking.booking_id_display, is_pre_booking: true }
+        );
+      }
+
+      // 4. WhatsApp notification to venue owner (fire-and-forget)
+      if (venue.owner_id) {
+        const owner = await db.query.owners.findFirst({
+          where: eq(owners.id, venue.owner_id),
+          columns: { phone_number: true, full_name: true },
+        });
+        if (owner?.phone_number) {
+          sendWhatsAppPreBookingAlert(owner.phone_number, {
+            venue_name: venue.name,
+            booking_date: booking.booking_date,
+            user_name: userForNotif?.full_name || 'A customer',
+            registration_fee: registrationFeePaid,
+            remaining_balance: remainingBalance,
+          }).catch(err => fastify.log.error('WhatsApp pre-booking alert failed:', err.message));
+        } else {
+          fastify.log.warn(`Venue owner ${venue.owner_id} has no phone number, skipping WhatsApp alert`);
+        }
+      }
+    } else {
+      // Direct confirmation (fallback for venues without registration fee — shouldn't happen after migration)
+      await db.insert(notifications).values({
+        user_id,
+        title: 'Booking Confirmed!',
+        body: `Your booking for ${venue?.name || 'venue'} on ${booking.booking_date} has been confirmed and paid.`,
+        type: 'booking',
+        is_read: false,
+        data: { booking_id, payment_id }
+      });
+
+      if (userForNotif?.push_token) {
+        sendPushNotification(
+          userForNotif.push_token,
+          'Booking Confirmed! 🎉',
+          `Your booking for ${booking.booking_date} has been confirmed.`,
+          { booking_id }
+        );
+      }
     }
 
     // Return updated booking
@@ -1110,8 +1285,11 @@ fastify.post('/api/bookings/verify-payment', { onRequest: [fastify.authenticate]
 
     return {
       success: true,
-      message: 'Payment verified and booking confirmed',
-      booking: updatedBooking
+      message: isPreBooking ? 'Pre-booking confirmed. Our agent will contact you.' : 'Payment verified and booking confirmed',
+      booking: updatedBooking,
+      is_pre_booking: isPreBooking,
+      registration_fee_paid: registrationFeePaid,
+      remaining_balance: remainingBalance,
     };
   } catch (err) {
     fastify.log.error('Verify payment error:', err);
@@ -1119,6 +1297,140 @@ fastify.post('/api/bookings/verify-payment', { onRequest: [fastify.authenticate]
       error: 'Payment verification failed',
       details: err.message
     });
+  }
+});
+
+
+// ─── PRE-BOOKING: WhatsApp Alert to Venue Owner ────────────────────────────
+async function sendWhatsAppPreBookingAlert(ownerPhone, templateParams) {
+  try {
+    const response = await fetch('https://api.aoc-portal.com/v1/whatsapp', {
+      method: 'POST',
+      headers: {
+        'apikey': process.env.AOC_API_KEY,
+        'Content-Type': 'application/json'
+      },
+      body: JSON.stringify({
+        from: process.env.AOC_WHATSAPP_NUMBER,
+        to: ownerPhone,
+        templateName: process.env.AOC_PREBOOKING_TEMPLATE_NAME || 'prebooking_alert',
+        type: 'template',
+        language: { code: 'en' },
+        params: templateParams
+      })
+    });
+
+    const result = await response.json();
+    if (!response.ok || result.error) {
+      fastify.log.error('WhatsApp Pre-Booking Alert Error:', result);
+      return false;
+    }
+    fastify.log.info(`WhatsApp pre-booking alert sent to ${ownerPhone}`);
+    return true;
+  } catch (err) {
+    fastify.log.error('WhatsApp Pre-Booking Alert Error:', err.message);
+    return false;
+  }
+}
+
+// ─── PRE-BOOKING: Transaction ID Validation ────────────────────────────────
+const TRANSACTION_ID_REGEX = /^[a-zA-Z0-9_-]{1,64}$/;
+
+// ─── PRE-BOOKING: Admin Confirms Full Payment ──────────────────────────────
+fastify.post('/api/admin/bookings/confirm-payment', { onRequest: [fastify.authenticate] }, async (request, reply) => {
+  try {
+    const { booking_id, transaction_id } = request.body;
+
+    if (!booking_id || !transaction_id) {
+      return reply.status(400).send({ error: 'Booking ID and transaction ID are required' });
+    }
+
+    // Validate transaction ID format
+    if (!TRANSACTION_ID_REGEX.test(transaction_id)) {
+      return reply.status(400).send({ error: 'Invalid transaction ID format. Use 1-64 alphanumeric characters, hyphens, or underscores.' });
+    }
+
+    // Find the booking
+    const booking = await db.query.bookings.findFirst({
+      where: eq(bookings.id, booking_id),
+    });
+
+    if (!booking) {
+      return reply.status(404).send({ error: 'Booking not found' });
+    }
+
+    if (booking.status !== 'pre_booked') {
+      return reply.status(400).send({ error: 'Booking is not in pre-booked status' });
+    }
+
+    // Update booking to confirmed
+    await db.update(bookings)
+      .set({
+        status: 'confirmed',
+        transaction_id,
+        paid_at: new Date(),
+      })
+      .where(eq(bookings.id, booking_id));
+
+    // Get venue and user details
+    const venue = await db.query.venues.findFirst({
+      where: eq(venues.id, booking.venue_id),
+      columns: { id: true, name: true, image_url: true },
+    });
+    const user = await db.query.users.findFirst({
+      where: eq(users.id, booking.user_id),
+      columns: { id: true, full_name: true, push_token: true },
+    });
+
+    // Create in-app notification for user with full booking details
+    await db.insert(notifications).values({
+      user_id: booking.user_id,
+      title: 'Booking Fully Confirmed',
+      body: `Your booking for ${venue?.name || 'venue'} on ${booking.booking_date} (${booking.start_time} – ${booking.end_time}) is fully confirmed! Total paid: ₹${booking.total.toLocaleString('en-IN')}. Get ready for your event.`,
+      type: 'booking',
+      is_read: false,
+      data: {
+        booking_id,
+        venue_id: booking.venue_id,
+        venue_name: venue?.name,
+        booking_date: booking.booking_date,
+        start_time: booking.start_time,
+        end_time: booking.end_time,
+        guests: booking.guests,
+        registration_fee_paid: booking.registration_fee_paid,
+        remaining_balance: booking.remaining_balance,
+        total: booking.total,
+        transaction_id,
+      }
+    });
+
+    // Send push notification to user
+    if (user?.push_token) {
+      sendPushNotification(
+        user.push_token,
+        'Booking Fully Confirmed! 🎉',
+        `Your booking for ${venue?.name || 'venue'} on ${booking.booking_date} is fully confirmed!`,
+        { booking_id, venue_id: booking.venue_id }
+      );
+    }
+
+    // Return full booking details
+    const updatedBooking = await db.query.bookings.findFirst({
+      where: eq(bookings.id, booking_id),
+      with: {
+        venue: { columns: { id: true, name: true, city: true, image_url: true } },
+        user: { columns: { id: true, full_name: true, email: true, phone_number: true } },
+      }
+    });
+
+    return {
+      success: true,
+      message: 'Booking fully confirmed',
+      booking: updatedBooking,
+    };
+  } catch (err) {
+    fastify.log.error('Admin confirm payment error:', err);
+    return reply.status(500).send({ error: 'Failed to confirm payment', details: err.message });
   }
 });
 
@@ -1378,6 +1690,50 @@ fastify.get('/api/auth/me', { onRequest: [fastify.authenticate] }, async (reques
   }
 });
 
+// ─── DELETE ACCOUNT ────────────────────────────────────────────────────────
+fastify.delete('/api/auth/delete-account', { onRequest: [fastify.authenticate] }, async (request, reply) => {
+  try {
+    const user_id = request.user.id;
+
+    // Get user details for subscription cancellation
+    const user = await db.query.users.findFirst({
+      where: eq(users.id, user_id),
+      columns: { id: true, subscription_id: true, subscription_status: true },
+    });
+
+    if (!user) {
+      return reply.status(404).send({ error: 'User not found' });
+    }
+
+    // Cancel active subscription if exists
+    if (user.subscription_id && (user.subscription_status === 'active' || user.subscription_status === 'authenticated')) {
+      try {
+        await razorpay.subscriptions.cancel(user.subscription_id);
+      } catch (err) {
+        fastify.log.warn('Failed to cancel subscription during account deletion:', err.message);
+      }
+    }
+
+    // Mark all user's bookings as cancelled
+    await db.update(bookings)
+      .set({ status: 'cancelled' })
+      .where(and(eq(bookings.user_id, user_id), ne(bookings.status, 'cancelled')));
+
+    // Delete user's notifications
+    await db.delete(notifications).where(eq(notifications.user_id, user_id));
+
+    // Delete the user record
+    await db.delete(users).where(eq(users.id, user_id));
+
+    fastify.log.info(`Account deleted: user_id=${user_id}`);
+
+    return { success: true, message: 'Account permanently deleted' };
+  } catch (err) {
+    fastify.log.error('Delete account error:', err);
+    return reply.status(500).send({ error: 'Failed to delete account. Please try again.' });
+  }
+});
+
 // ─── DASHBOARD STATS ───────────────────────────────────────────────────────
 fastify.get('/api/dashboard/stats', { onRequest: [fastify.authenticate] }, async (request, reply) => {
   try {
@@ -1481,7 +1837,15 @@ fastify.get('/api/venues', async (request, reply) => {
     // If 'all' param is passed (admin panel), return all venues
     const approvalFilter = all ? undefined : eq(venues.approval_status, 'approved');
 
+    // For mobile app (no 'all' param), also exclude venues without registration fee
+    const regFeeFilter = all ? undefined : sql`${venues.registration_fee} > 0`;
+
     let whereClause = approvalFilter;
+    if (regFeeFilter && whereClause) {
+      whereClause = and(whereClause, regFeeFilter);
+    } else if (regFeeFilter) {
+      whereClause = regFeeFilter;
+    }
     if (search && category_id) {
       const searchFilter = sql`(name ILIKE ${'%' + search + '%'} OR city ILIKE ${'%' + search + '%'}) AND category_id = ${category_id}`;
       whereClause = approvalFilter ? and(approvalFilter, searchFilter) : searchFilter;
@@ -1548,6 +1912,14 @@ fastify.get('/api/venues/:id', async (request, reply) => {
 fastify.post('/api/venues', { onRequest: [fastify.authenticate] }, async (request, reply) => {
   try {
     const venueData = { ...request.body };
+
+    // Validate mandatory registration fee
+    if (!venueData.registration_fee || venueData.registration_fee <= 0) {
+      return reply.status(400).send({
+        error: 'Registration fee is required',
+        message: 'A registration fee greater than zero must be set before the venue can be published.'
+      });
+    }
     
     // Geocode the address if location/city provided
     if (venueData.location || venueData.city) {
@@ -1900,13 +2272,22 @@ fastify.get('/api/users/:id', { onRequest: [fastify.authenticate] }, async (requ
 
 fastify.put('/api/users/:id', { onRequest: [fastify.authenticate] }, async (request, reply) => {
   try {
-    const { full_name, email, phone_number, avatar_url } = request.body;
+    const { first_name, last_name, full_name, email, phone_number, avatar_url } = request.body;
+    const updates = {};
+    if (first_name !== undefined) updates.first_name = first_name;
+    if (last_name !== undefined) updates.last_name = last_name;
+    if (full_name !== undefined) updates.full_name = full_name;
+    if (email !== undefined) updates.email = email;
+    if (avatar_url !== undefined) updates.avatar_url = avatar_url;
+    // Don't allow phone_number change (it's the login identifier)
+
     const [updated] = await db.update(users)
-      .set({ full_name, email, phone_number, avatar_url })
+      .set(updates)
       .where(eq(users.id, request.params.id))
       .returning();
     return updated;
   } catch (err) {
+    if (err.code === '23505') return reply.status(400).send({ error: 'Email already in use by another account' });
     return reply.status(500).send({ error: 'Internal Server Error' });
   }
 });

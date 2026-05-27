@@ -59,7 +59,8 @@ export const useLocationStore = create<LocationState>((set, get) => ({
         });
       }
     } catch (err: any) {
-      console.error("Location error:", err);
+      // Location is optional - silently fall back to default city
+      console.warn("Location unavailable:", err.message);
       set({ error: err.message || "Failed to get location" });
     } finally {
       set({ isLoading: false });
@@ -95,7 +96,8 @@ export const useLocationStore = create<LocationState>((set, get) => ({
         });
       }
     } catch (err: any) {
-      console.error("Location refresh error:", err);
+      // Location refresh is optional - don't show error to user
+      console.warn("Location refresh unavailable:", err.message);
       set({ error: err.message || "Failed to refresh location" });
     } finally {
       set({ isLoading: false });

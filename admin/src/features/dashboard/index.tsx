@@ -298,13 +298,13 @@ export function Dashboard() {
                                 variant={
                                   booking.status === 'confirmed'
                                     ? 'default'
-                                    : booking.status === 'pending'
+                                    : booking.status === 'pending' || booking.status === 'pre_booked'
                                       ? 'secondary'
                                       : 'destructive'
                                 }
                                 className='text-[10px]'
                               >
-                                {booking.status}
+                                {booking.status === 'pre_booked' ? 'Pre-Booked' : booking.status === 'confirmed' ? 'Confirmed' : booking.status === 'pending' ? 'Pending' : booking.status}
                               </Badge>
                             </div>
                           </div>

@@ -62,6 +62,7 @@ export default function HomeScreen() {
   const [selectedLocation, setSelectedLocation] = useState("Detecting...");
   const [locationSearch, setLocationSearch] = useState("");
   const [usingGPS, setUsingGPS] = useState(true);
+  const [unavailableModalVisible, setUnavailableModalVisible] = useState(false);
 
   // Initialize location on mount
   useEffect(() => {
@@ -125,11 +126,24 @@ export default function HomeScreen() {
     )
     : CITIES;
 
-  const handleSelectCity = (city: { name: string; state: string }) => {
-    setSelectedLocation(`${city.name}, ${city.state}`);
-    setUsingGPS(false);
+  const handleSelectCity = async (city: { name: string; state: string }) => {
     setLocationSearch("");
     setLocationModalVisible(false);
+
+    // Check if venues are available in the selected city
+    try {
+      const cityVenues = await fetchVenues({ city: city.name });
+      if (cityVenues.length === 0) {
+        // No venues in this city — show unavailable popup
+        setUnavailableModalVisible(true);
+        return;
+      }
+    } catch {
+      // If check fails, proceed anyway
+    }
+
+    setSelectedLocation(`${city.name}, ${city.state}`);
+    setUsingGPS(false);
   };
 
   const formatPrice = (amount: number | null | undefined) => {
@@ -273,6 +287,42 @@ export default function HomeScreen() {
                   </TouchableOpacity>
                 )}
               />
+            </View>
+          </View>
+        </Modal>
+
+        {/* Unavailable Location Modal */}
+        <Modal
+          visible={unavailableModalVisible}
+          transparent
+          animationType="fade"
+          onRequestClose={() => setUnavailableModalVisible(false)}
+        >
+          <View style={styles.unavailableOverlay}>
+            <View style={styles.unavailableCard}>
+              <TouchableOpacity
+                style={styles.unavailableClose}
+                onPress={() => setUnavailableModalVisible(false)}
+              >
+                <X size={20} color={Colors.text} />
+              </TouchableOpacity>
+
+              <View style={styles.unavailableIconWrap}>
+                <MapPin size={40} color={Colors.primary} />
+              </View>
+
+              <Text style={styles.unavailableTitle}>We're not here yet!</Text>
+              <Text style={styles.unavailableMessage}>
+                Sorry for the inconvenience! We are not available in your location now, but we are expanding our services. Hope to provide service in your area soon.
+              </Text>
+
+              <TouchableOpacity
+                style={styles.unavailableButton}
+                onPress={() => setUnavailableModalVisible(false)}
+                activeOpacity={0.8}
+              >
+                <Text style={styles.unavailableButtonText}>Browse Available Venues</Text>
+              </TouchableOpacity>
             </View>
           </View>
         </Modal>
@@ -750,5 +800,69 @@ const styles = StyleSheet.create({
     fontSize: 13,
     fontWeight: "700" as const,
     color: Colors.primary,
+  },
+  // Unavailable location modal
+  unavailableOverlay: {
+    flex: 1,
+    backgroundColor: "rgba(0,0,0,0.45)",
+    justifyContent: "center",
+    alignItems: "center",
+    paddingHorizontal: 32,
+  },
+  unavailableCard: {
+    backgroundColor: Colors.white,
+    borderRadius: 24,
+    padding: 28,
+    alignItems: "center",
+    width: "100%",
+    maxWidth: 340,
+  },
+  unavailableClose: {
+    position: "absolute",
+    top: 16,
+    right: 16,
+    width: 32,
+    height: 32,
+    borderRadius: 16,
+    backgroundColor: Colors.surface,
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  unavailableIconWrap: {
+    width: 80,
+    height: 80,
+    borderRadius: 40,
+    backgroundColor: Colors.primaryLight || "#FFF0F5",
+    alignItems: "center",
+    justifyContent: "center",
+    marginBottom: 16,
+    marginTop: 8,
+  },
+  unavailableTitle: {
+    fontSize: 20,
+    fontWeight: "700" as const,
+    color: Colors.text,
+    textAlign: "center",
+    marginBottom: 10,
+  },
+  unavailableMessage: {
+    fontSize: 14,
+    color: Colors.textSecondary,
+    textAlign: "center",
+    lineHeight: 21,
+    marginBottom: 24,
+  },
+  unavailableButton: {
+    backgroundColor: Colors.primary,
+    borderRadius: 14,
+    paddingVertical: 14,
+    paddingHorizontal: 32,
+    width: "100%",
+    alignItems: "center",
+  },
+  unavailableButtonText: {
+    color: Colors.white,
+    fontSize: 15,
+    fontWeight: "700" as const,
   },
 });

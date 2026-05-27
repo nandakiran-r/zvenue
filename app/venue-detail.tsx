@@ -1,6 +1,6 @@
 import { router, useLocalSearchParams } from "expo-router";
 import { safeBack } from "@/constants/navigation";
-import { Calendar, ChevronLeft, Clock, Heart, MapPin, MessageCircle, Star, Users, Wifi, Wind, Car, Utensils, Music, Tv } from "lucide-react-native";
+import { Calendar, ChevronLeft, Clock, Crown, Heart, MapPin, MessageCircle, Star, Users, Wifi, Wind, Car, Utensils, Music, Tv } from "lucide-react-native";
 import { MaterialIcons } from "@expo/vector-icons";
 import React, { useEffect, useState } from "react";
 import {
@@ -8,6 +8,7 @@ import {
     Dimensions,
     FlatList,
     Image,
+    Modal,
     ScrollView,
     StyleSheet,
     Text,
@@ -16,6 +17,7 @@ import {
 } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import Colors from "@/constants/colors";
+import { useAuth } from "@/context/AuthContext";
 import { useFavorites } from "@/context/FavoritesContext";
 import { fetchVenueById } from "@/lib/api";
 import { formatPrice } from "@/lib/utils";
@@ -37,10 +39,12 @@ export default function VenueDetailScreen() {
     const insets = useSafeAreaInsets();
     
     const { isFavorite, toggleFavorite } = useFavorites();
+    const { isSubscribed } = useAuth();
 
     const [venue, setVenue] = useState<DbVenue | null>(null);
     const [loading, setLoading] = useState(true);
     const [activeImageIndex, setActiveImageIndex] = useState(0);
+    const [showSubscribePrompt, setShowSubscribePrompt] = useState(false);
     const flatListRef = React.useRef<FlatList>(null);
 
     useEffect(() => {
@@ -206,7 +210,7 @@ export default function VenueDetailScreen() {
                     <View style={styles.section}>
                         <Text style={styles.sectionTitle}>📹 Venue Video</Text>
                         <TouchableOpacity
-                            style={{ backgroundColor: '#F0F0F0', borderRadius: 12, padding: 16, flexDirection: 'row', alignItems: 'center', gap: 12 }}
+                            style={{ backgroundColor: '#FFF0F5', borderRadius: 12, padding: 16, flexDirection: 'row', alignItems: 'center', gap: 12 }}
                             onPress={() => {
                                 const { Linking } = require('react-native');
                                 Linking.openURL(venue.youtube_url!);
@@ -263,9 +267,6 @@ export default function VenueDetailScreen() {
                             <Text style={styles.ownerLabel}>Owner / Manager</Text>
                             <Text style={styles.ownerName}>{venue.owner_name}</Text>
                         </View>
-                        <TouchableOpacity style={styles.chatButton}>
-                            <MessageCircle size={20} color={Colors.primary} />
-                        </TouchableOpacity>
                     </View>
                 </View>
 
@@ -287,13 +288,59 @@ export default function VenueDetailScreen() {
             <View style={[styles.bottomBar, { paddingBottom: insets.bottom + 12 }]}>
                 <TouchableOpacity
                     style={styles.bookButton}
-                    onPress={() => router.push({ pathname: "/booking-detail", params: { id: venue.id } })}
+                    onPress={() => {
+                        if (!isSubscribed) {
+                            setShowSubscribePrompt(true);
+                        } else {
+                            router.push({ pathname: "/booking-detail", params: { id: venue.id } });
+                        }
+                    }}
                     activeOpacity={0.8}
                     testID="book-venue"
                 >
-                    <Text style={styles.bookButtonText}>Book This Venue</Text>
+                    <Text style={styles.bookButtonText}>Pre-Book This Venue</Text>
                 </TouchableOpacity>
             </View>
+
+            {/* Subscribe Prompt Modal */}
+            <Modal visible={showSubscribePrompt} transparent animationType="fade" onRequestClose={() => setShowSubscribePrompt(false)}>
+                <View style={styles.subscribeOverlay}>
+                    <View style={styles.subscribeCard}>
+                        <View style={styles.subscribeIconWrap}>
+                            <Crown size={48} color="#F9A825" />
+                        </View>
+                        <Text style={styles.subscribeTitle}>Unlock Premium Benefits!</Text>
+                        <Text style={styles.subscribeSubtitle}>
+                            Subscribe for ₹49/month to get exclusive benefits with every booking:
+                        </Text>
+                        {venue?.subscriber_benefits && (venue.subscriber_benefits as string[]).length > 0 && (
+                            <View style={styles.subscribeBenefits}>
+                                {(venue.subscriber_benefits as string[]).map((benefit, i) => (
+                                    <Text key={i} style={styles.subscribeBenefitItem}>✓ {benefit}</Text>
+                                ))}
+                            </View>
+                        )}
+                        <TouchableOpacity
+                            style={styles.subscribeButton}
+                            onPress={() => {
+                                setShowSubscribePrompt(false);
+                                router.push({ pathname: "/subscription", params: { returnTo: `/venue-detail?id=${venue.id}` } } as any);
+                            }}
+                        >
+                            <Text style={styles.subscribeButtonText}>Subscribe Now — ₹49/mo</Text>
+                        </TouchableOpacity>
+                        <TouchableOpacity
+                            style={styles.skipButton}
+                            onPress={() => {
+                                setShowSubscribePrompt(false);
+                                router.push({ pathname: "/booking-detail", params: { id: venue.id } });
+                            }}
+                        >
+                            <Text style={styles.skipButtonText}>Skip & Continue Booking</Text>
+                        </TouchableOpacity>
+                    </View>
+                </View>
+            </Modal>
         </View>
     );
 }
@@ -387,7 +434,7 @@ const styles = StyleSheet.create({
     title: {
         fontSize: 22,
         fontWeight: "700" as const,
-        color: "#f0bc4d",
+        color: Colors.text,
         marginBottom: 8,
         lineHeight: 28,
     },
@@ -552,5 +599,83 @@ const styles = StyleSheet.create({
         color: Colors.white,
         fontSize: 16,
         fontWeight: "700" as const,
+    },
+    // Subscribe prompt modal
+    subscribeOverlay: {
+        flex: 1,
+        backgroundColor: "rgba(0,0,0,0.45)",
+        alignItems: "center",
+        justifyContent: "center",
+        paddingHorizontal: 24,
+    },
+    subscribeCard: {
+        backgroundColor: Colors.white,
+        borderRadius: 24,
+        padding: 28,
+        alignItems: "center",
+        width: "100%",
+    },
+    subscribeIconWrap: {
+        width: 80,
+        height: 80,
+        borderRadius: 40,
+        backgroundColor: "#FFF8E1",
+        alignItems: "center",
+        justifyContent: "center",
+        marginBottom: 16,
+    },
+    subscribeTitle: {
+        fontSize: 20,
+        fontWeight: "700" as const,
+        color: Colors.text,
+        marginBottom: 8,
+    },
+    subscribeSubtitle: {
+        fontSize: 14,
+        color: Colors.textSecondary,
+        textAlign: "center",
+        marginBottom: 16,
+        lineHeight: 20,
+    },
+    subscribeBenefits: {
+        width: "100%",
+        backgroundColor: "#F5F5F5",
+        borderRadius: 12,
+        padding: 14,
+        marginBottom: 16,
+    },
+    subscribeBenefitItem: {
+        fontSize: 13,
+        color: Colors.text,
+        marginBottom: 6,
+    },
+    subscribeButton: {
+        backgroundColor: Colors.primary,
+        borderRadius: 14,
+        paddingVertical: 14,
+        paddingHorizontal: 32,
+        width: "100%",
+        alignItems: "center",
+        marginBottom: 10,
+    },
+    subscribeButtonText: {
+        color: Colors.white,
+        fontSize: 15,
+        fontWeight: "700" as const,
+    },
+    skipButton: {
+        backgroundColor: Colors.surface,
+        borderRadius: 14,
+        paddingVertical: 14,
+        paddingHorizontal: 32,
+        width: "100%",
+        alignItems: "center",
+        borderWidth: 1,
+        borderColor: Colors.border,
+    },
+    skipButtonText: {
+        color: Colors.text,
+        fontSize: 15,
+        fontWeight: "600" as const,
     },
 });

@@ -27,8 +27,10 @@ function getSessionLabel(startTime: string | null, endTime: string | null) {
 function statusColor(status: string) {
   switch (status) {
     case 'confirmed': return { bg: '#E8F5E9', text: '#2E7D32' };
+    case 'pre_booked': return { bg: '#E3F2FD', text: '#1565C0' };
     case 'pending': return { bg: '#FFF3E0', text: '#F57C00' };
     case 'cancelled': return { bg: '#FFEBEE', text: '#D32F2F' };
+    case 'payment_failed': return { bg: '#FFEBEE', text: '#D32F2F' };
     default: return { bg: '#F5F5F5', text: '#666' };
   }
 }
@@ -81,7 +83,9 @@ export default function MyBookingsScreen() {
           </View>
           <View style={styles.bottomRow}>
             <View style={[styles.statusBadge, { backgroundColor: colors.bg }]}>
-              <Text style={[styles.statusText, { color: colors.text }]}>{item.status}</Text>
+              <Text style={[styles.statusText, { color: colors.text }]}>
+                {item.status === 'pre_booked' ? 'Pre-Booked' : item.status}
+              </Text>
             </View>
             <Text style={styles.price}>₹{(item.total || 0).toLocaleString('en-IN')}</Text>
           </View>

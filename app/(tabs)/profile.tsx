@@ -20,7 +20,7 @@ import { deleteMyAccount } from "@/lib/api";
 
 const MENU_ITEMS = [
   { icon: User, label: "Edit Profile", route: "/edit-profile" },
-  { icon: Calendar, label: "My Bookings", route: "/bookings" },
+  { icon: Calendar, label: "My Bookings", route: "/(tabs)/my-bookings" },
   { icon: Bell, label: "Notifications", route: "/notifications" },
   { icon: Settings, label: "Settings", route: "/settings" },
   { icon: HelpCircle, label: "Help & Support", route: "/help" },
@@ -103,7 +103,15 @@ export default function ProfileScreen() {
               key={index}
               style={styles.menuItem}
               activeOpacity={0.6}
-              onPress={() => item.route && router.push(item.route as any)}
+              onPress={() => {
+                if (!item.route) return;
+                // For tab routes, navigate (switch tab) instead of push (stack)
+                if (item.route.startsWith("/(tabs)")) {
+                  router.navigate(item.route as any);
+                } else {
+                  router.push(item.route as any);
+                }
+              }}
             >
               <View style={styles.menuIconContainer}>
                 <item.icon size={20} color={Colors.text} />

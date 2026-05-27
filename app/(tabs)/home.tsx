@@ -20,7 +20,9 @@ import { useAuth } from "@/context/AuthContext";
 import { useFavorites } from "@/context/FavoritesContext";
 import { useLocationStore } from "@/store/locationStore";
 import { fetchCategories, fetchVenues } from "@/lib/api";
+import { fetchServiceCategories } from "@/lib/serviceApi";
 import type { DbCategory, DbVenue } from "@/lib/types";
+import type { DbServiceCategory } from "@/lib/serviceTypes";
 
 const CITIES = [
   { id: "1", name: "Ahmedabad", state: "Gujarat" },
@@ -64,6 +66,10 @@ export default function HomeScreen() {
   const [usingGPS, setUsingGPS] = useState(true);
   const [unavailableModalVisible, setUnavailableModalVisible] = useState(false);
 
+  // Service marketplace state
+  const [activeTab, setActiveTab] = useState<'venues' | 'services'>('venues');
+  const [serviceCategories, setServiceCategories] = useState<DbServiceCategory[]>([]);
+
   // Initialize location on mount
   useEffect(() => {
     locationStore.initialize();
@@ -97,11 +103,13 @@ export default function HomeScreen() {
         filters.radius = 50000; // Show all venues, sorted by nearest
       }
 
-      const [cats, allVenues] = await Promise.all([
+      const [cats, allVenues, svcCats] = await Promise.all([
         fetchCategories(),
         fetchVenues(filters),
+        fetchServiceCategories(),
       ]);
       setCategories(cats);
+      setServiceCategories(svcCats);
 
       // Group venues by category name
       const grouped: Record<string, DbVenue[]> = {};
@@ -330,47 +338,80 @@ export default function HomeScreen() {
         <View style={styles.searchRow}>
           <TouchableOpacity style={styles.searchContainer} onPress={() => router.push("/(tabs)/search" as any)} activeOpacity={0.7}>
             <Search size={18} color={Colors.textSecondary} />
-            <Text style={[styles.searchInput, { color: Colors.textTertiary }]}>Search venues</Text>
+            <Text style={[styles.searchInput, { color: Colors.textTertiary }]}>Search venues & services</Text>
           </TouchableOpacity>
           <TouchableOpacity style={styles.filterButton} onPress={() => router.push("/(tabs)/search" as any)}>
             <SlidersHorizontal size={18} color={Colors.text} />
           </TouchableOpacity>
         </View>
 
-        <ScrollView horizontal showsHorizontalScrollIndicator={false} style={styles.categoriesRow}>
-          {[{ id: 'all', name: 'All', icon: 'apps', sort_order: 0, created_at: '' }, ...categories].map((cat) => (
-            <TouchableOpacity
-              key={cat.id}
-              style={[
-                styles.categoryChip,
-                selectedCategory === cat.id && styles.categoryChipActive,
-              ]}
-              onPress={() => {
-                if (cat.id !== 'all') {
-                  router.push({ pathname: "/category-venues" as any, params: { category: cat.name } });
-                }
-              }}
-            >
-              <MaterialIcons
-                name={cat.icon as any}
-                size={16}
-                color={selectedCategory === cat.id ? "#FFFFFF" : Colors.textSecondary}
-              />
-              <Text
+        {/* Venues / Services Toggle */}
+        <View style={styles.toggleRow}>
+          <TouchableOpacity
+            style={[styles.toggleButton, activeTab === 'venues' && styles.toggleButtonActive]}
+            onPress={() => setActiveTab('venues')}
+            activeOpacity={0.7}
+          >
+            <Text style={[styles.toggleText, activeTab === 'venues' && styles.toggleTextActive]}>Venues</Text>
+          </TouchableOpacity>
+          <TouchableOpacity
+            style={[styles.toggleButton, activeTab === 'services' && styles.toggleButtonActive]}
+            onPress={() => setActiveTab('services')}
+            activeOpacity={0.7}
+          >
+            <Text style={[styles.toggleText, activeTab === 'services' && styles.toggleTextActive]}>Services</Text>
+          </TouchableOpacity>
+        </View>
+
+        {/* Category Chips — Venues or Services */}
+        {activeTab === 'venues' ? (
+          <ScrollView horizontal showsHorizontalScrollIndicator={false} style={styles.categoriesRow}>
+            {[{ id: 'all', name: 'All', icon: 'apps', sort_order: 0, created_at: '' }, ...categories].map((cat) => (
+              <TouchableOpacity
+                key={cat.id}
                 style={[
-                  styles.categoryText,
-                  selectedCategory === cat.id && styles.categoryTextActive,
+                  styles.categoryChip,
+                  selectedCategory === cat.id && styles.categoryChipActive,
                 ]}
+                onPress={() => {
+                  if (cat.id !== 'all') {
+                    router.push({ pathname: "/category-venues" as any, params: { category: cat.name } });
+                  }
+                }}
               >
-                {cat.name}
-              </Text>
-            </TouchableOpacity>
-          ))}
-        </ScrollView>
+                <MaterialIcons
+                  name={cat.icon as any}
+                  size={16}
+                  color={selectedCategory === cat.id ? "#FFFFFF" : Colors.textSecondary}
+                />
+                <Text
+                  style={[
+                    styles.categoryText,
+                    selectedCategory === cat.id && styles.categoryTextActive,
+                  ]}
+                >
+                  {cat.name}
+                </Text>
+              </TouchableOpacity>
+            ))}
+          </ScrollView>
+        ) : (
+          <ScrollView horizontal showsHorizontalScrollIndicator={false} style={styles.categoriesRow}>
+            {serviceCategories.map((cat) => (
+              <TouchableOpacity
+                key={cat.id}
+                style={styles.categoryChip}
+                onPress={() => router.push({ pathname: "/service-listings" as any, params: { categoryId: cat.id, categoryName: cat.name } })}
+              >
+                <Text style={styles.categoryText}>{cat.name}</Text>
+              </TouchableOpacity>
+            ))}
+          </ScrollView>
+        )}
 
         {loading ? (
           <ActivityIndicator size="large" color={Colors.primary} style={{ marginTop: 40 }} />
-        ) : (
+        ) : activeTab === 'venues' ? (
           categories.map((category) => {
             const categoryVenues = venuesByCategory[category.name] ?? [];
             if (categoryVenues.length === 0) return null;
@@ -427,6 +468,32 @@ export default function HomeScreen() {
               </View>
             );
           })
+        ) : (
+          /* Services Tab Content */
+          <View style={styles.servicesContent}>
+            {serviceCategories.length === 0 ? (
+              <View style={{ alignItems: 'center', paddingTop: 60 }}>
+                <Text style={{ fontSize: 16, color: Colors.textSecondary }}>No service categories available</Text>
+              </View>
+            ) : (
+              serviceCategories.map((cat) => (
+                <TouchableOpacity
+                  key={cat.id}
+                  style={styles.serviceCategoryCard}
+                  onPress={() => router.push({ pathname: "/service-listings" as any, params: { categoryId: cat.id, categoryName: cat.name } })}
+                  activeOpacity={0.7}
+                >
+                  <View style={styles.serviceCategoryIcon}>
+                    <Text style={styles.serviceCategoryEmoji}>
+                      {cat.icon === 'scissors' ? '✂️' : cat.icon === 'palette' ? '🎨' : cat.icon === 'utensils' ? '🍽️' : cat.icon === 'hand-metal' ? '🤚' : cat.icon === 'car' ? '🚗' : cat.icon === 'droplets' ? '💧' : cat.icon === 'shirt' ? '👔' : cat.icon === 'gem' ? '💎' : cat.icon === 'package' ? '📦' : '⭐'}
+                    </Text>
+                  </View>
+                  <Text style={styles.serviceCategoryName}>{cat.name}</Text>
+                  <ChevronRight size={18} color={Colors.textTertiary} />
+                </TouchableOpacity>
+              ))
+            )}
+          </View>
         )}
       </ScrollView>
     </View>
@@ -864,5 +931,69 @@ const styles = StyleSheet.create({
     color: Colors.white,
     fontSize: 15,
     fontWeight: "700" as const,
+  },
+  // Venues / Services Toggle
+  toggleRow: {
+    flexDirection: "row",
+    marginHorizontal: 20,
+    marginBottom: 14,
+    backgroundColor: Colors.surface,
+    borderRadius: 14,
+    padding: 4,
+  },
+  toggleButton: {
+    flex: 1,
+    paddingVertical: 10,
+    borderRadius: 11,
+    alignItems: "center",
+  },
+  toggleButtonActive: {
+    backgroundColor: Colors.primary,
+    shadowColor: Colors.primary,
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.2,
+    shadowRadius: 4,
+    elevation: 3,
+  },
+  toggleText: {
+    fontSize: 14,
+    fontWeight: "600" as const,
+    color: Colors.textSecondary,
+  },
+  toggleTextActive: {
+    color: Colors.white,
+  },
+  // Service categories grid
+  servicesContent: {
+    paddingHorizontal: 20,
+    paddingTop: 8,
+  },
+  serviceCategoryCard: {
+    flexDirection: "row",
+    alignItems: "center",
+    backgroundColor: Colors.white,
+    borderRadius: 16,
+    padding: 16,
+    marginBottom: 10,
+    borderWidth: 1,
+    borderColor: Colors.border,
+    gap: 14,
+  },
+  serviceCategoryIcon: {
+    width: 44,
+    height: 44,
+    borderRadius: 12,
+    backgroundColor: Colors.primaryLight,
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  serviceCategoryEmoji: {
+    fontSize: 20,
+  },
+  serviceCategoryName: {
+    flex: 1,
+    fontSize: 16,
+    fontWeight: "600" as const,
+    color: Colors.text,
   },
 });

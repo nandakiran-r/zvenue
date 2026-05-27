@@ -5,7 +5,7 @@ import jwt from '@fastify/jwt';
 import argon2 from 'argon2';
 import Razorpay from 'razorpay';
 import { db } from './db/index.js';
-import { users, venues, categories, bookings, notifications, otps, owners, support_tickets, reviews } from './db/schema.js';
+import { users, venues, categories, bookings, notifications, otps, owners, support_tickets, reviews, service_categories, service_listings, service_bookings, service_reviews, service_favorites } from './db/schema.js';
 import { eq, and, ilike, or, desc, asc, count, sum, sql, gte, lte, ne, avg } from 'drizzle-orm';
 import { geocodeAddress, buildAddress } from './lib/geocode.js';
 
@@ -3029,6 +3029,822 @@ fastify.get('/api/admin/reviews', { onRequest: [fastify.authenticate] }, async (
         total,
         totalPages: Math.ceil(total / limit),
       },
+    };
+  } catch (err) {
+    fastify.log.error(err);
+    return reply.status(500).send({ error: 'Internal Server Error' });
+  }
+});
+
+// ─── SERVICE MARKETPLACE ────────────────────────────────────────────────────
+
+// ─── SERVICE CATEGORIES CRUD ────────────────────────────────────────────────
+
+// Public: list active service categories
+fastify.get('/api/service-categories', async (request, reply) => {
+  try {
+    const data = await db.query.service_categories.findMany({
+      where: eq(service_categories.is_active, true),
+      orderBy: [asc(service_categories.sort_order)],
+    });
+    return data;
+  } catch (err) {
+    fastify.log.error(err);
+    return reply.status(500).send({ error: 'Internal Server Error' });
+  }
+});
+
+// Admin: list all service categories (including inactive)
+fastify.get('/api/admin/service-categories', { onRequest: [fastify.authenticate] }, async (request, reply) => {
+  try {
+    const data = await db.query.service_categories.findMany({
+      orderBy: [asc(service_categories.sort_order)],
+      with: { listings: { columns: { id: true } } },
+    });
+    return data.map(c => ({ ...c, listing_count: c.listings?.length || 0, listings: undefined }));
+  } catch (err) {
+    fastify.log.error(err);
+    return reply.status(500).send({ error: 'Internal Server Error' });
+  }
+});
+
+// Admin: create service category
+fastify.post('/api/service-categories', { onRequest: [fastify.authenticate] }, async (request, reply) => {
+  try {
+    const { name, icon, sort_order } = request.body;
+    if (!name) return reply.status(400).send({ error: 'Name is required' });
+    const [inserted] = await db.insert(service_categories).values({ name, icon: icon || 'star', sort_order: sort_order || 0 }).returning();
+    return inserted;
+  } catch (err) {
+    fastify.log.error(err);
+    return reply.status(500).send({ error: 'Internal Server Error' });
+  }
+});
+
+// Admin: update service category
+fastify.put('/api/service-categories/:id', { onRequest: [fastify.authenticate] }, async (request, reply) => {
+  try {
+    const [updated] = await db.update(service_categories).set(request.body).where(eq(service_categories.id, request.params.id)).returning();
+    return updated;
+  } catch (err) {
+    fastify.log.error(err);
+    return reply.status(500).send({ error: 'Internal Server Error' });
+  }
+});
+
+// Admin: delete service category
+fastify.delete('/api/service-categories/:id', { onRequest: [fastify.authenticate] }, async (request, reply) => {
+  try {
+    await db.delete(service_categories).where(eq(service_categories.id, request.params.id));
+    return { success: true };
+  } catch (err) {
+    fastify.log.error(err);
+    return reply.status(500).send({ error: 'Internal Server Error' });
+  }
+});
+
+// ─── SERVICE LISTINGS CRUD ──────────────────────────────────────────────────
+
+// Public: list active service listings (filtered by category, search, paginated)
+fastify.get('/api/service-listings', async (request, reply) => {
+  try {
+    const { category_id, search, page = '1', limit = '20', all } = request.query;
+    const pageNum = Math.max(1, parseInt(page));
+    const limitNum = Math.min(50, Math.max(1, parseInt(limit)));
+    const offset = (pageNum - 1) * limitNum;
+
+    let conditions = [];
+    if (!all) {
+      conditions.push(eq(service_listings.is_active, true));
+      conditions.push(eq(service_listings.approval_status, 'approved'));
+      conditions.push(sql`${service_listings.quantity_available} > 0`);
+    }
+    if (category_id) conditions.push(eq(service_listings.service_category_id, category_id));
+    if (search) {
+      conditions.push(sql`(${service_listings.name} ILIKE ${'%' + search + '%'} OR ${service_listings.description} ILIKE ${'%' + search + '%'})`);
+    }
+
+    const whereClause = conditions.length > 0 ? and(...conditions) : undefined;
+
+    const data = await db.query.service_listings.findMany({
+      where: whereClause,
+      with: { category: true, owner: { columns: { id: true, full_name: true, email: true } } },
+      orderBy: [desc(service_listings.rating), desc(service_listings.review_count), desc(service_listings.created_at)],
+      limit: limitNum,
+      offset,
+    });
+
+    return data;
+  } catch (err) {
+    fastify.log.error(err);
+    return reply.status(500).send({ error: 'Internal Server Error' });
+  }
+});
+
+// Public: get single service listing
+fastify.get('/api/service-listings/:id', async (request, reply) => {
+  try {
+    const data = await db.query.service_listings.findFirst({
+      where: eq(service_listings.id, request.params.id),
+      with: { category: true, owner: { columns: { id: true, full_name: true } } },
+    });
+    return data || reply.status(404).send({ error: 'Service listing not found' });
+  } catch (err) {
+    fastify.log.error(err);
+    return reply.status(500).send({ error: 'Internal Server Error' });
+  }
+});
+
+// Admin: create service listing
+fastify.post('/api/service-listings', { onRequest: [fastify.authenticate] }, async (request, reply) => {
+  try {
+    const body = request.body;
+    if (!body.name || !body.service_category_id || !body.price || !body.city) {
+      return reply.status(400).send({ error: 'Name, category, price, and city are required' });
+    }
+    if (body.images && body.images.length > 5) {
+      return reply.status(400).send({ error: 'Maximum 5 images allowed' });
+    }
+    if (body.subscriber_discount_percent && (body.subscriber_discount_percent < 0 || body.subscriber_discount_percent > 50)) {
+      return reply.status(400).send({ error: 'Subscriber discount must be between 0 and 50%' });
+    }
+    const [inserted] = await db.insert(service_listings).values({
+      ...body,
+      approval_status: 'approved',
+      images: body.images || [],
+      subscriber_benefits: body.subscriber_benefits || [],
+    }).returning();
+    const data = await db.query.service_listings.findFirst({
+      where: eq(service_listings.id, inserted.id),
+      with: { category: true },
+    });
+    return data;
+  } catch (err) {
+    fastify.log.error(err);
+    return reply.status(500).send({ error: 'Internal Server Error' });
+  }
+});
+
+// Admin: update service listing
+fastify.put('/api/service-listings/:id', { onRequest: [fastify.authenticate] }, async (request, reply) => {
+  try {
+    const body = request.body;
+    if (body.images && body.images.length > 5) {
+      return reply.status(400).send({ error: 'Maximum 5 images allowed' });
+    }
+    await db.update(service_listings).set(body).where(eq(service_listings.id, request.params.id));
+    const data = await db.query.service_listings.findFirst({
+      where: eq(service_listings.id, request.params.id),
+      with: { category: true },
+    });
+    return data;
+  } catch (err) {
+    fastify.log.error(err);
+    return reply.status(500).send({ error: 'Internal Server Error' });
+  }
+});
+
+// Admin: delete service listing
+fastify.delete('/api/service-listings/:id', { onRequest: [fastify.authenticate] }, async (request, reply) => {
+  try {
+    await db.delete(service_listings).where(eq(service_listings.id, request.params.id));
+    return { success: true };
+  } catch (err) {
+    fastify.log.error(err);
+    return reply.status(500).send({ error: 'Internal Server Error' });
+  }
+});
+
+// Admin: approve service listing
+fastify.post('/api/service-listings/:id/approve', { onRequest: [fastify.authenticate] }, async (request, reply) => {
+  try {
+    const listing = await db.query.service_listings.findFirst({ where: eq(service_listings.id, request.params.id) });
+    if (!listing) return reply.status(404).send({ error: 'Listing not found' });
+
+    if (listing.approval_status === 'pending_changes' && listing.pending_changes) {
+      await db.update(service_listings).set({ ...listing.pending_changes, approval_status: 'approved', pending_changes: null }).where(eq(service_listings.id, request.params.id));
+    } else {
+      await db.update(service_listings).set({ approval_status: 'approved', pending_changes: null }).where(eq(service_listings.id, request.params.id));
+    }
+    return { success: true, message: 'Service listing approved' };
+  } catch (err) {
+    fastify.log.error(err);
+    return reply.status(500).send({ error: 'Internal Server Error' });
+  }
+});
+
+// Admin: reject service listing
+fastify.post('/api/service-listings/:id/reject', { onRequest: [fastify.authenticate] }, async (request, reply) => {
+  try {
+    await db.update(service_listings).set({ approval_status: 'rejected', pending_changes: null }).where(eq(service_listings.id, request.params.id));
+    return { success: true, message: 'Service listing rejected' };
+  } catch (err) {
+    fastify.log.error(err);
+    return reply.status(500).send({ error: 'Internal Server Error' });
+  }
+});
+
+// ─── SERVICE BOOKINGS & PAYMENT ─────────────────────────────────────────────
+
+// Generate unique Service Booking ID (ZSID-XXXXXXXX)
+async function generateServiceBookingDisplayId() {
+  for (let attempt = 0; attempt < 10; attempt++) {
+    const digits = String(Math.floor(10000000 + Math.random() * 90000000));
+    const displayId = `ZSID-${digits}`;
+    const existing = await db.query.service_bookings.findFirst({
+      where: eq(service_bookings.booking_id_display, displayId),
+      columns: { id: true },
+    });
+    if (!existing) return displayId;
+  }
+  return `ZSID-${Date.now().toString().slice(-8)}`;
+}
+
+// User: create Razorpay order for service purchase
+fastify.post('/api/service-bookings/create-order', { onRequest: [fastify.authenticate] }, async (request, reply) => {
+  try {
+    const { service_listing_id, quantity } = request.body;
+    const user_id = request.user.id;
+
+    if (!service_listing_id || !quantity || quantity < 1) {
+      return reply.status(400).send({ error: 'Service listing ID and quantity are required' });
+    }
+
+    // Get listing and validate stock
+    const listing = await db.query.service_listings.findFirst({
+      where: eq(service_listings.id, service_listing_id),
+      columns: { id: true, name: true, price: true, quantity_available: true, subscriber_discount_percent: true, city: true, images: true, owner_name: true },
+    });
+
+    if (!listing) return reply.status(404).send({ error: 'Service listing not found' });
+    if (listing.quantity_available < quantity) {
+      return reply.status(400).send({ error: `Insufficient stock. Only ${listing.quantity_available} items available.` });
+    }
+
+    // Get user details
+    const user = await db.query.users.findFirst({
+      where: eq(users.id, user_id),
+      columns: { email: true, full_name: true, phone_number: true, subscription_status: true },
+    });
+    if (!user) return reply.status(404).send({ error: 'User not found' });
+
+    // Calculate amount with subscriber discount
+    let totalAmount = listing.price * quantity;
+    let discountApplied = 0;
+    const isSubscriber = user.subscription_status === 'active' || user.subscription_status === 'authenticated';
+    if (isSubscriber && listing.subscriber_discount_percent > 0) {
+      discountApplied = Math.round(totalAmount * listing.subscriber_discount_percent / 100);
+      totalAmount = totalAmount - discountApplied;
+    }
+
+    // Create Razorpay order
+    const order = await razorpay.orders.create({
+      amount: Math.round(totalAmount * 100), // paise
+      currency: 'INR',
+      receipt: `service_${Date.now()}`,
+      notes: { user_id, service_listing_id, quantity: String(quantity) },
+    });
+
+    // Create pending booking
+    const displayId = await generateServiceBookingDisplayId();
+    const [booking] = await db.insert(service_bookings).values({
+      booking_id_display: displayId,
+      service_listing_id,
+      user_id,
+      quantity,
+      unit_price: listing.price,
+      discount_applied: discountApplied,
+      total_amount: totalAmount,
+      order_id: order.id,
+      status: 'pending',
+    }).returning();
+
+    return { order, booking, listing: { name: listing.name, city: listing.city, images: listing.images } };
+  } catch (err) {
+    fastify.log.error('Service create-order error:', err);
+    return reply.status(500).send({ error: 'Failed to create payment order' });
+  }
+});
+
+// User: verify service payment
+fastify.post('/api/service-bookings/verify-payment', { onRequest: [fastify.authenticate] }, async (request, reply) => {
+  try {
+    const { order_id, payment_id, signature, booking_id } = request.body;
+    const user_id = request.user.id;
+
+    if (!order_id || !payment_id || !signature || !booking_id) {
+      return reply.status(400).send({ error: 'Missing payment verification details' });
+    }
+
+    const booking = await db.query.service_bookings.findFirst({
+      where: and(eq(service_bookings.id, booking_id), eq(service_bookings.user_id, user_id)),
+    });
+    if (!booking) return reply.status(404).send({ error: 'Booking not found' });
+
+    // Verify signature
+    const crypto = await import('crypto');
+    const expectedSignature = crypto.createHmac('sha256', process.env.RAZORPAY_KEY_SECRET)
+      .update(order_id + '|' + payment_id)
+      .digest('hex');
+
+    if (signature !== expectedSignature) {
+      await db.update(service_bookings).set({ status: 'payment_failed' }).where(eq(service_bookings.id, booking_id));
+      return reply.status(400).send({ error: 'Invalid payment signature' });
+    }
+
+    // Atomically confirm booking and decrement stock
+    await db.update(service_bookings).set({ status: 'confirmed', payment_id, signature }).where(eq(service_bookings.id, booking_id));
+    await db.update(service_listings).set({
+      quantity_available: sql`${service_listings.quantity_available} - ${booking.quantity}`,
+    }).where(eq(service_listings.id, booking.service_listing_id));
+
+    // Create notification
+    await db.insert(notifications).values({
+      user_id,
+      title: 'Service Booking Confirmed!',
+      body: `Your service booking ${booking.booking_id_display} has been confirmed.`,
+      type: 'service_booking',
+      is_read: false,
+      data: { booking_id, booking_id_display: booking.booking_id_display },
+    });
+
+    // Push notification
+    const userForPush = await db.query.users.findFirst({ where: eq(users.id, user_id), columns: { push_token: true } });
+    if (userForPush?.push_token) {
+      sendPushNotification(userForPush.push_token, 'Service Booking Confirmed! ✅', `Booking ${booking.booking_id_display} confirmed.`, { booking_id });
+    }
+
+    const updatedBooking = await db.query.service_bookings.findFirst({
+      where: eq(service_bookings.id, booking_id),
+      with: { listing: { columns: { name: true, city: true, images: true, owner_name: true } } },
+    });
+
+    return { success: true, booking: updatedBooking };
+  } catch (err) {
+    fastify.log.error('Service verify-payment error:', err);
+    return reply.status(500).send({ error: 'Payment verification failed' });
+  }
+});
+
+// User: list own service bookings
+fastify.get('/api/service-bookings', { onRequest: [fastify.authenticate] }, async (request, reply) => {
+  try {
+    const { user_id } = request.query;
+    const uid = user_id || request.user.id;
+    const data = await db.query.service_bookings.findMany({
+      where: eq(service_bookings.user_id, uid),
+      with: { listing: { columns: { id: true, name: true, city: true, images: true } } },
+      orderBy: [desc(service_bookings.created_at)],
+    });
+    return data;
+  } catch (err) {
+    fastify.log.error(err);
+    return reply.status(500).send({ error: 'Internal Server Error' });
+  }
+});
+
+// User: get single service booking
+fastify.get('/api/service-bookings/:id', { onRequest: [fastify.authenticate] }, async (request, reply) => {
+  try {
+    const data = await db.query.service_bookings.findFirst({
+      where: eq(service_bookings.id, request.params.id),
+      with: {
+        listing: { with: { category: true } },
+        user: { columns: { id: true, full_name: true, email: true, phone_number: true } },
+      },
+    });
+    return data || reply.status(404).send({ error: 'Booking not found' });
+  } catch (err) {
+    fastify.log.error(err);
+    return reply.status(500).send({ error: 'Internal Server Error' });
+  }
+});
+
+// User: cancel service booking (within 24h)
+fastify.post('/api/service-bookings/:id/cancel', { onRequest: [fastify.authenticate] }, async (request, reply) => {
+  try {
+    const booking = await db.query.service_bookings.findFirst({
+      where: and(eq(service_bookings.id, request.params.id), eq(service_bookings.user_id, request.user.id)),
+    });
+    if (!booking) return reply.status(404).send({ error: 'Booking not found' });
+    if (booking.status !== 'confirmed') return reply.status(400).send({ error: 'Only confirmed bookings can be cancelled' });
+
+    // Check 24h window
+    const createdAt = new Date(booking.created_at);
+    const now = new Date();
+    const hoursSinceCreation = (now - createdAt) / (1000 * 60 * 60);
+    if (hoursSinceCreation > 24) {
+      return reply.status(400).send({ error: 'Cancellation window (24 hours) has expired' });
+    }
+
+    // Update status and restore quantity
+    await db.update(service_bookings).set({ status: 'cancelled', cancellation_reason: request.body?.reason || 'User cancelled' }).where(eq(service_bookings.id, booking.id));
+    await db.update(service_listings).set({
+      quantity_available: sql`${service_listings.quantity_available} + ${booking.quantity}`,
+    }).where(eq(service_listings.id, booking.service_listing_id));
+
+    // Initiate Razorpay refund
+    if (booking.payment_id) {
+      try {
+        await razorpay.payments.refund(booking.payment_id, { amount: Math.round(booking.total_amount * 100) });
+        await db.update(service_bookings).set({ status: 'refunded', refunded_at: new Date() }).where(eq(service_bookings.id, booking.id));
+      } catch (refundErr) {
+        fastify.log.error('Refund failed:', refundErr.message);
+      }
+    }
+
+    // Notify user
+    await db.insert(notifications).values({
+      user_id: request.user.id,
+      title: 'Service Booking Cancelled',
+      body: `Your booking ${booking.booking_id_display} has been cancelled. Refund will be processed within 5-7 business days.`,
+      type: 'service_booking',
+      is_read: false,
+      data: { booking_id: booking.id },
+    });
+
+    return { success: true, message: 'Booking cancelled and refund initiated' };
+  } catch (err) {
+    fastify.log.error(err);
+    return reply.status(500).send({ error: 'Failed to cancel booking' });
+  }
+});
+
+// Admin: list all service bookings
+fastify.get('/api/admin/service-bookings', { onRequest: [fastify.authenticate] }, async (request, reply) => {
+  try {
+    const { status, category_id, date_from, date_to, page = '1' } = request.query;
+    const pageNum = Math.max(1, parseInt(page));
+    const offset = (pageNum - 1) * 20;
+
+    let conditions = [];
+    if (status && status !== 'all') conditions.push(eq(service_bookings.status, status));
+    if (date_from) conditions.push(gte(service_bookings.created_at, new Date(date_from)));
+    if (date_to) conditions.push(lte(service_bookings.created_at, new Date(date_to)));
+
+    const whereClause = conditions.length > 0 ? and(...conditions) : undefined;
+
+    const data = await db.query.service_bookings.findMany({
+      where: whereClause,
+      with: {
+        listing: { columns: { id: true, name: true, city: true, service_category_id: true }, with: { category: { columns: { name: true } } } },
+        user: { columns: { id: true, full_name: true, email: true, phone_number: true } },
+      },
+      orderBy: [desc(service_bookings.created_at)],
+      limit: 20,
+      offset,
+    });
+
+    // Filter by category if needed (post-query since it's a nested relation)
+    let filtered = data;
+    if (category_id) {
+      filtered = data.filter(b => b.listing?.service_category_id === category_id);
+    }
+
+    const [{ total }] = await db.select({ total: count(service_bookings.id) }).from(service_bookings).where(whereClause);
+
+    return { bookings: filtered, pagination: { page: pageNum, limit: 20, total, totalPages: Math.ceil(total / 20) } };
+  } catch (err) {
+    fastify.log.error(err);
+    return reply.status(500).send({ error: 'Internal Server Error' });
+  }
+});
+
+// Admin: refund service booking
+fastify.post('/api/admin/service-bookings/:id/refund', { onRequest: [fastify.authenticate] }, async (request, reply) => {
+  try {
+    const booking = await db.query.service_bookings.findFirst({ where: eq(service_bookings.id, request.params.id) });
+    if (!booking) return reply.status(404).send({ error: 'Booking not found' });
+    if (booking.status !== 'confirmed') return reply.status(400).send({ error: 'Only confirmed bookings can be refunded' });
+
+    // Refund via Razorpay
+    if (booking.payment_id) {
+      try { await razorpay.payments.refund(booking.payment_id, { amount: Math.round(booking.total_amount * 100) }); } catch (e) { fastify.log.warn('Razorpay refund error:', e.message); }
+    }
+
+    // Update booking and restore stock
+    await db.update(service_bookings).set({ status: 'refunded', refunded_at: new Date(), cancellation_reason: request.body?.reason || 'Admin refund' }).where(eq(service_bookings.id, booking.id));
+    await db.update(service_listings).set({ quantity_available: sql`${service_listings.quantity_available} + ${booking.quantity}` }).where(eq(service_listings.id, booking.service_listing_id));
+
+    // Notify user
+    if (booking.user_id) {
+      await db.insert(notifications).values({ user_id: booking.user_id, title: 'Service Booking Refunded', body: `Your booking ${booking.booking_id_display} has been refunded.`, type: 'service_booking', is_read: false, data: { booking_id: booking.id } });
+    }
+
+    return { success: true, message: 'Refund processed' };
+  } catch (err) {
+    fastify.log.error(err);
+    return reply.status(500).send({ error: 'Failed to process refund' });
+  }
+});
+
+// ─── SERVICE REVIEWS ────────────────────────────────────────────────────────
+
+// Helper: recalculate service listing rating
+async function recalculateServiceListingRating(listingId) {
+  const result = await db.select({ avgRating: avg(service_reviews.rating), reviewCount: count(service_reviews.id) }).from(service_reviews).where(eq(service_reviews.service_listing_id, listingId));
+  const avgRating = result[0]?.avgRating ? Math.round(parseFloat(result[0].avgRating) * 10) / 10 : 0;
+  const reviewCount = result[0]?.reviewCount || 0;
+  await db.update(service_listings).set({ rating: avgRating, review_count: reviewCount }).where(eq(service_listings.id, listingId));
+}
+
+// Public: get reviews for a service listing
+fastify.get('/api/service-listings/:id/reviews', async (request, reply) => {
+  try {
+    const { id: listingId } = request.params;
+    const page = Math.max(1, parseInt(request.query.page) || 1);
+    const limit = Math.min(50, Math.max(1, parseInt(request.query.limit) || 10));
+    const offset = (page - 1) * limit;
+
+    const [{ total }] = await db.select({ total: count(service_reviews.id) }).from(service_reviews).where(eq(service_reviews.service_listing_id, listingId));
+    const reviewsList = await db.query.service_reviews.findMany({
+      where: eq(service_reviews.service_listing_id, listingId),
+      orderBy: [desc(service_reviews.created_at)],
+      limit, offset,
+      with: { user: { columns: { id: true, full_name: true, avatar_url: true } } },
+    });
+
+    return { reviews: reviewsList, pagination: { page, limit, total, totalPages: Math.ceil(total / limit) } };
+  } catch (err) {
+    fastify.log.error(err);
+    return reply.status(500).send({ error: 'Internal Server Error' });
+  }
+});
+
+// User: check review eligibility
+fastify.get('/api/service-reviews/eligibility/:listingId', { onRequest: [fastify.authenticate] }, async (request, reply) => {
+  try {
+    const { listingId } = request.params;
+    const userId = request.user.id;
+    const qualifying = await db.query.service_bookings.findFirst({
+      where: and(eq(service_bookings.service_listing_id, listingId), eq(service_bookings.user_id, userId), eq(service_bookings.status, 'confirmed')),
+    });
+    const existingReview = await db.query.service_reviews.findFirst({
+      where: and(eq(service_reviews.service_listing_id, listingId), eq(service_reviews.user_id, userId)),
+    });
+    return { eligible: !!qualifying, existing_review: existingReview || null };
+  } catch (err) {
+    fastify.log.error(err);
+    return reply.status(500).send({ error: 'Internal Server Error' });
+  }
+});
+
+// User: create/upsert service review
+fastify.post('/api/service-reviews', { onRequest: [fastify.authenticate] }, async (request, reply) => {
+  try {
+    const { service_listing_id, rating, comment } = request.body;
+    const userId = request.user.id;
+    if (!rating || rating < 1 || rating > 5) return reply.status(400).send({ error: 'Rating must be 1-5' });
+    if (comment && comment.length > 500) return reply.status(400).send({ error: 'Comment max 500 characters' });
+
+    // Check eligibility
+    const qualifying = await db.query.service_bookings.findFirst({
+      where: and(eq(service_bookings.service_listing_id, service_listing_id), eq(service_bookings.user_id, userId), eq(service_bookings.status, 'confirmed')),
+    });
+    if (!qualifying) return reply.status(403).send({ error: 'You must have a confirmed booking to review' });
+
+    // Upsert
+    const existing = await db.query.service_reviews.findFirst({
+      where: and(eq(service_reviews.service_listing_id, service_listing_id), eq(service_reviews.user_id, userId)),
+    });
+
+    let result;
+    if (existing) {
+      const [updated] = await db.update(service_reviews).set({ rating, comment: comment || null, updated_at: new Date() }).where(eq(service_reviews.id, existing.id)).returning();
+      result = updated;
+    } else {
+      const [inserted] = await db.insert(service_reviews).values({ service_listing_id, user_id: userId, rating, comment: comment || null }).returning();
+      result = inserted;
+    }
+
+    await recalculateServiceListingRating(service_listing_id);
+    return reply.status(existing ? 200 : 201).send(result);
+  } catch (err) {
+    fastify.log.error(err);
+    return reply.status(500).send({ error: 'Internal Server Error' });
+  }
+});
+
+// User: update own service review
+fastify.put('/api/service-reviews/:id', { onRequest: [fastify.authenticate] }, async (request, reply) => {
+  try {
+    const review = await db.query.service_reviews.findFirst({ where: eq(service_reviews.id, request.params.id) });
+    if (!review) return reply.status(404).send({ error: 'Review not found' });
+    if (review.user_id !== request.user.id) return reply.status(403).send({ error: 'Can only edit your own reviews' });
+    const { rating, comment } = request.body;
+    const [updated] = await db.update(service_reviews).set({ ...(rating && { rating }), ...(comment !== undefined && { comment: comment || null }), updated_at: new Date() }).where(eq(service_reviews.id, review.id)).returning();
+    await recalculateServiceListingRating(review.service_listing_id);
+    return updated;
+  } catch (err) {
+    fastify.log.error(err);
+    return reply.status(500).send({ error: 'Internal Server Error' });
+  }
+});
+
+// User/Admin: delete service review
+fastify.delete('/api/service-reviews/:id', { onRequest: [fastify.authenticate] }, async (request, reply) => {
+  try {
+    const review = await db.query.service_reviews.findFirst({ where: eq(service_reviews.id, request.params.id) });
+    if (!review) return reply.status(404).send({ error: 'Review not found' });
+    if (review.user_id !== request.user.id && request.user.role !== 'admin') return reply.status(403).send({ error: 'Insufficient permissions' });
+    await db.delete(service_reviews).where(eq(service_reviews.id, review.id));
+    await recalculateServiceListingRating(review.service_listing_id);
+    return { success: true };
+  } catch (err) {
+    fastify.log.error(err);
+    return reply.status(500).send({ error: 'Internal Server Error' });
+  }
+});
+
+// Admin: list all service reviews
+fastify.get('/api/admin/service-reviews', { onRequest: [fastify.authenticate] }, async (request, reply) => {
+  try {
+    const page = Math.max(1, parseInt(request.query.page) || 1);
+    const limit = 20;
+    const offset = (page - 1) * limit;
+    const [{ total }] = await db.select({ total: count(service_reviews.id) }).from(service_reviews);
+    const reviewsList = await db.query.service_reviews.findMany({
+      orderBy: [desc(service_reviews.created_at)], limit, offset,
+      with: { user: { columns: { id: true, full_name: true, avatar_url: true } }, listing: { columns: { id: true, name: true, city: true } } },
+    });
+    return { reviews: reviewsList, pagination: { page, limit, total, totalPages: Math.ceil(total / limit) } };
+  } catch (err) {
+    fastify.log.error(err);
+    return reply.status(500).send({ error: 'Internal Server Error' });
+  }
+});
+
+// ─── SERVICE FAVORITES ──────────────────────────────────────────────────────
+
+fastify.get('/api/service-favorites', { onRequest: [fastify.authenticate] }, async (request, reply) => {
+  try {
+    const data = await db.query.service_favorites.findMany({
+      where: eq(service_favorites.user_id, request.user.id),
+      with: { listing: { columns: { id: true, name: true, city: true, images: true, price: true, rating: true, review_count: true } } },
+      orderBy: [desc(service_favorites.created_at)],
+    });
+    return data.map(f => f.listing).filter(Boolean);
+  } catch (err) {
+    fastify.log.error(err);
+    return reply.status(500).send({ error: 'Internal Server Error' });
+  }
+});
+
+fastify.post('/api/service-favorites', { onRequest: [fastify.authenticate] }, async (request, reply) => {
+  try {
+    const { service_listing_id } = request.body;
+    if (!service_listing_id) return reply.status(400).send({ error: 'service_listing_id required' });
+    await db.insert(service_favorites).values({ service_listing_id, user_id: request.user.id }).onConflictDoNothing();
+    return { success: true };
+  } catch (err) {
+    fastify.log.error(err);
+    return reply.status(500).send({ error: 'Internal Server Error' });
+  }
+});
+
+fastify.delete('/api/service-favorites/:listingId', { onRequest: [fastify.authenticate] }, async (request, reply) => {
+  try {
+    await db.delete(service_favorites).where(and(eq(service_favorites.service_listing_id, request.params.listingId), eq(service_favorites.user_id, request.user.id)));
+    return { success: true };
+  } catch (err) {
+    fastify.log.error(err);
+    return reply.status(500).send({ error: 'Internal Server Error' });
+  }
+});
+
+// ─── UNIFIED SEARCH ─────────────────────────────────────────────────────────
+
+fastify.get('/api/search', async (request, reply) => {
+  try {
+    const { q, type = 'all' } = request.query;
+    if (!q || q.trim().length < 2) return { venues: [], services: [] };
+
+    const searchTerm = '%' + q.trim() + '%';
+    let venueResults = [];
+    let serviceResults = [];
+
+    if (type === 'all' || type === 'venues') {
+      venueResults = await db.query.venues.findMany({
+        where: and(eq(venues.approval_status, 'approved'), sql`${venues.registration_fee} > 0`, sql`(${venues.name} ILIKE ${searchTerm} OR ${venues.city} ILIKE ${searchTerm})`),
+        columns: { id: true, name: true, city: true, image_url: true, rating: true, price_per_day: true },
+        limit: 20,
+        orderBy: [desc(venues.rating)],
+      });
+    }
+
+    if (type === 'all' || type === 'services') {
+      serviceResults = await db.query.service_listings.findMany({
+        where: and(eq(service_listings.is_active, true), eq(service_listings.approval_status, 'approved'), sql`${service_listings.quantity_available} > 0`, sql`(${service_listings.name} ILIKE ${searchTerm} OR ${service_listings.description} ILIKE ${searchTerm})`),
+        columns: { id: true, name: true, city: true, images: true, rating: true, price: true },
+        with: { category: { columns: { name: true } } },
+        limit: 20,
+        orderBy: [desc(service_listings.rating)],
+      });
+    }
+
+    return {
+      venues: venueResults.map(v => ({ ...v, type: 'venue' })),
+      services: serviceResults.map(s => ({ ...s, type: 'service', image_url: s.images?.[0] || null })),
+    };
+  } catch (err) {
+    fastify.log.error(err);
+    return reply.status(500).send({ error: 'Internal Server Error' });
+  }
+});
+
+// ─── OWNER SERVICE ENDPOINTS ────────────────────────────────────────────────
+
+fastify.get('/api/owners/services', { onRequest: [fastify.authenticate] }, async (request, reply) => {
+  try {
+    if (request.user.role !== 'owner') return reply.status(403).send({ error: 'Not an owner' });
+    const data = await db.query.service_listings.findMany({
+      where: eq(service_listings.owner_id, request.user.id),
+      with: { category: true },
+      orderBy: [desc(service_listings.created_at)],
+    });
+    return data;
+  } catch (err) {
+    fastify.log.error(err);
+    return reply.status(500).send({ error: 'Internal Server Error' });
+  }
+});
+
+fastify.post('/api/owners/services', { onRequest: [fastify.authenticate] }, async (request, reply) => {
+  try {
+    if (request.user.role !== 'owner') return reply.status(403).send({ error: 'Not an owner' });
+    const body = request.body;
+    const [inserted] = await db.insert(service_listings).values({
+      ...body,
+      owner_id: request.user.id,
+      approval_status: 'pending_review',
+      images: body.images || [],
+      subscriber_benefits: body.subscriber_benefits || [],
+    }).returning();
+    return inserted;
+  } catch (err) {
+    fastify.log.error(err);
+    return reply.status(500).send({ error: 'Internal Server Error' });
+  }
+});
+
+fastify.put('/api/owners/services/:id', { onRequest: [fastify.authenticate] }, async (request, reply) => {
+  try {
+    if (request.user.role !== 'owner') return reply.status(403).send({ error: 'Not an owner' });
+    const listing = await db.query.service_listings.findFirst({ where: and(eq(service_listings.id, request.params.id), eq(service_listings.owner_id, request.user.id)) });
+    if (!listing) return reply.status(404).send({ error: 'Listing not found or not yours' });
+
+    if (listing.approval_status === 'approved') {
+      await db.update(service_listings).set({ pending_changes: request.body, approval_status: 'pending_changes' }).where(eq(service_listings.id, listing.id));
+      return { message: 'Changes submitted for admin approval' };
+    } else {
+      await db.update(service_listings).set(request.body).where(eq(service_listings.id, listing.id));
+      const updated = await db.query.service_listings.findFirst({ where: eq(service_listings.id, listing.id), with: { category: true } });
+      return updated;
+    }
+  } catch (err) {
+    fastify.log.error(err);
+    return reply.status(500).send({ error: 'Internal Server Error' });
+  }
+});
+
+fastify.put('/api/owners/services/:id/quantity', { onRequest: [fastify.authenticate] }, async (request, reply) => {
+  try {
+    if (request.user.role !== 'owner') return reply.status(403).send({ error: 'Not an owner' });
+    const { quantity_available } = request.body;
+    if (quantity_available == null || quantity_available < 0) return reply.status(400).send({ error: 'Valid quantity required' });
+    const listing = await db.query.service_listings.findFirst({ where: and(eq(service_listings.id, request.params.id), eq(service_listings.owner_id, request.user.id)) });
+    if (!listing) return reply.status(404).send({ error: 'Listing not found or not yours' });
+    await db.update(service_listings).set({ quantity_available }).where(eq(service_listings.id, listing.id));
+    return { success: true, quantity_available };
+  } catch (err) {
+    fastify.log.error(err);
+    return reply.status(500).send({ error: 'Internal Server Error' });
+  }
+});
+
+fastify.get('/api/owners/service-analytics', { onRequest: [fastify.authenticate] }, async (request, reply) => {
+  try {
+    if (request.user.role !== 'owner') return reply.status(403).send({ error: 'Not an owner' });
+    const ownerListings = await db.query.service_listings.findMany({ where: eq(service_listings.owner_id, request.user.id), columns: { id: true } });
+    const listingIds = ownerListings.map(l => l.id);
+    if (listingIds.length === 0) return { total_bookings: 0, total_revenue: 0, avg_rating: 0, listings_count: 0 };
+
+    const allBookings = await db.query.service_bookings.findMany({
+      where: sql`${service_bookings.service_listing_id} IN (${sql.join(listingIds.map(id => sql`${id}`), sql`, `)})`,
+      columns: { total_amount: true, status: true },
+    });
+
+    const confirmed = allBookings.filter(b => b.status === 'confirmed');
+    const totalRevenue = confirmed.reduce((sum, b) => sum + (b.total_amount || 0), 0);
+
+    const [ratingResult] = await db.select({ avgRating: avg(service_listings.rating) }).from(service_listings).where(sql`${service_listings.id} IN (${sql.join(listingIds.map(id => sql`${id}`), sql`, `)})`);
+
+    return {
+      total_bookings: allBookings.length,
+      confirmed_bookings: confirmed.length,
+      total_revenue: totalRevenue,
+      avg_rating: ratingResult?.avgRating ? Math.round(parseFloat(ratingResult.avgRating) * 10) / 10 : 0,
+      listings_count: listingIds.length,
     };
   } catch (err) {
     fastify.log.error(err);

@@ -133,4 +133,33 @@ export const fetchAdminReviews = (params?: {
 
 export const deleteAdminReview = (id: string) => api.delete(`/api/reviews/${id}`).then(r => r.data)
 
+// ─── Service Marketplace ───────────────────────────────────────────────────
+
+// Service Categories
+export const fetchServiceCategories = () => api.get('/api/service-categories').then(r => r.data)
+export const fetchAdminServiceCategories = () => api.get('/api/admin/service-categories').then(r => r.data)
+export const createServiceCategory = (data: Record<string, unknown>) => api.post('/api/service-categories', data).then(r => r.data)
+export const updateServiceCategory = (id: string, data: Record<string, unknown>) => api.put(`/api/service-categories/${id}`, data).then(r => r.data)
+export const deleteServiceCategory = (id: string) => api.delete(`/api/service-categories/${id}`).then(r => r.data)
+
+// Service Listings
+export const fetchServiceListings = (params?: Record<string, unknown>) => api.get('/api/service-listings', { params: { ...params, all: 'true' } }).then(r => r.data)
+export const fetchServiceListing = (id: string) => api.get(`/api/service-listings/${id}`).then(r => r.data)
+export const createServiceListing = (data: Record<string, unknown>) => api.post('/api/service-listings', data).then(r => r.data)
+export const updateServiceListing = (id: string, data: Record<string, unknown>) => api.put(`/api/service-listings/${id}`, data).then(r => r.data)
+export const deleteServiceListing = (id: string) => api.delete(`/api/service-listings/${id}`).then(r => r.data)
+export const approveServiceListing = (id: string) => api.post(`/api/service-listings/${id}/approve`).then(r => r.data)
+export const rejectServiceListing = (id: string) => api.post(`/api/service-listings/${id}/reject`).then(r => r.data)
+
+// Service Bookings
+export const fetchAdminServiceBookings = (params?: Record<string, unknown>) => api.get('/api/admin/service-bookings', { params }).then(r => r.data)
+export const refundServiceBooking = (id: string, reason?: string) => api.post(`/api/admin/service-bookings/${id}/refund`, { reason }).then(r => r.data)
+
+// Owner Services
+export const fetchOwnerServices = () => api.get('/api/owners/services').then(r => r.data)
+export const createOwnerService = (data: Record<string, unknown>) => api.post('/api/owners/services', data).then(r => r.data)
+export const updateOwnerService = (id: string, data: Record<string, unknown>) => api.put(`/api/owners/services/${id}`, data).then(r => r.data)
+export const updateOwnerServiceQuantity = (id: string, quantity: number) => api.put(`/api/owners/services/${id}/quantity`, { quantity_available: quantity }).then(r => r.data)
+export const fetchOwnerServiceAnalytics = () => api.get('/api/owners/service-analytics').then(r => r.data)
+
 export default api

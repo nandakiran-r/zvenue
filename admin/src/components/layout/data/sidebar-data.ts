@@ -16,6 +16,9 @@ import {
   KeyRound,
   LifeBuoy,
   Star,
+  ShoppingBag,
+  Receipt,
+  Layers,
 } from 'lucide-react'
 import { type SidebarData } from '../types'
 
@@ -95,6 +98,26 @@ export const sidebarData: SidebarData = {
           title: 'Reviews',
           url: '/reviews',
           icon: Star,
+        },
+      ],
+    },
+    {
+      title: 'Services',
+      items: [
+        {
+          title: 'Service Categories',
+          url: '/service-categories',
+          icon: Layers,
+        },
+        {
+          title: 'Service Listings',
+          url: '/service-listings',
+          icon: ShoppingBag,
+        },
+        {
+          title: 'Service Bookings',
+          url: '/service-bookings',
+          icon: Receipt,
         },
       ],
     },

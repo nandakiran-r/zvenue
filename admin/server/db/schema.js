@@ -148,6 +148,7 @@ export const reviews = pgTable('reviews', {
 export const ownersRelations = relations(owners, ({ many }) => ({
   venues: many(venues),
   tickets: many(support_tickets),
+  service_listings: many(service_listings),
 }));
 
 export const venuesRelations = relations(venues, ({ one, many }) => ({
@@ -171,6 +172,9 @@ export const usersRelations = relations(users, ({ many }) => ({
   bookings: many(bookings),
   notifications: many(notifications),
   reviews: many(reviews),
+  service_bookings: many(service_bookings),
+  service_reviews: many(service_reviews),
+  service_favorites: many(service_favorites),
 }));
 
 export const bookingsRelations = relations(bookings, ({ one }) => ({
@@ -205,6 +209,136 @@ export const reviewsRelations = relations(reviews, ({ one }) => ({
   }),
   user: one(users, {
     fields: [reviews.user_id],
+    references: [users.id],
+  }),
+}));
+
+// ─── SERVICE MARKETPLACE ────────────────────────────────────────────────────
+
+export const service_categories = pgTable('service_categories', {
+  id: uuid('id').primaryKey().defaultRandom(),
+  name: varchar('name', { length: 255 }).notNull(),
+  icon: varchar('icon', { length: 50 }).default('star'),
+  sort_order: integer('sort_order').default(0),
+  is_active: boolean('is_active').default(true),
+  created_at: timestamp('created_at').defaultNow(),
+});
+
+export const service_listings = pgTable('service_listings', {
+  id: uuid('id').primaryKey().defaultRandom(),
+  service_category_id: uuid('service_category_id').references(() => service_categories.id, { onDelete: 'cascade' }).notNull(),
+  owner_id: uuid('owner_id').references(() => owners.id, { onDelete: 'set null' }),
+  name: varchar('name', { length: 255 }).notNull(),
+  description: text('description'),
+  images: jsonb('images').default('[]'), // max 5 URLs
+  video_url: varchar('video_url', { length: 500 }),
+  price: real('price').notNull().default(0),
+  quantity_available: integer('quantity_available').notNull().default(0),
+  city: varchar('city', { length: 255 }).notNull(),
+  area: varchar('area', { length: 255 }),
+  subscriber_discount_percent: integer('subscriber_discount_percent').default(0), // 0-50
+  subscriber_benefits: jsonb('subscriber_benefits').default('[]'),
+  rating: real('rating').default(0),
+  review_count: integer('review_count').default(0),
+  is_active: boolean('is_active').default(true),
+  approval_status: varchar('approval_status', { length: 50 }).default('approved'), // pending_review, approved, pending_changes, rejected
+  pending_changes: jsonb('pending_changes'),
+  owner_name: varchar('owner_name', { length: 255 }),
+  owner_image: text('owner_image'),
+  created_at: timestamp('created_at').defaultNow(),
+});
+
+export const service_bookings = pgTable('service_bookings', {
+  id: uuid('id').primaryKey().defaultRandom(),
+  booking_id_display: varchar('booking_id_display', { length: 13 }).unique(),
+  service_listing_id: uuid('service_listing_id').references(() => service_listings.id, { onDelete: 'set null' }),
+  user_id: uuid('user_id').references(() => users.id, { onDelete: 'set null' }),
+  quantity: integer('quantity').notNull().default(1),
+  unit_price: real('unit_price').notNull(),
+  discount_applied: real('discount_applied').default(0),
+  total_amount: real('total_amount').notNull(),
+  payment_method: varchar('payment_method', { length: 50 }).default('razorpay'),
+  order_id: varchar('order_id', { length: 255 }),
+  payment_id: varchar('payment_id', { length: 255 }),
+  signature: varchar('signature', { length: 500 }),
+  status: varchar('status', { length: 50 }).notNull().default('pending'), // pending, confirmed, cancelled, refunded, payment_failed
+  cancellation_reason: text('cancellation_reason'),
+  refunded_at: timestamp('refunded_at'),
+  created_at: timestamp('created_at').defaultNow(),
+});
+
+export const service_reviews = pgTable('service_reviews', {
+  id: uuid('id').primaryKey().defaultRandom(),
+  service_listing_id: uuid('service_listing_id').references(() => service_listings.id, { onDelete: 'cascade' }).notNull(),
+  user_id: uuid('user_id').references(() => users.id, { onDelete: 'cascade' }).notNull(),
+  rating: integer('rating').notNull(), // 1-5
+  comment: text('comment'), // max 500 chars enforced at API level
+  created_at: timestamp('created_at').defaultNow(),
+  updated_at: timestamp('updated_at').defaultNow(),
+}, (table) => [
+  index('service_reviews_listing_idx').on(table.service_listing_id),
+  index('service_reviews_user_idx').on(table.user_id),
+  uniqueIndex('service_reviews_user_listing_unique').on(table.service_listing_id, table.user_id),
+]);
+
+export const service_favorites = pgTable('service_favorites', {
+  id: uuid('id').primaryKey().defaultRandom(),
+  service_listing_id: uuid('service_listing_id').references(() => service_listings.id, { onDelete: 'cascade' }).notNull(),
+  user_id: uuid('user_id').references(() => users.id, { onDelete: 'cascade' }).notNull(),
+  created_at: timestamp('created_at').defaultNow(),
+}, (table) => [
+  uniqueIndex('service_favorites_user_listing_unique').on(table.service_listing_id, table.user_id),
+]);
+
+// ─── SERVICE MARKETPLACE RELATIONS ──────────────────────────────────────────
+
+export const serviceCategoriesRelations = relations(service_categories, ({ many }) => ({
+  listings: many(service_listings),
+}));
+
+export const serviceListingsRelations = relations(service_listings, ({ one, many }) => ({
+  category: one(service_categories, {
+    fields: [service_listings.service_category_id],
+    references: [service_categories.id],
+  }),
+  owner: one(owners, {
+    fields: [service_listings.owner_id],
+    references: [owners.id],
+  }),
+  bookings: many(service_bookings),
+  reviews: many(service_reviews),
+  favorites: many(service_favorites),
+}));
+
+export const serviceBookingsRelations = relations(service_bookings, ({ one }) => ({
+  listing: one(service_listings, {
+    fields: [service_bookings.service_listing_id],
+    references: [service_listings.id],
+  }),
+  user: one(users, {
+    fields: [service_bookings.user_id],
+    references: [users.id],
+  }),
+}));
+
+export const serviceReviewsRelations = relations(service_reviews, ({ one }) => ({
+  listing: one(service_listings, {
+    fields: [service_reviews.service_listing_id],
+    references: [service_listings.id],
+  }),
+  user: one(users, {
+    fields: [service_reviews.user_id],
+    references: [users.id],
+  }),
+}));
+
+export const serviceFavoritesRelations = relations(service_favorites, ({ one }) => ({
+  listing: one(service_listings, {
+    fields: [service_favorites.service_listing_id],
+    references: [service_listings.id],
+  }),
+  user: one(users, {
+    fields: [service_favorites.user_id],
     references: [users.id],
   }),
 }));

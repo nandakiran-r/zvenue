@@ -37,6 +37,13 @@ function RootLayoutNav() {
       <Stack.Screen name="help" />
       <Stack.Screen name="write-review" />
       <Stack.Screen name="venue-reviews" />
+      {/* Service Marketplace Screens */}
+      <Stack.Screen name="service-listings" />
+      <Stack.Screen name="service-detail" />
+      <Stack.Screen name="service-booking-confirmed" options={{ presentation: "transparentModal", animation: "fade" }} />
+      <Stack.Screen name="view-service-booking" />
+      <Stack.Screen name="write-service-review" />
+      <Stack.Screen name="service-reviews" />
     </Stack>
   );
 }

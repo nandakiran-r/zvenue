@@ -28,6 +28,9 @@ import { Route as AuthenticatedTasksIndexRouteImport } from './routes/_authentic
 import { Route as AuthenticatedSupportIndexRouteImport } from './routes/_authenticated/support/index'
 import { Route as AuthenticatedSubscribersIndexRouteImport } from './routes/_authenticated/subscribers/index'
 import { Route as AuthenticatedSettingsIndexRouteImport } from './routes/_authenticated/settings/index'
+import { Route as AuthenticatedServiceListingsIndexRouteImport } from './routes/_authenticated/service-listings/index'
+import { Route as AuthenticatedServiceCategoriesIndexRouteImport } from './routes/_authenticated/service-categories/index'
+import { Route as AuthenticatedServiceBookingsIndexRouteImport } from './routes/_authenticated/service-bookings/index'
 import { Route as AuthenticatedReviewsIndexRouteImport } from './routes/_authenticated/reviews/index'
 import { Route as AuthenticatedOwnersIndexRouteImport } from './routes/_authenticated/owners/index'
 import { Route as AuthenticatedNotificationsIndexRouteImport } from './routes/_authenticated/notifications/index'
@@ -142,6 +145,24 @@ const AuthenticatedSettingsIndexRoute =
     path: '/',
     getParentRoute: () => AuthenticatedSettingsRouteRoute,
   } as any)
+const AuthenticatedServiceListingsIndexRoute =
+  AuthenticatedServiceListingsIndexRouteImport.update({
+    id: '/service-listings/',
+    path: '/service-listings/',
+    getParentRoute: () => AuthenticatedRouteRoute,
+  } as any)
+const AuthenticatedServiceCategoriesIndexRoute =
+  AuthenticatedServiceCategoriesIndexRouteImport.update({
+    id: '/service-categories/',
+    path: '/service-categories/',
+    getParentRoute: () => AuthenticatedRouteRoute,
+  } as any)
+const AuthenticatedServiceBookingsIndexRoute =
+  AuthenticatedServiceBookingsIndexRouteImport.update({
+    id: '/service-bookings/',
+    path: '/service-bookings/',
+    getParentRoute: () => AuthenticatedRouteRoute,
+  } as any)
 const AuthenticatedReviewsIndexRoute =
   AuthenticatedReviewsIndexRouteImport.update({
     id: '/reviews/',
@@ -252,6 +273,9 @@ export interface FileRoutesByFullPath {
   '/notifications/': typeof AuthenticatedNotificationsIndexRoute
   '/owners/': typeof AuthenticatedOwnersIndexRoute
   '/reviews/': typeof AuthenticatedReviewsIndexRoute
+  '/service-bookings/': typeof AuthenticatedServiceBookingsIndexRoute
+  '/service-categories/': typeof AuthenticatedServiceCategoriesIndexRoute
+  '/service-listings/': typeof AuthenticatedServiceListingsIndexRoute
   '/settings/': typeof AuthenticatedSettingsIndexRoute
   '/subscribers/': typeof AuthenticatedSubscribersIndexRoute
   '/support/': typeof AuthenticatedSupportIndexRoute
@@ -285,6 +309,9 @@ export interface FileRoutesByTo {
   '/notifications': typeof AuthenticatedNotificationsIndexRoute
   '/owners': typeof AuthenticatedOwnersIndexRoute
   '/reviews': typeof AuthenticatedReviewsIndexRoute
+  '/service-bookings': typeof AuthenticatedServiceBookingsIndexRoute
+  '/service-categories': typeof AuthenticatedServiceCategoriesIndexRoute
+  '/service-listings': typeof AuthenticatedServiceListingsIndexRoute
   '/settings': typeof AuthenticatedSettingsIndexRoute
   '/subscribers': typeof AuthenticatedSubscribersIndexRoute
   '/support': typeof AuthenticatedSupportIndexRoute
@@ -321,6 +348,9 @@ export interface FileRoutesById {
   '/_authenticated/notifications/': typeof AuthenticatedNotificationsIndexRoute
   '/_authenticated/owners/': typeof AuthenticatedOwnersIndexRoute
   '/_authenticated/reviews/': typeof AuthenticatedReviewsIndexRoute
+  '/_authenticated/service-bookings/': typeof AuthenticatedServiceBookingsIndexRoute
+  '/_authenticated/service-categories/': typeof AuthenticatedServiceCategoriesIndexRoute
+  '/_authenticated/service-listings/': typeof AuthenticatedServiceListingsIndexRoute
   '/_authenticated/settings/': typeof AuthenticatedSettingsIndexRoute
   '/_authenticated/subscribers/': typeof AuthenticatedSubscribersIndexRoute
   '/_authenticated/support/': typeof AuthenticatedSupportIndexRoute
@@ -357,6 +387,9 @@ export interface FileRouteTypes {
     | '/notifications/'
     | '/owners/'
     | '/reviews/'
+    | '/service-bookings/'
+    | '/service-categories/'
+    | '/service-listings/'
     | '/settings/'
     | '/subscribers/'
     | '/support/'
@@ -390,6 +423,9 @@ export interface FileRouteTypes {
     | '/notifications'
     | '/owners'
     | '/reviews'
+    | '/service-bookings'
+    | '/service-categories'
+    | '/service-listings'
     | '/settings'
     | '/subscribers'
     | '/support'
@@ -425,6 +461,9 @@ export interface FileRouteTypes {
     | '/_authenticated/notifications/'
     | '/_authenticated/owners/'
     | '/_authenticated/reviews/'
+    | '/_authenticated/service-bookings/'
+    | '/_authenticated/service-categories/'
+    | '/_authenticated/service-listings/'
     | '/_authenticated/settings/'
     | '/_authenticated/subscribers/'
     | '/_authenticated/support/'
@@ -582,6 +621,27 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AuthenticatedSettingsIndexRouteImport
       parentRoute: typeof AuthenticatedSettingsRouteRoute
     }
+    '/_authenticated/service-listings/': {
+      id: '/_authenticated/service-listings/'
+      path: '/service-listings'
+      fullPath: '/service-listings/'
+      preLoaderRoute: typeof AuthenticatedServiceListingsIndexRouteImport
+      parentRoute: typeof AuthenticatedRouteRoute
+    }
+    '/_authenticated/service-categories/': {
+      id: '/_authenticated/service-categories/'
+      path: '/service-categories'
+      fullPath: '/service-categories/'
+      preLoaderRoute: typeof AuthenticatedServiceCategoriesIndexRouteImport
+      parentRoute: typeof AuthenticatedRouteRoute
+    }
+    '/_authenticated/service-bookings/': {
+      id: '/_authenticated/service-bookings/'
+      path: '/service-bookings'
+      fullPath: '/service-bookings/'
+      preLoaderRoute: typeof AuthenticatedServiceBookingsIndexRouteImport
+      parentRoute: typeof AuthenticatedRouteRoute
+    }
     '/_authenticated/reviews/': {
       id: '/_authenticated/reviews/'
       path: '/reviews'
@@ -719,6 +779,9 @@ interface AuthenticatedRouteRouteChildren {
   AuthenticatedNotificationsIndexRoute: typeof AuthenticatedNotificationsIndexRoute
   AuthenticatedOwnersIndexRoute: typeof AuthenticatedOwnersIndexRoute
   AuthenticatedReviewsIndexRoute: typeof AuthenticatedReviewsIndexRoute
+  AuthenticatedServiceBookingsIndexRoute: typeof AuthenticatedServiceBookingsIndexRoute
+  AuthenticatedServiceCategoriesIndexRoute: typeof AuthenticatedServiceCategoriesIndexRoute
+  AuthenticatedServiceListingsIndexRoute: typeof AuthenticatedServiceListingsIndexRoute
   AuthenticatedSubscribersIndexRoute: typeof AuthenticatedSubscribersIndexRoute
   AuthenticatedSupportIndexRoute: typeof AuthenticatedSupportIndexRoute
   AuthenticatedTasksIndexRoute: typeof AuthenticatedTasksIndexRoute
@@ -739,6 +802,12 @@ const AuthenticatedRouteRouteChildren: AuthenticatedRouteRouteChildren = {
   AuthenticatedNotificationsIndexRoute: AuthenticatedNotificationsIndexRoute,
   AuthenticatedOwnersIndexRoute: AuthenticatedOwnersIndexRoute,
   AuthenticatedReviewsIndexRoute: AuthenticatedReviewsIndexRoute,
+  AuthenticatedServiceBookingsIndexRoute:
+    AuthenticatedServiceBookingsIndexRoute,
+  AuthenticatedServiceCategoriesIndexRoute:
+    AuthenticatedServiceCategoriesIndexRoute,
+  AuthenticatedServiceListingsIndexRoute:
+    AuthenticatedServiceListingsIndexRoute,
   AuthenticatedSubscribersIndexRoute: AuthenticatedSubscribersIndexRoute,
   AuthenticatedSupportIndexRoute: AuthenticatedSupportIndexRoute,
   AuthenticatedTasksIndexRoute: AuthenticatedTasksIndexRoute,

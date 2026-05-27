@@ -1,5 +1,4 @@
 import { router, useLocalSearchParams } from "expo-router";
-import { useAuth } from "@/context/AuthContext";
 import { safeBack } from "@/constants/navigation";
 import { api } from "@/lib/api";
 import { ChevronLeft, Mail, User, Phone } from "lucide-react-native";
@@ -52,8 +51,6 @@ export default function SignupScreen() {
   const insets = useSafeAreaInsets();
   const { warning, error: showError } = useToast();
 
-  const { login } = useAuth();
-
   const handleSignup = async () => {
     if (
       !firstName.trim() ||
@@ -69,26 +66,32 @@ export default function SignupScreen() {
       return;
     }
 
+    // Basic email validation
+    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+    if (!emailRegex.test(email.trim())) {
+      warning("Invalid Email", "Please enter a valid email address.");
+      return;
+    }
+
     setLoading(true);
     try {
       const formattedPhone = phone.startsWith("+91") ? phone : `+91${phone}`;
-      const response = await api.post("/api/auth/sign-up", {
+
+      // Step 1: Create account (do NOT login yet — OTP verification required first)
+      await api.post("/api/auth/sign-up", {
         first_name: firstName.trim(),
         last_name: lastName.trim(),
         email: email.trim(),
         phone_number: formattedPhone,
       });
 
-      // Auto-login after signup
-      await login(response.data.token, response.data.user);
-
-      // Send OTP automatically
+      // Step 2: Send OTP for phone verification
       await api.post("/api/auth/send-otp", { phone_number: formattedPhone });
 
-      // Navigate to OTP verification
+      // Step 3: Navigate to OTP screen — login happens AFTER successful verification
       router.replace({
         pathname: "/enter-otp",
-        params: { phone: formattedPhone },
+        params: { phone: formattedPhone, mode: "signup" },
       });
     } catch (err: any) {
       const message =

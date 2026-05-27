@@ -76,7 +76,16 @@ export default function EnterOtpScreen() {
       setTimer(52);
       success("Code Sent", "A new verification code has been sent.");
     } catch (err: any) {
-      showError("Error", "Could not resend code. Please try again.");
+      if (err.response?.status === 429) {
+        const retryAfter = err.response?.data?.retry_after || 30;
+        setTimer(retryAfter);
+        warning("Please Wait", err.response?.data?.error || `Try again in ${retryAfter} seconds.`);
+      } else if (!err.response) {
+        // Network error
+        showError("Connection Issue", "Check your internet connection and try again.");
+      } else {
+        showError("Error", err.response?.data?.error || "Could not resend code. Please try again.");
+      }
     }
   }, [phone]);
 
@@ -95,11 +104,21 @@ export default function EnterOtpScreen() {
         full_name: full_name
       });
       await login(response.data.token, response.data.user);
-      // Navigate to home - tabs layout will gate access (redirect to /subscription if needed)
       router.replace("/(tabs)/home");
     } catch (err: any) {
-      const message = err.response?.data?.error || "Invalid code. Please try again.";
-      showError("Verification Failed", message);
+      if (!err.response) {
+        // Network error — don't clear OTP inputs
+        showError("Connection Issue", "Check your internet and try again. Your OTP is still valid.");
+      } else if (err.response?.status === 423) {
+        // Account locked
+        showError("Account Locked", err.response?.data?.error || "Too many attempts. Try again later.");
+      } else {
+        const message = err.response?.data?.error || "Invalid code. Please try again.";
+        showError("Verification Failed", message);
+        // Clear OTP inputs on invalid code so user can re-enter
+        setOtp(["", "", "", "", "", ""]);
+        inputRefs.current[0]?.focus();
+      }
     } finally {
       setLoading(false);
     }

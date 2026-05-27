@@ -1435,12 +1435,95 @@ fastify.post('/api/admin/bookings/confirm-payment', { onRequest: [fastify.authen
 });
 
 
+// ─── OTP RATE LIMITING & BRUTE-FORCE PROTECTION ────────────────────────────
+// In-memory stores (reset on server restart — acceptable for this scale)
+const otpSendTracker = new Map(); // phone -> { count, firstSentAt, lastSentAt }
+const otpVerifyTracker = new Map(); // phone -> { attempts, lockedUntil }
+
+const OTP_COOLDOWN_SECONDS = 30; // Min seconds between sends
+const OTP_MAX_SENDS_PER_HOUR = 5; // Max sends per phone per hour
+const OTP_MAX_VERIFY_ATTEMPTS = 5; // Max wrong attempts before lock
+const OTP_LOCK_DURATION_MS = 15 * 60 * 1000; // 15 min lock after max attempts
+
+function checkOtpRateLimit(phone) {
+  const now = Date.now();
+  const tracker = otpSendTracker.get(phone);
+
+  if (!tracker) return { allowed: true };
+
+  // Cooldown check (30s between sends)
+  const secondsSinceLast = (now - tracker.lastSentAt) / 1000;
+  if (secondsSinceLast < OTP_COOLDOWN_SECONDS) {
+    const retryAfter = Math.ceil(OTP_COOLDOWN_SECONDS - secondsSinceLast);
+    return { allowed: false, reason: `Please wait ${retryAfter} seconds before requesting another OTP.`, retryAfter };
+  }
+
+  // Hourly limit check
+  const hourAgo = now - 3600000;
+  if (tracker.firstSentAt > hourAgo && tracker.count >= OTP_MAX_SENDS_PER_HOUR) {
+    const retryAfter = Math.ceil((tracker.firstSentAt + 3600000 - now) / 1000);
+    return { allowed: false, reason: 'Too many OTP requests. Please try again later.', retryAfter };
+  }
+
+  // Reset counter if first send was more than an hour ago
+  if (tracker.firstSentAt <= hourAgo) {
+    otpSendTracker.delete(phone);
+  }
+
+  return { allowed: true };
+}
+
+function recordOtpSend(phone) {
+  const now = Date.now();
+  const tracker = otpSendTracker.get(phone);
+  if (tracker) {
+    tracker.count += 1;
+    tracker.lastSentAt = now;
+  } else {
+    otpSendTracker.set(phone, { count: 1, firstSentAt: now, lastSentAt: now });
+  }
+}
+
+function checkVerifyLock(phone) {
+  const tracker = otpVerifyTracker.get(phone);
+  if (!tracker) return { locked: false };
+  if (tracker.lockedUntil && Date.now() < tracker.lockedUntil) {
+    const remainingMs = tracker.lockedUntil - Date.now();
+    const remainingMin = Math.ceil(remainingMs / 60000);
+    return { locked: true, reason: `Too many failed attempts. Try again in ${remainingMin} minute${remainingMin > 1 ? 's' : ''}.` };
+  }
+  // Lock expired, reset
+  if (tracker.lockedUntil && Date.now() >= tracker.lockedUntil) {
+    otpVerifyTracker.delete(phone);
+  }
+  return { locked: false };
+}
+
+function recordVerifyFailure(phone) {
+  const tracker = otpVerifyTracker.get(phone) || { attempts: 0, lockedUntil: null };
+  tracker.attempts += 1;
+  if (tracker.attempts >= OTP_MAX_VERIFY_ATTEMPTS) {
+    tracker.lockedUntil = Date.now() + OTP_LOCK_DURATION_MS;
+  }
+  otpVerifyTracker.set(phone, tracker);
+}
+
+function clearVerifyTracker(phone) {
+  otpVerifyTracker.delete(phone);
+}
+
 // ─── AUTHENTICATION ────────────────────────────────────────────────────────
 fastify.post('/api/auth/sign-up', async (request, reply) => {
   const { first_name, last_name, email, phone_number, password } = request.body;
   
   if (!first_name || !last_name || !email || !phone_number) {
     return reply.status(400).send({ error: 'All fields are mandatory' });
+  }
+
+  // Validate email format
+  const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+  if (!emailRegex.test(email)) {
+    return reply.status(400).send({ error: 'Invalid email format' });
   }
 
   try {
@@ -1519,6 +1602,12 @@ fastify.post('/api/auth/send-otp', async (request, reply) => {
   if (!phone_number) return reply.status(400).send({ error: 'Phone number is required' });
 
   try {
+    // Rate limiting check
+    const rateCheck = checkOtpRateLimit(phone_number);
+    if (!rateCheck.allowed) {
+      return reply.status(429).send({ error: rateCheck.reason, retry_after: rateCheck.retryAfter });
+    }
+
     // CHECK IF USER IS REGISTERED
     const user = await db.query.users.findFirst({
       where: eq(users.phone_number, phone_number)
@@ -1537,6 +1626,9 @@ fastify.post('/api/auth/send-otp', async (request, reply) => {
       otp,
       expires_at
     });
+
+    // Record the send for rate limiting
+    recordOtpSend(phone_number);
 
     // Strip +91 prefix for SMS API (needs just 10-digit number)
     const rawPhone = phone_number.replace(/^\+91/, '');
@@ -1631,14 +1723,33 @@ fastify.post('/api/auth/verify-otp', async (request, reply) => {
   if (!phone_number || !otp) return reply.status(400).send({ error: 'Phone number and OTP are required' });
 
   try {
+    // Brute-force protection: check if phone is locked
+    const lockCheck = checkVerifyLock(phone_number);
+    if (lockCheck.locked) {
+      return reply.status(423).send({ error: lockCheck.reason });
+    }
+
     const otpRecord = await db.query.otps.findFirst({
       where: eq(otps.phone_number, phone_number),
       orderBy: [desc(otps.created_at)]
     });
 
     if (!otpRecord) return reply.status(400).send({ error: 'Invalid or expired OTP' });
-    if (new Date() > otpRecord.expires_at) return reply.status(400).send({ error: 'OTP has expired' });
-    if (otpRecord.otp !== otp) return reply.status(400).send({ error: 'Invalid OTP' });
+    if (new Date() > otpRecord.expires_at) return reply.status(400).send({ error: 'OTP has expired. Please request a new one.' });
+
+    if (otpRecord.otp !== otp) {
+      // Record failed attempt
+      recordVerifyFailure(phone_number);
+      const tracker = otpVerifyTracker.get(phone_number);
+      const remaining = OTP_MAX_VERIFY_ATTEMPTS - (tracker?.attempts || 0);
+      if (remaining <= 0) {
+        return reply.status(423).send({ error: 'Too many failed attempts. Please try again in 15 minutes.' });
+      }
+      return reply.status(400).send({ error: `Invalid OTP. ${remaining} attempt${remaining > 1 ? 's' : ''} remaining.` });
+    }
+
+    // OTP is valid — clear brute-force tracker
+    clearVerifyTracker(phone_number);
 
     let user = await db.query.users.findFirst({
       where: eq(users.phone_number, phone_number)
@@ -1655,6 +1766,9 @@ fastify.post('/api/auth/verify-otp', async (request, reply) => {
         .where(eq(users.id, user.id));
       user = { ...user, phone_verified: true };
     }
+
+    // Cleanup: delete all OTPs for this phone number
+    await db.delete(otps).where(eq(otps.phone_number, phone_number));
 
     const token = fastify.jwt.sign({ id: user.id, phone_number: user.phone_number });
     return { token, user: {

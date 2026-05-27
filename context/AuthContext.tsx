@@ -1,6 +1,5 @@
-import React, { createContext, useContext, useEffect, useState, useCallback } from "react";
-import AsyncStorage from "@react-native-async-storage/async-storage";
-import { api, fetchUser, getSubscriptionStatus } from "@/lib/api";
+import React, { createContext, useContext, useEffect } from "react";
+import { useAuthStore } from "@/store/authStore";
 import type { DbUser, UserSubscriptionInfo } from "@/lib/types";
 
 interface AuthContextValue {
@@ -13,95 +12,29 @@ interface AuthContextValue {
   refreshProfile: () => Promise<void>;
   subscriptionInfo: UserSubscriptionInfo | null;
   refreshSubscriptionInfo: () => Promise<void>;
-  /** Whether user has an active subscription (for premium benefits) */
   isSubscribed: boolean;
 }
 
 const AuthContext = createContext<AuthContextValue | null>(null);
 
 export function AuthProvider({ children }: { children: React.ReactNode }) {
-  const [dbUser, setDbUser] = useState<DbUser | null>(null);
-  const [token, setToken] = useState<string | null>(null);
-  const [isLoaded, setIsLoaded] = useState(false);
-  const [subscriptionInfo, setSubscriptionInfo] = useState<UserSubscriptionInfo | null>(null);
+  const store = useAuthStore();
 
   useEffect(() => {
-    const loadToken = async () => {
-      try {
-        const storedToken = await AsyncStorage.getItem("token");
-        if (storedToken) {
-          setToken(storedToken);
-          const response = await api.get("/api/auth/me");
-          setDbUser(response.data);
-        }
-      } catch (error) {
-        console.log("Failed to load session:", error);
-        await AsyncStorage.removeItem("token");
-      } finally {
-        setIsLoaded(true);
-      }
-    };
-    loadToken();
+    store.initialize();
   }, []);
 
-  const login = async (newToken: string, newUser: DbUser) => {
-    try {
-      await AsyncStorage.setItem("token", newToken);
-      setToken(newToken);
-      setDbUser(newUser);
-    } catch (e) {
-      console.log("Failed to save token");
-    }
-  };
-
-  const signOut = async () => {
-    try {
-      await AsyncStorage.removeItem("token");
-      setToken(null);
-      setDbUser(null);
-      setSubscriptionInfo(null);
-    } catch (e) {
-      console.log("Failed to remove token");
-    }
-  };
-
-  const refreshProfile = useCallback(async () => {
-    if (!dbUser?.id) return;
-    try {
-      const profile = await fetchUser(dbUser.id);
-      if (profile) setDbUser(profile);
-    } catch (err) {
-      console.error("Failed to refresh profile:", err);
-    }
-  }, [dbUser?.id]);
-
-  const refreshSubscriptionInfo = useCallback(async () => {
-    if (!token) return;
-    try {
-      const status = await getSubscriptionStatus();
-      setSubscriptionInfo(status);
-    } catch (err) {
-      console.error("Failed to refresh subscription info:", err);
-    }
-  }, [token]);
-
-  useEffect(() => {
-    if (token && dbUser?.id) {
-      refreshSubscriptionInfo();
-    }
-  }, [token, dbUser?.id]);
-
   const value: AuthContextValue = {
-    isSignedIn: !!token,
-    isLoaded,
-    userId: dbUser?.id || null,
-    signOut,
-    login,
-    dbUser,
-    refreshProfile,
-    subscriptionInfo,
-    refreshSubscriptionInfo,
-    isSubscribed: subscriptionInfo?.is_subscribed || false,
+    isSignedIn: store.isSignedIn,
+    isLoaded: store.isLoaded,
+    userId: store.userId,
+    signOut: store.signOut,
+    login: store.login,
+    dbUser: store.dbUser,
+    refreshProfile: store.refreshProfile,
+    subscriptionInfo: store.subscriptionInfo,
+    refreshSubscriptionInfo: store.refreshSubscriptionInfo,
+    isSubscribed: store.isSubscribed,
   };
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;

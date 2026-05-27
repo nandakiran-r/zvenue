@@ -48,6 +48,8 @@ export interface DbVenue {
   created_at: string;
   /** Joined from categories table */
   category?: DbCategory;
+  /** Distance in km from user (when location-based query is used) */
+  distance?: number | null;
 }
 
 export interface DbNotification {
@@ -89,6 +91,9 @@ export interface VenueFilters {
   categoryName?: string;
   city?: string;
   minCapacity?: number;
+  lat?: number;
+  lng?: number;
+  radius?: number;
 }
 
 export interface CreateBookingInput {

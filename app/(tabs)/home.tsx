@@ -18,6 +18,7 @@ import { useSafeAreaInsets } from "react-native-safe-area-context";
 import Colors from "@/constants/colors";
 import { useAuth } from "@/context/AuthContext";
 import { useFavorites } from "@/context/FavoritesContext";
+import { useLocationStore } from "@/store/locationStore";
 import { fetchCategories, fetchVenues } from "@/lib/api";
 import type { DbCategory, DbVenue } from "@/lib/types";
 
@@ -50,6 +51,7 @@ export default function HomeScreen() {
   const insets = useSafeAreaInsets();
   
   const { isFavorite, toggleFavorite } = useFavorites();
+  const locationStore = useLocationStore();
 
   const [categories, setCategories] = useState<DbCategory[]>([]);
   const [venuesByCategory, setVenuesByCategory] = useState<Record<string, DbVenue[]>>({});
@@ -57,19 +59,46 @@ export default function HomeScreen() {
 
   const [selectedCategory, setSelectedCategory] = useState<string>("all");
   const [locationModalVisible, setLocationModalVisible] = useState(false);
-  const [selectedLocation, setSelectedLocation] = useState("Ahmedabad, Gujarat");
+  const [selectedLocation, setSelectedLocation] = useState("Detecting...");
   const [locationSearch, setLocationSearch] = useState("");
+  const [usingGPS, setUsingGPS] = useState(true);
 
+  // Initialize location on mount
+  useEffect(() => {
+    locationStore.initialize();
+  }, []);
+
+  // Update selected location when GPS resolves
+  useEffect(() => {
+    if (locationStore.city && locationStore.state) {
+      setSelectedLocation(`${locationStore.city}, ${locationStore.state}`);
+      setUsingGPS(true);
+    } else if (locationStore.error) {
+      setSelectedLocation("Ahmedabad, Gujarat");
+      setUsingGPS(false);
+    }
+  }, [locationStore.city, locationStore.state, locationStore.error]);
+
+  // Load data when location changes
   useEffect(() => {
     loadData();
-  }, []);
+  }, [locationStore.latitude, locationStore.longitude, locationStore.isLoading]);
 
   const loadData = async () => {
     try {
       setLoading(true);
+      const filters: any = {};
+
+      // Pass GPS coordinates if available for distance sorting
+      if (locationStore.latitude && locationStore.longitude) {
+        filters.lat = locationStore.latitude;
+        filters.lng = locationStore.longitude;
+        filters.radius = 50000; // Show all venues, sorted by nearest
+      }
+
       const [cats, allVenues] = await Promise.all([
         fetchCategories(),
-        fetchVenues(),
+        fetchVenues(filters),
       ]);
       setCategories(cats);
 
@@ -98,11 +127,15 @@ export default function HomeScreen() {
 
   const handleSelectCity = (city: { name: string; state: string }) => {
     setSelectedLocation(`${city.name}, ${city.state}`);
+    setUsingGPS(false);
     setLocationSearch("");
     setLocationModalVisible(false);
   };
 
-  const formatPrice = (amount: number) => `₹${amount.toLocaleString("en-IN")}`;
+  const formatPrice = (amount: number | null | undefined) => {
+    if (amount == null || isNaN(amount)) return "₹0";
+    return `₹${amount.toLocaleString("en-IN")}`;
+  };
 
   return (
     <View style={[styles.container, { paddingTop: insets.top }]}>
@@ -112,7 +145,11 @@ export default function HomeScreen() {
             <Text style={styles.locationLabel}>Location</Text>
             <View style={styles.locationRow}>
               <MapPin size={16} color={Colors.primary} />
-              <Text style={styles.locationText}>{selectedLocation}</Text>
+              {locationStore.isLoading ? (
+                <ActivityIndicator size="small" color={Colors.primary} style={{ marginLeft: 4 }} />
+              ) : (
+                <Text style={styles.locationText}>{selectedLocation}</Text>
+              )}
               <ChevronDown size={16} color={Colors.primary} style={{ marginLeft: 2 }} />
             </View>
           </TouchableOpacity>
@@ -162,7 +199,8 @@ export default function HomeScreen() {
               <TouchableOpacity
                 style={styles.currentLocationRow}
                 onPress={() => {
-                  setSelectedLocation("Current Location");
+                  locationStore.refreshLocation();
+                  setUsingGPS(true);
                   setLocationSearch("");
                   setLocationModalVisible(false);
                 }}
@@ -170,10 +208,19 @@ export default function HomeScreen() {
                 <View style={styles.currentLocationIcon}>
                   <Navigation size={16} color={Colors.primary} />
                 </View>
-                <View>
+                <View style={{ flex: 1 }}>
                   <Text style={styles.currentLocationText}>Use Current Location</Text>
-                  <Text style={styles.currentLocationSub}>GPS will detect your city</Text>
+                  <Text style={styles.currentLocationSub}>
+                    {locationStore.isLoading
+                      ? "Detecting..."
+                      : locationStore.city
+                      ? `${locationStore.city}, ${locationStore.state}`
+                      : "GPS will detect your city"}
+                  </Text>
                 </View>
+                {usingGPS && locationStore.city && (
+                  <View style={styles.selectedDot} />
+                )}
               </TouchableOpacity>
 
               {!locationSearch && (
@@ -339,7 +386,7 @@ export default function HomeScreen() {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: Colors.white,
+    backgroundColor: Colors.background,
   },
   scrollContent: {
     paddingBottom: 24,

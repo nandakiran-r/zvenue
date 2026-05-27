@@ -7,6 +7,7 @@ import { GestureHandlerRootView } from "react-native-gesture-handler";
 
 import { AuthProvider } from "@/context/AuthContext";
 import { FavoritesProvider } from "@/context/FavoritesContext";
+import { ErrorBoundary } from "@/components/ErrorBoundary";
 
 SplashScreen.preventAutoHideAsync();
 
@@ -43,14 +44,16 @@ export default function RootLayout() {
   }, []);
 
   return (
-    <AuthProvider>
-      <FavoritesProvider>
-        <QueryClientProvider client={queryClient}>
-          <GestureHandlerRootView style={{ flex: 1 }}>
-            <RootLayoutNav />
-          </GestureHandlerRootView>
-        </QueryClientProvider>
-      </FavoritesProvider>
-    </AuthProvider>
+    <ErrorBoundary>
+      <AuthProvider>
+        <FavoritesProvider>
+          <QueryClientProvider client={queryClient}>
+            <GestureHandlerRootView style={{ flex: 1 }}>
+              <RootLayoutNav />
+            </GestureHandlerRootView>
+          </QueryClientProvider>
+        </FavoritesProvider>
+      </AuthProvider>
+    </ErrorBoundary>
   );
 }

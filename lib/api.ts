@@ -48,9 +48,10 @@ export async function fetchCategories(): Promise<DbCategory[]> {
 export async function fetchVenues(filters?: VenueFilters): Promise<DbVenue[]> {
   const params: Record<string, any> = {};
   if (filters?.search) params.search = filters.search;
-  
-  // Notice: The previous Supabase filtering logic was slightly different. 
-  // We'll pass search params and let the backend handle it, or filter here.
+  if (filters?.lat != null) params.lat = filters.lat;
+  if (filters?.lng != null) params.lng = filters.lng;
+  if (filters?.radius != null) params.radius = filters.radius;
+
   const { data } = await api.get('/api/venues', { params });
   let venues = data as DbVenue[];
 

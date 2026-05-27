@@ -1,7 +1,5 @@
-import React, { createContext, useContext, useEffect, useState, useCallback, useRef } from "react";
-import AsyncStorage from "@react-native-async-storage/async-storage";
-
-const STORAGE_KEY = "@zvenue_favorites";
+import React, { createContext, useContext, useEffect } from "react";
+import { useFavoritesStore } from "@/store/favoritesStore";
 
 interface FavoritesContextType {
   favorites: string[];
@@ -13,60 +11,21 @@ interface FavoritesContextType {
 const FavoritesContext = createContext<FavoritesContextType | undefined>(undefined);
 
 export const FavoritesProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
-  const [favorites, setFavorites] = useState<string[]>([]);
-  const [isLoaded, setIsLoaded] = useState(false);
-  const favoritesRef = useRef<string[]>([]);
+  const store = useFavoritesStore();
 
-  // Keep ref in sync for use in persist
   useEffect(() => {
-    favoritesRef.current = favorites;
-  }, [favorites]);
-
-  // Load from AsyncStorage on mount
-  useEffect(() => {
-    (async () => {
-      try {
-        const raw = await AsyncStorage.getItem(STORAGE_KEY);
-        if (raw) {
-          const parsed: string[] = JSON.parse(raw);
-          setFavorites(parsed);
-          favoritesRef.current = parsed;
-        }
-      } catch (err) {
-        console.error("Failed to load favorites from storage:", err);
-      } finally {
-        setIsLoaded(true);
-      }
-    })();
+    store.initialize();
   }, []);
 
-  const persist = useCallback(async (next: string[]) => {
-    try {
-      await AsyncStorage.setItem(STORAGE_KEY, JSON.stringify(next));
-    } catch (err) {
-      console.error("Failed to persist favorites:", err);
-    }
-  }, []);
-
-  const toggleFavorite = useCallback(
-    (venueId: string) => {
-      setFavorites((prev) => {
-        const isFav = prev.includes(venueId);
-        const next = isFav ? prev.filter((id) => id !== venueId) : [...prev, venueId];
-        persist(next);
-        return next;
-      });
-    },
-    [persist]
-  );
-
-  const isFavorite = useCallback(
-    (venueId: string) => favorites.includes(venueId),
-    [favorites]
-  );
+  const value: FavoritesContextType = {
+    favorites: store.favorites,
+    toggleFavorite: store.toggleFavorite,
+    isFavorite: store.isFavorite,
+    isLoaded: store.isLoaded,
+  };
 
   return (
-    <FavoritesContext.Provider value={{ favorites, toggleFavorite, isFavorite, isLoaded }}>
+    <FavoritesContext.Provider value={value}>
       {children}
     </FavoritesContext.Provider>
   );

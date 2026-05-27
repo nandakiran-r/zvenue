@@ -56,7 +56,7 @@ export default function SettingsScreen() {
 }
 
 const styles = StyleSheet.create({
-    container: { flex: 1, backgroundColor: Colors.white },
+    container: { flex: 1, backgroundColor: Colors.background },
     header: { flexDirection: "row", alignItems: "center", justifyContent: "space-between", paddingHorizontal: 16, paddingVertical: 12, borderBottomWidth: 1, borderBottomColor: Colors.border },
     backBtn: { padding: 8 },
     headerTitle: { fontSize: 18, fontWeight: "700", color: Colors.text },

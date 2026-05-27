@@ -7,6 +7,7 @@ import React, { useState } from "react";
 import {
   ActivityIndicator,
   Alert,
+  Dimensions,
   Image,
   KeyboardAvoidingView,
   Platform,
@@ -20,9 +21,28 @@ import {
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import Colors from "@/constants/colors";
 
+const { width: SCREEN_WIDTH } = Dimensions.get("window");
+const GRID_GAP = 6;
+const GRID_COLS = 4;
+const TILE_SIZE = (SCREEN_WIDTH - GRID_GAP * (GRID_COLS + 1)) / GRID_COLS;
+
+// Venue-related placeholder images for the collage
+const COLLAGE_IMAGES = [
+  "https://images.unsplash.com/photo-1519167758481-83f550bb49b3?w=300&h=300&fit=crop",
+  "https://images.unsplash.com/photo-1464366400600-7168b8af9bc3?w=300&h=300&fit=crop",
+  "https://images.unsplash.com/photo-1505236858219-8359eb29e329?w=300&h=300&fit=crop",
+  "https://images.unsplash.com/photo-1540575467063-178a50c2df87?w=300&h=300&fit=crop",
+  "https://images.unsplash.com/photo-1478146059778-26028b07395a?w=300&h=300&fit=crop",
+  "https://images.unsplash.com/photo-1511795409834-ef04bbd61622?w=300&h=300&fit=crop",
+  "https://images.unsplash.com/photo-1530103862676-de8c9debad1d?w=300&h=300&fit=crop",
+  "https://images.unsplash.com/photo-1414235077428-338989a2e8c0?w=300&h=300&fit=crop",
+];
+
 export default function SignupScreen() {
   const params = useLocalSearchParams();
-  const initialPhone = params.phone ? (params.phone as string).replace("+91", "") : "";
+  const initialPhone = params.phone
+    ? (params.phone as string).replace("+91", "")
+    : "";
 
   const [firstName, setFirstName] = useState<string>("");
   const [lastName, setLastName] = useState<string>("");
@@ -34,8 +54,17 @@ export default function SignupScreen() {
   const { login } = useAuth();
 
   const handleSignup = async () => {
-    if (!firstName.trim() || !lastName.trim() || !email.trim() || !phone.trim() || phone.length < 10) {
-      Alert.alert("Required", "Please fill in all mandatory fields with a valid phone number.");
+    if (
+      !firstName.trim() ||
+      !lastName.trim() ||
+      !email.trim() ||
+      !phone.trim() ||
+      phone.length < 10
+    ) {
+      Alert.alert(
+        "Required",
+        "Please fill in all mandatory fields with a valid phone number."
+      );
       return;
     }
 
@@ -48,20 +77,21 @@ export default function SignupScreen() {
         email: email.trim(),
         phone_number: formattedPhone,
       });
-      
+
       // Auto-login after signup
       await login(response.data.token, response.data.user);
-      
+
       // Send OTP automatically
       await api.post("/api/auth/send-otp", { phone_number: formattedPhone });
-      
+
       // Navigate to OTP verification
       router.replace({
         pathname: "/enter-otp",
-        params: { phone: formattedPhone }
+        params: { phone: formattedPhone },
       });
     } catch (err: any) {
-      const message = err.response?.data?.error || "Signup failed. Please try again.";
+      const message =
+        err.response?.data?.error || "Signup failed. Please try again.";
       Alert.alert("Signup Failed", message);
     } finally {
       setLoading(false);
@@ -70,11 +100,6 @@ export default function SignupScreen() {
 
   return (
     <View style={styles.container}>
-      <View style={styles.topSection}>
-        <View style={styles.circle1} />
-        <View style={styles.circle2} />
-      </View>
-
       <KeyboardAvoidingView
         behavior={Platform.OS === "ios" ? "padding" : "height"}
         style={styles.flex}
@@ -84,119 +109,163 @@ export default function SignupScreen() {
           showsVerticalScrollIndicator={false}
           keyboardShouldPersistTaps="handled"
         >
-          <TouchableOpacity onPress={() => safeBack("/login")} style={styles.backButton}>
-            <View style={styles.backButtonInner}>
-              <ChevronLeft size={20} color={Colors.text} />
-            </View>
-          </TouchableOpacity>
+          {/* Photo Grid Collage */}
+          <View style={styles.collageContainer}>
+            {/* Back button overlaid on collage */}
+            <TouchableOpacity
+              onPress={() => safeBack("/login")}
+              style={[styles.backButton, { top: insets.top + 8 }]}
+            >
+              <ChevronLeft size={22} color={Colors.white} />
+            </TouchableOpacity>
 
-          <View style={styles.headerSection}>
-            <View style={styles.logoWrapper}>
-              <Image
-                source={require("../assets/images/favicon.png")}
-                style={styles.logoImage}
+            <View style={styles.collageRow}>
+              <View style={[styles.collageTile, styles.tileTall]}>
+                <Image
+                  source={{ uri: COLLAGE_IMAGES[0] }}
+                  style={styles.collageImage}
+                />
+              </View>
+              <View style={styles.collageTile}>
+                <Image
+                  source={{ uri: COLLAGE_IMAGES[1] }}
+                  style={styles.collageImage}
+                />
+              </View>
+              <View style={[styles.collageTile, styles.tileWide]}>
+                <Image
+                  source={{ uri: COLLAGE_IMAGES[2] }}
+                  style={styles.collageImage}
+                />
+              </View>
+              <View style={[styles.collageTile, styles.tileTall]}>
+                <Image
+                  source={{ uri: COLLAGE_IMAGES[3] }}
+                  style={styles.collageImage}
+                />
+              </View>
+            </View>
+            <View style={styles.collageRow}>
+              <View style={[styles.collageTile, styles.tileTall]}>
+                <Image
+                  source={{ uri: COLLAGE_IMAGES[4] }}
+                  style={styles.collageImage}
+                />
+              </View>
+              <View style={[styles.collageTile, styles.tileWide]}>
+                <Image
+                  source={{ uri: COLLAGE_IMAGES[5] }}
+                  style={styles.collageImage}
+                />
+              </View>
+              <View style={styles.collageTile}>
+                <Image
+                  source={{ uri: COLLAGE_IMAGES[6] }}
+                  style={styles.collageImage}
+                />
+              </View>
+              <View style={styles.collageTile}>
+                <Image
+                  source={{ uri: COLLAGE_IMAGES[7] }}
+                  style={styles.collageImage}
+                />
+              </View>
+            </View>
+          </View>
+
+          {/* Welcome Section */}
+          <View style={styles.welcomeSection}>
+            <Text style={styles.welcomeTitle}>Join Zvenue</Text>
+            <Text style={styles.welcomeSubtitle}>
+              Create your account to start booking venues
+            </Text>
+          </View>
+
+          {/* Form Section */}
+          <View style={styles.formSection}>
+            {/* Name Row */}
+            <View style={styles.nameRow}>
+              <View style={styles.nameField}>
+                <Text style={styles.inputLabel}>First Name</Text>
+                <View style={styles.inputContainer}>
+                  <TextInput
+                    style={styles.input}
+                    placeholder="John"
+                    placeholderTextColor={Colors.textTertiary}
+                    value={firstName}
+                    onChangeText={setFirstName}
+                  />
+                </View>
+              </View>
+              <View style={styles.nameField}>
+                <Text style={styles.inputLabel}>Last Name</Text>
+                <View style={styles.inputContainer}>
+                  <TextInput
+                    style={styles.input}
+                    placeholder="Doe"
+                    placeholderTextColor={Colors.textTertiary}
+                    value={lastName}
+                    onChangeText={setLastName}
+                  />
+                </View>
+              </View>
+            </View>
+
+            {/* Email */}
+            <Text style={styles.inputLabel}>Email Address</Text>
+            <View style={styles.inputContainer}>
+              <TextInput
+                style={styles.input}
+                placeholder="name@example.com"
+                placeholderTextColor={Colors.textTertiary}
+                value={email}
+                onChangeText={setEmail}
+                keyboardType="email-address"
+                autoCapitalize="none"
               />
             </View>
-            <Text style={styles.brandText}>ZVENUE</Text>
-            <Text style={styles.title}>Join Zvenue</Text>
-            <Text style={styles.subtitle}>Create your professional account</Text>
-          </View>
 
-          <View style={styles.cardContainer}>
-            <View style={styles.formSection}>
-              
-              <View style={styles.row}>
-                <View style={{ flex: 1 }}>
-                  <View style={styles.inputLabelContainer}>
-                    <Text style={styles.inputLabel}>First Name *</Text>
-                  </View>
-                  <View style={styles.inputContainer}>
-                    <User size={16} color={Colors.textSecondary} />
-                    <TextInput
-                      style={styles.input}
-                      placeholder="John"
-                      placeholderTextColor={Colors.textTertiary}
-                      value={firstName}
-                      onChangeText={setFirstName}
-                    />
-                  </View>
-                </View>
-                <View style={{ width: 12 }} />
-                <View style={{ flex: 1 }}>
-                  <View style={styles.inputLabelContainer}>
-                    <Text style={styles.inputLabel}>Last Name *</Text>
-                  </View>
-                  <View style={styles.inputContainer}>
-                    <User size={16} color={Colors.textSecondary} />
-                    <TextInput
-                      style={styles.input}
-                      placeholder="Doe"
-                      placeholderTextColor={Colors.textTertiary}
-                      value={lastName}
-                      onChangeText={setLastName}
-                    />
-                  </View>
-                </View>
+            {/* Phone */}
+            <Text style={styles.inputLabel}>Phone Number</Text>
+            <View style={styles.inputContainer}>
+              <View style={styles.phonePrefix}>
+                <Phone size={18} color={Colors.primary} />
+                <Text style={styles.countryCode}>+91</Text>
+                <View style={styles.separator} />
               </View>
-
-              <View style={styles.inputLabelContainer}>
-                <Text style={styles.inputLabel}>Email Address *</Text>
-              </View>
-              <View style={styles.inputContainer}>
-                <Mail size={18} color={Colors.textSecondary} />
-                <TextInput
-                  style={styles.input}
-                  placeholder="name@example.com"
-                  placeholderTextColor={Colors.textTertiary}
-                  value={email}
-                  onChangeText={setEmail}
-                  keyboardType="email-address"
-                  autoCapitalize="none"
-                />
-              </View>
-
-              <View style={styles.inputLabelContainer}>
-                <Text style={styles.inputLabel}>Phone Number *</Text>
-              </View>
-              <View style={styles.inputContainer}>
-                <View style={styles.phoneIconWrapper}>
-                  <Phone size={18} color={Colors.primary} />
-                  <Text style={styles.countryCode}>+91</Text>
-                  <View style={styles.separator} />
-                </View>
-                <TextInput
-                  style={styles.input}
-                  placeholder="10-digit number"
-                  placeholderTextColor={Colors.textTertiary}
-                  value={phone}
-                  onChangeText={setPhone}
-                  keyboardType="phone-pad"
-                  maxLength={10}
-                />
-              </View>
-
-              <TouchableOpacity
-                style={[styles.primaryButton, loading && styles.disabledButton]}
-                onPress={handleSignup}
-                activeOpacity={0.8}
-                disabled={loading}
-              >
-                {loading ? (
-                  <ActivityIndicator color={Colors.white} />
-                ) : (
-                  <Text style={styles.primaryButtonText}>Create Account</Text>
-                )}
-              </TouchableOpacity>
+              <TextInput
+                style={styles.input}
+                placeholder="10-digit number"
+                placeholderTextColor={Colors.textTertiary}
+                value={phone}
+                onChangeText={setPhone}
+                keyboardType="phone-pad"
+                maxLength={10}
+              />
             </View>
+
+            {/* Submit Button */}
+            <TouchableOpacity
+              style={[styles.primaryButton, loading && styles.disabledButton]}
+              onPress={handleSignup}
+              activeOpacity={0.8}
+              disabled={loading}
+            >
+              {loading ? (
+                <ActivityIndicator color={Colors.white} />
+              ) : (
+                <Text style={styles.primaryButtonText}>Create Account</Text>
+              )}
+            </TouchableOpacity>
           </View>
 
+          {/* Bottom Link */}
           <View style={styles.bottomRow}>
             <Text style={styles.bottomText}>Already have an account? </Text>
             <TouchableOpacity onPress={() => safeBack("/login")}>
               <Text style={styles.linkText}>Sign In</Text>
             </TouchableOpacity>
           </View>
-
         </ScrollView>
       </KeyboardAvoidingView>
     </View>
@@ -204,204 +273,158 @@ export default function SignupScreen() {
 }
 
 const styles = StyleSheet.create({
-  container: { 
-    flex: 1, 
-    backgroundColor: '#FBFBFB' 
-  },
-  topSection: {
-    position: 'absolute',
-    top: -50,
-    right: -50,
-    left: -50,
-    height: 300,
-  },
-  circle1: {
-    position: 'absolute',
-    top: -20,
-    right: -20,
-    width: 200,
-    height: 200,
-    borderRadius: 100,
-    backgroundColor: '#7a331710',
-  },
-  circle2: {
-    position: 'absolute',
-    top: 40,
-    left: -40,
-    width: 150,
-    height: 150,
-    borderRadius: 75,
-    backgroundColor: '#7a331708',
+  container: {
+    flex: 1,
+    backgroundColor: Colors.background,
   },
   flex: { flex: 1 },
-  scrollContent: { 
-    paddingHorizontal: 28, 
-    paddingBottom: 40,
+  scrollContent: {
     flexGrow: 1,
   },
+
+  // Photo Grid Collage
+  collageContainer: {
+    paddingHorizontal: GRID_GAP,
+    paddingTop: GRID_GAP,
+    gap: GRID_GAP,
+    position: "relative",
+  },
+  collageRow: {
+    flexDirection: "row",
+    gap: GRID_GAP,
+    height: TILE_SIZE * 1.1,
+  },
+  collageTile: {
+    flex: 1,
+    borderRadius: 12,
+    overflow: "hidden",
+    backgroundColor: "#F0F0F0",
+  },
+  tileTall: {
+    flex: 1.1,
+  },
+  tileWide: {
+    flex: 1.3,
+  },
+  collageImage: {
+    width: "100%",
+    height: "100%",
+    resizeMode: "cover",
+  },
   backButton: {
-    marginTop: 20,
-    marginBottom: 20,
-  },
-  backButtonInner: {
-    width: 44,
-    height: 44,
-    borderRadius: 15,
-    backgroundColor: Colors.white,
-    alignItems: 'center',
-    justifyContent: 'center',
-    shadowColor: "#000",
-    shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.05,
-    shadowRadius: 8,
-    elevation: 3,
-  },
-  headerSection: {
+    position: "absolute",
+    left: 16,
+    zIndex: 10,
+    width: 36,
+    height: 36,
+    borderRadius: 18,
+    backgroundColor: "rgba(0,0,0,0.4)",
     alignItems: "center",
-    marginBottom: 24,
+    justifyContent: "center",
   },
-  logoWrapper: {
-    width: 70,
-    height: 70,
-    borderRadius: 22,
-    backgroundColor: Colors.white,
-    alignItems: 'center',
-    justifyContent: 'center',
-    shadowColor: Colors.primary,
-    shadowOffset: { width: 0, height: 8 },
-    shadowOpacity: 0.1,
-    shadowRadius: 12,
-    elevation: 6,
+
+  // Welcome Section
+  welcomeSection: {
+    paddingHorizontal: 28,
+    paddingTop: 28,
+    paddingBottom: 4,
   },
-  logoImage: { width: 44, height: 44 },
-  brandText: { 
-    fontSize: 14, 
-    fontWeight: "800", 
-    color: Colors.primary, 
-    marginTop: 12, 
-    letterSpacing: 4 
+  welcomeTitle: {
+    fontSize: 30,
+    fontWeight: "700",
+    color: Colors.text,
+    marginBottom: 8,
   },
-  title: { 
-    fontSize: 28, 
-    fontWeight: "800", 
-    color: Colors.text, 
-    textAlign: "center", 
-    marginTop: 8,
-    marginBottom: 6 
+  welcomeSubtitle: {
+    fontSize: 15,
+    color: Colors.textSecondary,
+    lineHeight: 22,
   },
-  subtitle: { 
-    fontSize: 14, 
-    color: Colors.textSecondary, 
-    textAlign: "center",
-    fontWeight: '500',
-    paddingHorizontal: 20,
-  },
-  cardContainer: {
-    backgroundColor: Colors.white,
-    borderRadius: 32,
-    padding: 24,
-    shadowColor: "#000",
-    shadowOffset: { width: 0, height: 20 },
-    shadowOpacity: 0.05,
-    shadowRadius: 30,
-    elevation: 10,
-  },
-  row: {
-    flexDirection: 'row',
-  },
+
+  // Form Section
   formSection: {
-    gap: 0,
+    paddingHorizontal: 28,
+    paddingTop: 20,
   },
-  inputLabelContainer: {
-    marginBottom: 6,
-    marginLeft: 4,
+  nameRow: {
+    flexDirection: "row",
+    gap: 16,
+  },
+  nameField: {
+    flex: 1,
   },
   inputLabel: {
     fontSize: 13,
-    fontWeight: '600',
-    color: Colors.text,
+    fontWeight: "600",
+    color: Colors.textSecondary,
+    marginBottom: 8,
+    marginLeft: 4,
+    marginTop: 16,
   },
-  inputContainer: { 
-    flexDirection: "row", 
-    alignItems: "center", 
-    borderWidth: 1.5, 
-    borderColor: '#F0F0F0', 
-    borderRadius: 18, 
-    paddingHorizontal: 14, 
-    paddingVertical: 12, 
-    marginBottom: 16, 
-    backgroundColor: '#FBFBFB', 
-    gap: 10 
+  inputContainer: {
+    flexDirection: "row",
+    alignItems: "center",
+    borderBottomWidth: 1.5,
+    borderBottomColor: "#E0E0E0",
+    paddingVertical: 12,
+    gap: 10,
   },
-  phoneIconWrapper: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 6,
+  phonePrefix: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 8,
   },
   separator: {
     width: 1,
-    height: 18,
-    backgroundColor: '#E0E0E0',
-    marginHorizontal: 2,
+    height: 20,
+    backgroundColor: "#E0E0E0",
+    marginLeft: 4,
   },
-  countryCode: { fontSize: 15, fontWeight: "700", color: Colors.text },
-  input: { 
-    flex: 1, 
-    fontSize: 15, 
+  countryCode: {
+    fontSize: 16,
+    fontWeight: "700",
     color: Colors.text,
-    fontWeight: '500',
   },
-  primaryButton: { 
-    backgroundColor: Colors.primary, 
-    borderRadius: 20, 
-    paddingVertical: 18, 
+  input: {
+    flex: 1,
+    fontSize: 16,
+    color: Colors.text,
+    fontWeight: "500",
+  },
+  primaryButton: {
+    backgroundColor: Colors.primary,
+    borderRadius: 12,
+    paddingVertical: 18,
     alignItems: "center",
-    marginTop: 8,
+    marginTop: 32,
     shadowColor: Colors.primary,
-    shadowOffset: { width: 0, height: 8 },
-    shadowOpacity: 0.3,
-    shadowRadius: 12,
-    elevation: 8,
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.25,
+    shadowRadius: 8,
+    elevation: 6,
   },
   disabledButton: { opacity: 0.7 },
-  primaryButtonText: { color: Colors.white, fontSize: 16, fontWeight: "700" },
-  bottomRow: { flexDirection: "row", justifyContent: "center", marginTop: 24, marginBottom: 20 },
-  bottomText: { fontSize: 15, color: Colors.textSecondary },
-  linkText: { fontSize: 15, color: Colors.primary, fontWeight: "700" },
-  modalOverlay: {
-    flex: 1,
-    backgroundColor: 'rgba(0,0,0,0.5)',
-    justifyContent: 'center',
-    alignItems: 'center',
-    padding: 24,
-  },
-  modalContent: {
-    backgroundColor: Colors.white,
-    borderRadius: 32,
-    padding: 32,
-    width: '100%',
-    alignItems: 'center',
-  },
-  iconCircle: {
-    width: 80,
-    height: 80,
-    borderRadius: 40,
-    alignItems: 'center',
-    justifyContent: 'center',
-    marginBottom: 20,
-  },
-  modalTitle: {
-    fontSize: 22,
-    fontWeight: '800',
-    color: Colors.text,
-    marginBottom: 12,
-    textAlign: 'center',
-  },
-  modalSubtitle: {
+  primaryButtonText: {
+    color: Colors.white,
     fontSize: 16,
+    fontWeight: "700",
+  },
+
+  // Bottom
+  bottomRow: {
+    flexDirection: "row",
+    justifyContent: "center",
+    marginTop: 24,
+    marginBottom: 40,
+  },
+  bottomText: {
+    fontSize: 15,
     color: Colors.textSecondary,
-    textAlign: 'center',
-    lineHeight: 24,
-    marginBottom: 24,
+    fontWeight: "500",
+  },
+  linkText: {
+    fontSize: 15,
+    color: Colors.primary,
+    fontWeight: "700",
   },
 });

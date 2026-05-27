@@ -50,7 +50,10 @@ export default function CategoryVenuesScreen() {
     (v.city ?? "").toLowerCase().includes(searchQuery.toLowerCase())
   );
 
-  const formatPrice = (amount: number) => `₹${amount.toLocaleString("en-IN")}`;
+  const formatPrice = (amount: number | null | undefined) => {
+    if (amount == null || isNaN(amount)) return "₹0";
+    return `₹${amount.toLocaleString("en-IN")}`;
+  };
 
   return (
     <View style={[styles.container, { paddingTop: insets.top }]}>
@@ -128,7 +131,7 @@ export default function CategoryVenuesScreen() {
 }
 
 const styles = StyleSheet.create({
-  container: { flex: 1, backgroundColor: Colors.white },
+  container: { flex: 1, backgroundColor: Colors.background },
   header: {
     flexDirection: "row", alignItems: "center", justifyContent: "space-between",
     paddingHorizontal: 20, paddingVertical: 12, borderBottomWidth: 1, borderBottomColor: Colors.border,

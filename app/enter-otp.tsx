@@ -173,7 +173,7 @@ export default function EnterOtpScreen() {
 }
 
 const styles = StyleSheet.create({
-  container: { flex: 1, backgroundColor: Colors.white, paddingHorizontal: 24 },
+  container: { flex: 1, backgroundColor: Colors.background, paddingHorizontal: 24 },
   backButton: { marginTop: 8, marginBottom: 16, width: 40, height: 40, justifyContent: "center" },
   title: { fontSize: 28, fontWeight: "700", color: Colors.text, marginBottom: 8 },
   subtitle: { fontSize: 14, color: Colors.textSecondary, lineHeight: 20, marginBottom: 32 },

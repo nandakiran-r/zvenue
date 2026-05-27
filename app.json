@@ -44,6 +44,13 @@
       "expo-web-browser",
       "expo-secure-store",
       [
+        "expo-location",
+        {
+          "locationAlwaysAndWhenInUsePermission": "Allow Zvenue to use your location to find nearby venues.",
+          "locationWhenInUsePermission": "Allow Zvenue to use your location to find nearby venues."
+        }
+      ],
+      [
         "expo-notifications",
         {
           "icon": "./assets/images/icon.png",

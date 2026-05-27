@@ -50,7 +50,10 @@ export default function FavoritesScreen() {
     }
   };
 
-  const formatPrice = (amount: number) => `₹${amount.toLocaleString("en-IN")}`;
+  const formatPrice = (amount: number | null | undefined) => {
+    if (amount == null || isNaN(amount)) return "₹0";
+    return `₹${amount.toLocaleString("en-IN")}`;
+  };
 
   return (
     <View style={[styles.container, { paddingTop: insets.top }]}>
@@ -104,7 +107,7 @@ export default function FavoritesScreen() {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: Colors.white,
+    backgroundColor: Colors.background,
   },
   headerTitle: {
     fontSize: 22,

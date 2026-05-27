@@ -1,89 +1,37 @@
 import { useAuth } from "@/context/AuthContext";
 import { router } from "expo-router";
 import AsyncStorage from "@react-native-async-storage/async-storage";
-import React, { useEffect, useRef } from "react";
-import { Animated, Image, StyleSheet, View } from "react-native";
+import React, { useEffect } from "react";
+import { ActivityIndicator, View } from "react-native";
 import Colors from "@/constants/colors";
 
 const ONBOARDING_SEEN_KEY = "zvenue_onboarding_seen";
 
-export default function SplashScreen() {
-  const scaleAnim = useRef(new Animated.Value(0.5)).current;
-  const opacityAnim = useRef(new Animated.Value(0)).current;
+export default function IndexScreen() {
   const { isLoaded, isSignedIn } = useAuth();
 
   useEffect(() => {
-    Animated.parallel([
-      Animated.spring(scaleAnim, {
-        toValue: 1,
-        friction: 4,
-        useNativeDriver: true,
-      }),
-      Animated.timing(opacityAnim, {
-        toValue: 1,
-        duration: 600,
-        useNativeDriver: true,
-      }),
-    ]).start();
+    if (!isLoaded) return;
 
-    const timer = setTimeout(async () => {
-      if (!isLoaded) return;
-
-      // Check if onboarding has been seen before
-      const onboardingSeen = await AsyncStorage.getItem(ONBOARDING_SEEN_KEY);
-
-      if (!isSignedIn) {
+    const navigate = async () => {
+      if (isSignedIn) {
+        router.replace("/(tabs)/home");
+      } else {
+        const onboardingSeen = await AsyncStorage.getItem(ONBOARDING_SEEN_KEY);
         if (!onboardingSeen) {
           router.replace("/onboarding");
         } else {
           router.replace("/login");
         }
-      } else {
-        // Authenticated — go straight to home
-        router.replace("/(tabs)/home");
       }
-    }, 2200);
-    return () => clearTimeout(timer);
+    };
+
+    navigate();
   }, [isLoaded, isSignedIn]);
 
   return (
-    <View style={styles.container}>
-      <Animated.View
-        style={[
-          styles.logoContainer,
-          { transform: [{ scale: scaleAnim }], opacity: opacityAnim },
-        ]}
-      >
-        <Image
-          source={require("../assets/images/favicon.png")}
-          style={styles.logoImage}
-        />
-        <Animated.Text style={styles.brandText}>ZVENUE</Animated.Text>
-      </Animated.View>
+    <View style={{ flex: 1, backgroundColor: Colors.background, alignItems: "center", justifyContent: "center" }}>
+      <ActivityIndicator size="large" color={Colors.primary} />
     </View>
   );
 }
-
-const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-    backgroundColor: Colors.white,
-    alignItems: "center",
-    justifyContent: "center",
-  },
-  logoContainer: {
-    alignItems: "center",
-  },
-  logoImage: {
-    width: 100,
-    height: 100,
-    borderRadius: 22,
-  },
-  brandText: {
-    fontSize: 22,
-    fontWeight: "800" as const,
-    color: Colors.primary,
-    marginTop: 12,
-    letterSpacing: 2,
-  },
-});

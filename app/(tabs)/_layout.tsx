@@ -30,7 +30,7 @@ export default function TabLayout() {
           borderTopWidth: 0,
           elevation: 0,
           shadowOpacity: 0,
-          backgroundColor: Colors.white,
+          backgroundColor: Colors.background,
           height: 60,
           paddingBottom: 8,
           paddingTop: 4,

@@ -176,7 +176,10 @@ export default function BookingDetailScreen() {
     const payNow = registrationFee > 0 ? registrationFee : total;
     const balanceAtVenue = registrationFee > 0 ? total - registrationFee : 0;
 
-    const formatPrice = (amount: number) => `₹${amount.toLocaleString("en-IN")}`;
+    const formatPrice = (amount: number | null | undefined) => {
+        if (amount == null || isNaN(amount)) return "₹0";
+        return `₹${amount.toLocaleString("en-IN")}`;
+    };
 
     const canBook = selectedDate && selectedSession && hoursBooked > 0 && parseInt(guests) > 0;
 
@@ -669,7 +672,7 @@ const styles = StyleSheet.create({
     },
     venueImage: { width: 80, height: 80, borderRadius: 12 },
     venueInfo: { flex: 1, marginLeft: 14, justifyContent: "center" },
-    venueTitle: { fontSize: 16, fontWeight: "700", color: Colors.text, marginBottom: 4 },
+    venueTitle: { fontSize: 16, fontWeight: "700", color: "#f0bc4d", marginBottom: 4 },
     metaRow: { flexDirection: "row", alignItems: "center", gap: 4, marginBottom: 4 },
     metaText: { fontSize: 12, color: Colors.textSecondary },
     venuePrice: { fontSize: 14, fontWeight: "700", color: Colors.primary },

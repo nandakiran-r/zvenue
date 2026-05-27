@@ -16,9 +16,9 @@ import {
 } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import Colors from "@/constants/colors";
-import { useAuth } from "@/context/AuthContext";
 import { useFavorites } from "@/context/FavoritesContext";
 import { fetchVenueById } from "@/lib/api";
+import { formatPrice } from "@/lib/utils";
 import { VenueMap } from "@/components/VenueMap";
 import type { DbVenue } from "@/lib/types";
 
@@ -63,18 +63,23 @@ export default function VenueDetailScreen() {
     }, [venue]);
 
     const loadVenue = async () => {
+        if (!id) {
+            setLoading(false);
+            return;
+        }
         try {
             setLoading(true);
-            const data = await fetchVenueById(id!);
+            const data = await fetchVenueById(id);
             setVenue(data);
         } catch (err) {
             console.error("Failed to load venue:", err);
+            setVenue(null);
         } finally {
             setLoading(false);
         }
     };
 
-    const formatPrice = (amount: number) => `₹${amount.toLocaleString("en-IN")}`;
+    // formatPrice is imported from @/lib/utils
 
     if (loading) {
         return (
@@ -142,14 +147,14 @@ export default function VenueDetailScreen() {
                 <View style={styles.contentCard}>
                     <View style={styles.titleRow}>
                         <View style={styles.titleInfo}>
-                            <Text style={styles.title}>{venue.name}</Text>
+                            <Text style={styles.title}>{venue.name ?? "Unnamed Venue"}</Text>
                             <View style={styles.metaRow}>
                                 <MapPin size={14} color={Colors.textSecondary} />
-                                <Text style={styles.metaText}>{venue.location}</Text>
+                                <Text style={styles.metaText}>{venue.location ?? "Location not available"}</Text>
                             </View>
                             <View style={styles.metaRow}>
                                 <Star size={14} color="#FFB800" fill="#FFB800" />
-                                <Text style={styles.metaText}>{venue.rating} ({venue.review_count} reviews)</Text>
+                                <Text style={styles.metaText}>{venue.rating ?? 0} ({venue.review_count ?? 0} reviews)</Text>
                             </View>
                         </View>
                         <View style={styles.pricingBlock}>
@@ -161,7 +166,7 @@ export default function VenueDetailScreen() {
                     <View style={styles.statsRow}>
                         <View style={styles.statItem}>
                             <Users size={18} color={Colors.primary} />
-                            <Text style={styles.statValue}>{venue.capacity}</Text>
+                            <Text style={styles.statValue}>{venue.capacity ?? "N/A"}</Text>
                             <Text style={styles.statLabel}>Capacity</Text>
                         </View>
                         <View style={styles.statDivider} />
@@ -296,7 +301,7 @@ export default function VenueDetailScreen() {
 const styles = StyleSheet.create({
     container: {
         flex: 1,
-        backgroundColor: Colors.white,
+        backgroundColor: Colors.background,
     },
     scrollContent: {
         paddingBottom: 100,
@@ -382,7 +387,7 @@ const styles = StyleSheet.create({
     title: {
         fontSize: 22,
         fontWeight: "700" as const,
-        color: Colors.text,
+        color: "#f0bc4d",
         marginBottom: 8,
         lineHeight: 28,
     },

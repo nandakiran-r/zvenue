@@ -9,6 +9,18 @@ import { users, venues, categories, bookings, notifications, otps, owners, suppo
 import { eq, and, ilike, or, desc, asc, count, sum, sql, gte, lte, ne } from 'drizzle-orm';
 import { geocodeAddress, buildAddress } from './lib/geocode.js';
 
+// Haversine formula to calculate distance between two lat/lng points in km
+function haversineDistance(lat1, lon1, lat2, lon2) {
+  const R = 6371; // Earth's radius in km
+  const dLat = (lat2 - lat1) * Math.PI / 180;
+  const dLon = (lon2 - lon1) * Math.PI / 180;
+  const a = Math.sin(dLat / 2) * Math.sin(dLat / 2) +
+    Math.cos(lat1 * Math.PI / 180) * Math.cos(lat2 * Math.PI / 180) *
+    Math.sin(dLon / 2) * Math.sin(dLon / 2);
+  const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
+  return R * c;
+}
+
 const fastify = Fastify({ logger: true });
 
 // Plugins
@@ -1464,7 +1476,7 @@ fastify.get('/api/dashboard/bookings-by-category', { onRequest: [fastify.authent
 // Public: only approved venues
 fastify.get('/api/venues', async (request, reply) => {
   try {
-    const { search, category_id, all } = request.query;
+    const { search, category_id, all, lat, lng, radius } = request.query;
     
     // If 'all' param is passed (admin panel), return all venues
     const approvalFilter = all ? undefined : eq(venues.approval_status, 'approved');
@@ -1486,6 +1498,35 @@ fastify.get('/api/venues', async (request, reply) => {
       with: { category: true, owner: { columns: { id: true, full_name: true, email: true } } },
       orderBy: [desc(venues.created_at)]
     });
+
+    // If lat/lng provided, calculate distance and sort by nearest
+    if (lat && lng) {
+      const userLat = parseFloat(lat);
+      const userLng = parseFloat(lng);
+      const maxRadius = radius ? parseFloat(radius) : 100; // default 100km
+
+      if (!isNaN(userLat) && !isNaN(userLng)) {
+        const withDistance = data.map(venue => {
+          if (venue.latitude && venue.longitude) {
+            const distance = haversineDistance(userLat, userLng, parseFloat(venue.latitude), parseFloat(venue.longitude));
+            return { ...venue, distance: Math.round(distance * 10) / 10 };
+          }
+          return { ...venue, distance: null };
+        });
+
+        // Filter by radius and sort by distance (venues without coords go to end)
+        const filtered = withDistance.filter(v => v.distance === null || v.distance <= maxRadius);
+        filtered.sort((a, b) => {
+          if (a.distance === null && b.distance === null) return 0;
+          if (a.distance === null) return 1;
+          if (b.distance === null) return -1;
+          return a.distance - b.distance;
+        });
+
+        return filtered;
+      }
+    }
+
     return data;
   } catch (err) {
     return reply.status(500).send({ error: 'Internal Server Error' });

@@ -6,7 +6,6 @@ import { useAuth } from "@/context/AuthContext";
 import { api } from "@/lib/api";
 import {
   ActivityIndicator,
-  Alert,
   Keyboard,
   KeyboardAvoidingView,
   Platform,
@@ -19,6 +18,7 @@ import {
 } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import Colors from "@/constants/colors";
+import { useToast } from "@/context/ToastContext";
 
 export default function EnterOtpScreen() {
   const { phone, full_name } = useLocalSearchParams<{ phone: string; full_name?: string }>();
@@ -27,6 +27,7 @@ export default function EnterOtpScreen() {
   const [loading, setLoading] = useState<boolean>(false);
   const inputRefs = useRef<(TextInput | null)[]>([]);
   const insets = useSafeAreaInsets();
+  const { success, error: showError, warning } = useToast();
   
   const { login } = useAuth();
 
@@ -73,16 +74,16 @@ export default function EnterOtpScreen() {
         await api.post("/api/auth/send-otp", { phone_number: phone });
       }
       setTimer(52);
-      Alert.alert("Code Sent", "A new verification code has been sent.");
+      success("Code Sent", "A new verification code has been sent.");
     } catch (err: any) {
-      Alert.alert("Error", "Could not resend code. Please try again.");
+      showError("Error", "Could not resend code. Please try again.");
     }
   }, [phone]);
 
   const handleVerify = useCallback(async () => {
     const code = otp.join("");
     if (code.length < 6) {
-      Alert.alert("Required", "Please enter the full 6-digit code.");
+      warning("Required", "Please enter the full 6-digit code.");
       return;
     }
 
@@ -98,7 +99,7 @@ export default function EnterOtpScreen() {
       router.replace("/(tabs)/home");
     } catch (err: any) {
       const message = err.response?.data?.error || "Invalid code. Please try again.";
-      Alert.alert("Verification Failed", message);
+      showError("Verification Failed", message);
     } finally {
       setLoading(false);
     }

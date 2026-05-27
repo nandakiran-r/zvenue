@@ -3,7 +3,6 @@ import { Bell, Calendar, ChevronRight, HelpCircle, LogOut, Settings, Trash2, Use
 import { useAuth } from "@/context/AuthContext";
 import React, { useState } from "react";
 import {
-  Alert,
   Image,
   Modal,
   ScrollView,
@@ -16,6 +15,7 @@ import {
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import Colors from "@/constants/colors";
+import { useToast } from "@/context/ToastContext";
 import { deleteMyAccount } from "@/lib/api";
 
 const MENU_ITEMS = [
@@ -29,6 +29,7 @@ const MENU_ITEMS = [
 export default function ProfileScreen() {
   const insets = useSafeAreaInsets();
   const { signOut, dbUser } = useAuth();
+  const { error: showError, showAlert } = useToast();
 
   const displayName = dbUser?.full_name ?? "User";
   const displayEmail = dbUser?.email ?? "";
@@ -54,7 +55,7 @@ export default function ProfileScreen() {
 
   const confirmDeleteAccount = async () => {
     if (confirmText !== "DELETE") {
-      Alert.alert("Error", 'Please type "DELETE" to confirm.');
+      showError("Error", 'Please type "DELETE" to confirm.');
       return;
     }
 
@@ -64,12 +65,15 @@ export default function ProfileScreen() {
       // Clear all local data
       await AsyncStorage.clear();
       await signOut();
-      Alert.alert("Account Deleted", "Your account has been permanently deleted.", [
-        { text: "OK", onPress: () => router.replace("/login") }
-      ]);
+      showAlert({
+        type: "success",
+        title: "Account Deleted",
+        message: "Your account has been permanently deleted.",
+        actions: [{ text: "OK", style: "default", onPress: () => router.replace("/login") }],
+      });
     } catch (err: any) {
       const msg = err.response?.data?.error || "Failed to delete account. Please try again.";
-      Alert.alert("Error", msg);
+      showError("Error", msg);
     } finally {
       setDeleting(false);
       setDeleteModalVisible(false);

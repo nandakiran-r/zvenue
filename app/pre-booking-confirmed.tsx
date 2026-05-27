@@ -1,7 +1,7 @@
 import { router, useLocalSearchParams } from "expo-router";
 import { CheckCircle, Calendar, Clock, CreditCard, ArrowRight } from "lucide-react-native";
-import React from "react";
-import { ScrollView, StyleSheet, Text, TouchableOpacity, View } from "react-native";
+import React, { useEffect } from "react";
+import { BackHandler, ScrollView, StyleSheet, Text, TouchableOpacity, View } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import Colors from "@/constants/colors";
 
@@ -18,6 +18,16 @@ export default function PreBookingConfirmedScreen() {
     total: string;
     bookingDisplayId: string;
   }>();
+
+  // Prevent hardware back button from going back to payment flow
+  // This screen is one-time only — back should go to home
+  useEffect(() => {
+    const backHandler = BackHandler.addEventListener("hardwareBackPress", () => {
+      router.replace("/(tabs)/home");
+      return true; // prevent default back behavior
+    });
+    return () => backHandler.remove();
+  }, []);
 
   const formatPrice = (amount: string | undefined) => {
     if (!amount) return "₹0";
@@ -126,7 +136,7 @@ export default function PreBookingConfirmedScreen() {
         {/* Action Buttons */}
         <TouchableOpacity
           style={styles.viewBookingButton}
-          onPress={() => router.push({ pathname: "/view-booking", params: { id: params.id } })}
+          onPress={() => router.replace({ pathname: "/view-booking", params: { id: params.id } })}
           activeOpacity={0.8}
         >
           <Text style={styles.viewBookingText}>View Booking</Text>

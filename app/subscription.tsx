@@ -3,7 +3,6 @@ import { Check, X, Shield, ArrowRight, Crown } from "lucide-react-native";
 import React, { useEffect, useState } from "react";
 import {
   ActivityIndicator,
-  Alert,
   ScrollView,
   StyleSheet,
   Text,
@@ -16,6 +15,7 @@ import { WebView } from "react-native-webview";
 import { useAuth } from "@/context/AuthContext";
 import { createSubscription, getCheckoutOptions, confirmSubscription } from "@/lib/api";
 import Colors from "@/constants/colors";
+import { useToast } from "@/context/ToastContext";
 
 export default function SubscriptionScreen() {
   const { dbUser, refreshSubscriptionInfo, isSubscribed } = useAuth();
@@ -23,6 +23,7 @@ export default function SubscriptionScreen() {
   const [loading, setLoading] = useState(false);
   const [checkoutModalVisible, setCheckoutModalVisible] = useState(false);
   const [checkoutHtml, setCheckoutHtml] = useState<string | null>(null);
+  const { error: showError, showAlert } = useToast();
 
   useEffect(() => {
     if (isSubscribed) {
@@ -66,7 +67,7 @@ export default function SubscriptionScreen() {
       setCheckoutHtml(html);
       setCheckoutModalVisible(true);
     } catch (err: any) {
-      Alert.alert("Error", err.response?.data?.error || err.message || "Failed to initiate subscription");
+      showError("Error", err.response?.data?.error || err.message || "Failed to initiate subscription");
     } finally {
       setLoading(false);
     }
@@ -78,9 +79,12 @@ export default function SubscriptionScreen() {
     try {
       await confirmSubscription();
       await refreshSubscriptionInfo();
-      Alert.alert("Subscribed!", "You now have access to premium benefits with every booking.", [
-        { text: "Let's Go!", onPress: () => navigateBack() }
-      ]);
+      showAlert({
+        type: "success",
+        title: "Subscribed!",
+        message: "You now have access to premium benefits with every booking.",
+        actions: [{ text: "Let's Go!", style: "default", onPress: () => navigateBack() }],
+      });
     } catch (err) {
       await refreshSubscriptionInfo();
       navigateBack();
@@ -122,7 +126,7 @@ export default function SubscriptionScreen() {
                   const data = JSON.parse(event.nativeEvent.data);
                   if (data.event === 'success') handleCheckoutSuccess();
                   else if (data.event === 'cancel') { setCheckoutModalVisible(false); setCheckoutHtml(null); }
-                  else if (data.event === 'failed') { setCheckoutModalVisible(false); setCheckoutHtml(null); Alert.alert("Payment Failed", data.data?.description || "Please try again."); }
+                  else if (data.event === 'failed') { setCheckoutModalVisible(false); setCheckoutHtml(null); showError("Payment Failed", data.data?.description || "Please try again."); }
                 } catch (err) { console.error(err); }
               }}
             />

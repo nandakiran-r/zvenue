@@ -6,7 +6,6 @@ import { ChevronLeft, Mail, User, Phone } from "lucide-react-native";
 import React, { useState } from "react";
 import {
   ActivityIndicator,
-  Alert,
   Dimensions,
   Image,
   KeyboardAvoidingView,
@@ -20,6 +19,7 @@ import {
 } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import Colors from "@/constants/colors";
+import { useToast } from "@/context/ToastContext";
 
 const { width: SCREEN_WIDTH } = Dimensions.get("window");
 const GRID_GAP = 6;
@@ -50,6 +50,7 @@ export default function SignupScreen() {
   const [phone, setPhone] = useState<string>(initialPhone);
   const [loading, setLoading] = useState(false);
   const insets = useSafeAreaInsets();
+  const { warning, error: showError } = useToast();
 
   const { login } = useAuth();
 
@@ -61,7 +62,7 @@ export default function SignupScreen() {
       !phone.trim() ||
       phone.length < 10
     ) {
-      Alert.alert(
+      warning(
         "Required",
         "Please fill in all mandatory fields with a valid phone number."
       );
@@ -92,7 +93,7 @@ export default function SignupScreen() {
     } catch (err: any) {
       const message =
         err.response?.data?.error || "Signup failed. Please try again.";
-      Alert.alert("Signup Failed", message);
+      showError("Signup Failed", message);
     } finally {
       setLoading(false);
     }

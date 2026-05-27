@@ -4,7 +4,6 @@ import { Calendar, ChevronLeft, ChevronRight, Clock, Crown, MapPin, Users, XCirc
 import React, { useEffect, useState, useMemo } from "react";
 import {
     ActivityIndicator,
-    Alert,
     Image,
     Modal,
     ScrollView,
@@ -18,6 +17,7 @@ import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { WebView } from "react-native-webview";
 import Colors from "@/constants/colors";
 import { useAuth } from "@/context/AuthContext";
+import { useToast } from "@/context/ToastContext";
 import { fetchVenueById, fetchVenueBookedDates, createBookingOrder, verifyPayment } from "@/lib/api";
 import type { DbVenue } from "@/lib/types";
 
@@ -41,6 +41,7 @@ export default function BookingDetailScreen() {
     const { id } = useLocalSearchParams<{ id: string }>();
     const insets = useSafeAreaInsets();
     const { dbUser, isSubscribed } = useAuth();
+    const { error: showError, showAlert } = useToast();
 
     const [venue, setVenue] = useState<DbVenue | null>(null);
     const [loading, setLoading] = useState(true);
@@ -185,10 +186,15 @@ export default function BookingDetailScreen() {
 
     const handleConfirm = async () => {
         if (!dbUser) {
-            Alert.alert("Authentication Required", "Please log in to book a venue.", [
-                { text: "Cancel", style: "cancel" },
-                { text: "Log In", onPress: () => router.push("/login" as any) }
-            ]);
+            showAlert({
+                type: "confirm",
+                title: "Authentication Required",
+                message: "Please log in to book a venue.",
+                actions: [
+                    { text: "Cancel", style: "cancel" },
+                    { text: "Log In", style: "default", onPress: () => router.push("/login" as any) },
+                ],
+            });
             return;
         }
 
@@ -284,7 +290,7 @@ export default function BookingDetailScreen() {
                 setConflictDetails(errorData.conflict);
                 setUnavailableModal(true);
             } else {
-                Alert.alert("Booking Failed", errorData?.error || errorData?.message || "Failed to create booking.");
+                showError("Booking Failed", errorData?.error || errorData?.message || "Failed to create booking.");
             }
         }
     };
@@ -306,7 +312,7 @@ export default function BookingDetailScreen() {
 
                 if (response.success) {
                     if (response.is_pre_booking) {
-                        router.push({
+                        router.replace({
                             pathname: "/pre-booking-confirmed",
                             params: {
                                 id: response.booking.id,
@@ -321,22 +327,22 @@ export default function BookingDetailScreen() {
                             }
                         });
                     } else {
-                        router.push({
+                        router.replace({
                             pathname: "/booking-confirmed",
                             params: { id: response.booking.id, venueId: response.booking.venue_id }
                         });
                     }
                 } else {
-                    Alert.alert("Verification Failed", "Payment received but verification failed. Contact support.");
+                    showError("Verification Failed", "Payment received but verification failed. Contact support.");
                 }
             } else if (data.event === 'cancel') {
                 setPaymentModalVisible(false);
                 setPaymentHtml(null);
-                Alert.alert("Payment Cancelled", "You cancelled the payment. Your booking is still pending.");
+                showError("Payment Cancelled", "You cancelled the payment. Your booking is still pending.");
             } else if (data.event === 'failed') {
                 setPaymentModalVisible(false);
                 setPaymentHtml(null);
-                Alert.alert("Payment Failed", data.data?.description || "Payment could not be processed.");
+                showError("Payment Failed", data.data?.description || "Payment could not be processed.");
             }
         } catch (err) {
             console.error("Failed to parse payment message:", err);

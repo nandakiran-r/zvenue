@@ -1,6 +1,5 @@
 import React, { Component, ErrorInfo, ReactNode } from "react";
-import { StyleSheet, Text, TouchableOpacity, View } from "react-native";
-import Colors from "@/constants/colors";
+import { ConnectionError } from "@/components/ConnectionError";
 
 interface Props {
   children: ReactNode;
@@ -36,58 +35,28 @@ export class ErrorBoundary extends Component<Props, State> {
         return this.props.fallback;
       }
 
+      // Determine variant based on error type
+      const errorMessage = this.state.error?.message?.toLowerCase() || "";
+      const isNetwork =
+        errorMessage.includes("network") ||
+        errorMessage.includes("timeout") ||
+        errorMessage.includes("fetch");
+      const isServer =
+        errorMessage.includes("500") ||
+        errorMessage.includes("server") ||
+        errorMessage.includes("503");
+
+      const variant = isNetwork ? "network" : isServer ? "server" : "generic";
+
       return (
-        <View style={styles.container}>
-          <Text style={styles.emoji}>⚠️</Text>
-          <Text style={styles.title}>Something went wrong</Text>
-          <Text style={styles.message}>
-            {this.state.error?.message || "An unexpected error occurred"}
-          </Text>
-          <TouchableOpacity style={styles.button} onPress={this.handleReset}>
-            <Text style={styles.buttonText}>Try Again</Text>
-          </TouchableOpacity>
-        </View>
+        <ConnectionError
+          variant={variant}
+          onRetry={this.handleReset}
+          showHomeButton={true}
+        />
       );
     }
 
     return this.props.children;
   }
 }
-
-const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-    backgroundColor: Colors.white,
-    alignItems: "center",
-    justifyContent: "center",
-    padding: 32,
-  },
-  emoji: {
-    fontSize: 48,
-    marginBottom: 16,
-  },
-  title: {
-    fontSize: 20,
-    fontWeight: "700",
-    color: Colors.text,
-    marginBottom: 8,
-  },
-  message: {
-    fontSize: 14,
-    color: Colors.textSecondary,
-    textAlign: "center",
-    lineHeight: 20,
-    marginBottom: 24,
-  },
-  button: {
-    backgroundColor: Colors.primary,
-    paddingHorizontal: 24,
-    paddingVertical: 14,
-    borderRadius: 12,
-  },
-  buttonText: {
-    color: Colors.white,
-    fontSize: 15,
-    fontWeight: "600",
-  },
-});

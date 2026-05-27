@@ -5,7 +5,6 @@ import { Phone, UserPlus, X } from "lucide-react-native";
 import React, { useCallback, useState } from "react";
 import {
   ActivityIndicator,
-  Alert,
   Dimensions,
   Image,
   KeyboardAvoidingView,
@@ -20,6 +19,7 @@ import {
 } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import Colors from "@/constants/colors";
+import { useToast } from "@/context/ToastContext";
 
 const { width: SCREEN_WIDTH } = Dimensions.get("window");
 const GRID_GAP = 6;
@@ -47,6 +47,7 @@ export default function LoginScreen() {
   const [loading, setLoading] = useState<boolean>(false);
   const [showSignupPrompt, setShowSignupPrompt] = useState<boolean>(false);
   const insets = useSafeAreaInsets();
+  const { warning, error: showError } = useToast();
 
   const { isSignedIn } = useAuth();
 
@@ -60,7 +61,7 @@ export default function LoginScreen() {
 
   const handlePhoneLogin = async () => {
     if (!phone.trim() || phone.length < 10) {
-      Alert.alert("Required", "Please enter a valid phone number.");
+      warning("Required", "Please enter a valid phone number.");
       return;
     }
 
@@ -79,7 +80,7 @@ export default function LoginScreen() {
         setShowSignupPrompt(true);
       } else {
         const message = err.response?.data?.error || "Failed to send OTP.";
-        Alert.alert("Login Error", message);
+        showError("Login Error", message);
       }
     } finally {
       setLoading(false);

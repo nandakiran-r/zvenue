@@ -3,7 +3,6 @@ import { safeBack } from "@/constants/navigation";
 import { Camera, ChevronLeft, Mail, Phone, User } from "lucide-react-native";
 import React, { useEffect, useState } from "react";
 import {
-    Alert,
     Image,
     KeyboardAvoidingView,
     Platform,
@@ -18,6 +17,7 @@ import * as ImagePicker from "expo-image-picker";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import Colors from "@/constants/colors";
 import { useAuth } from "@/context/AuthContext";
+import { useToast } from "@/context/ToastContext";
 import { updateUser } from "@/lib/api";
 
 export default function EditProfileScreen() {
@@ -30,6 +30,7 @@ export default function EditProfileScreen() {
     const [phoneNumber, setPhoneNumber] = useState("");
     const [avatarUrl, setAvatarUrl] = useState<string | null>(null);
     const [saving, setSaving] = useState(false);
+    const { success, error: showError, warning, showAlert } = useToast();
 
     useEffect(() => {
         if (dbUser) {
@@ -44,7 +45,7 @@ export default function EditProfileScreen() {
     const handlePickImage = async () => {
         const { status } = await ImagePicker.requestMediaLibraryPermissionsAsync();
         if (status !== "granted") {
-            Alert.alert("Permission Required", "Please allow access to your photo library to upload a profile picture.");
+            warning("Permission Required", "Please allow access to your photo library to upload a profile picture.");
             return;
         }
 
@@ -71,7 +72,7 @@ export default function EditProfileScreen() {
     const handleTakePhoto = async () => {
         const { status } = await ImagePicker.requestCameraPermissionsAsync();
         if (status !== "granted") {
-            Alert.alert("Permission Required", "Please allow camera access to take a profile picture.");
+            warning("Permission Required", "Please allow camera access to take a profile picture.");
             return;
         }
 
@@ -95,11 +96,16 @@ export default function EditProfileScreen() {
     };
 
     const handleImagePress = () => {
-        Alert.alert("Profile Picture", "Choose an option", [
-            { text: "Take Photo", onPress: handleTakePhoto },
-            { text: "Choose from Library", onPress: handlePickImage },
-            { text: "Cancel", style: "cancel" },
-        ]);
+        showAlert({
+            type: "info",
+            title: "Profile Picture",
+            message: "Choose an option",
+            actions: [
+                { text: "Take Photo", style: "default", onPress: handleTakePhoto },
+                { text: "Library", style: "default", onPress: handlePickImage },
+                { text: "Cancel", style: "cancel" },
+            ],
+        });
     };
 
     const handleSave = async () => {
@@ -115,13 +121,16 @@ export default function EditProfileScreen() {
                 avatar_url: avatarUrl,
             });
             await refreshProfile();
-            Alert.alert("Success", "Profile updated successfully!", [
-                { text: "OK", onPress: () => safeBack("/(tabs)/profile") }
-            ]);
+            showAlert({
+                type: "success",
+                title: "Success",
+                message: "Profile updated successfully!",
+                actions: [{ text: "OK", style: "default", onPress: () => safeBack("/(tabs)/profile") }],
+            });
         } catch (err: any) {
             console.error("Failed to save profile:", err);
             const msg = err.response?.data?.error || "Failed to save profile. Please try again.";
-            Alert.alert("Error", msg);
+            showError("Error", msg);
         } finally {
             setSaving(false);
         }

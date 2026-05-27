@@ -15,6 +15,7 @@ import {
   Crown,
   KeyRound,
   LifeBuoy,
+  Star,
 } from 'lucide-react'
 import { type SidebarData } from '../types'
 
@@ -89,6 +90,11 @@ export const sidebarData: SidebarData = {
           title: 'Support Tickets',
           url: '/support',
           icon: LifeBuoy,
+        },
+        {
+          title: 'Reviews',
+          url: '/reviews',
+          icon: Star,
         },
       ],
     },

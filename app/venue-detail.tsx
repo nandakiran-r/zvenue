@@ -1,8 +1,8 @@
-import { router, useLocalSearchParams } from "expo-router";
+import { router, useLocalSearchParams, useFocusEffect } from "expo-router";
 import { safeBack } from "@/constants/navigation";
-import { Calendar, ChevronLeft, Clock, Crown, Heart, MapPin, MessageCircle, Star, Users, Wifi, Wind, Car, Utensils, Music, Tv } from "lucide-react-native";
+import { Calendar, ChevronLeft, ChevronRight, Clock, Crown, Edit3, Heart, MapPin, MessageCircle, Star, Users, Wifi, Wind, Car, Utensils, Music, Tv } from "lucide-react-native";
 import { MaterialIcons } from "@expo/vector-icons";
-import React, { useEffect, useState } from "react";
+import React, { useCallback, useEffect, useState } from "react";
 import {
     ActivityIndicator,
     Dimensions,
@@ -22,7 +22,10 @@ import { useFavorites } from "@/context/FavoritesContext";
 import { fetchVenueById } from "@/lib/api";
 import { formatPrice } from "@/lib/utils";
 import { VenueMap } from "@/components/VenueMap";
-import type { DbVenue } from "@/lib/types";
+import ReviewCard from "@/components/ReviewCard";
+import StarDisplay from "@/components/StarDisplay";
+import { useReviewStore } from "@/store/reviewStore";
+import type { DbVenue, DbReview } from "@/lib/types";
 
 const AMENITY_ICONS: Record<string, any> = {
     'AC': Wind,
@@ -39,7 +42,7 @@ export default function VenueDetailScreen() {
     const insets = useSafeAreaInsets();
     
     const { isFavorite, toggleFavorite } = useFavorites();
-    const { isSubscribed } = useAuth();
+    const { isSubscribed, isSignedIn, userId } = useAuth();
 
     const [venue, setVenue] = useState<DbVenue | null>(null);
     const [loading, setLoading] = useState(true);
@@ -47,10 +50,51 @@ export default function VenueDetailScreen() {
     const [showSubscribePrompt, setShowSubscribePrompt] = useState(false);
     const flatListRef = React.useRef<FlatList>(null);
 
+    // Review store
+    const { loadReviews, loadEligibility, getPreviewReviews, hasExistingReview: storeHasExisting, isEligible, venueReviews, venuePagination, venueEligibility } = useReviewStore();
+    const previewReviews = id ? getPreviewReviews(id, 2) : [];
+    const canReview = id ? isEligible(id) : false;
+    const hasExistingReview = id ? storeHasExisting(id) : false;
+    const totalReviews = id ? (venuePagination[id]?.total ?? 0) : 0;
+
+    // Local state for review detail modal
+    const [reviewDetailVisible, setReviewDetailVisible] = useState(false);
+    const [reviewDetailData, setReviewDetailData] = useState<DbReview | null>(null);
+
+    const handleReviewPress = (review: DbReview) => {
+        setReviewDetailData(review);
+        setReviewDetailVisible(true);
+    };
+
     useEffect(() => {
         if (!id) return;
         loadVenue();
     }, [id]);
+
+    // Refresh reviews and venue rating when screen regains focus (e.g., after submitting a review)
+    useFocusEffect(
+        useCallback(() => {
+            if (!id || loading) return;
+            refreshOnFocus();
+        }, [id, loading])
+    );
+
+    const refreshOnFocus = async () => {
+        if (!id) return;
+        // Refresh venue data for updated rating
+        try {
+            const venueData = await fetchVenueById(id);
+            if (venueData) setVenue(venueData);
+        } catch {}
+
+        // Refresh reviews via store
+        loadReviews(id);
+
+        // Refresh eligibility if signed in
+        if (isSignedIn && userId) {
+            loadEligibility(id);
+        }
+    };
 
     // Auto-scroll images every 3 seconds
     useEffect(() => {
@@ -283,6 +327,58 @@ export default function VenueDetailScreen() {
                         </View>
                     </View>
                 )}
+
+                {/* Reviews Section */}
+                <View style={styles.section}>
+                    <View style={styles.reviewsHeader}>
+                        <Text style={styles.sectionTitle}>Reviews</Text>
+                        {(venue.review_count ?? 0) > 0 && (
+                            <View style={styles.reviewsHeaderMeta}>
+                                <Star size={14} color="#FFB800" fill="#FFB800" />
+                                <Text style={styles.reviewsAvg}>{venue.rating?.toFixed(1)}</Text>
+                                <Text style={styles.reviewsCount}>({venue.review_count})</Text>
+                            </View>
+                        )}
+                    </View>
+
+                    {previewReviews.length > 0 ? (
+                        <>
+                            {previewReviews.map((review) => (
+                                <ReviewCard key={review.id} review={review} compact onPress={handleReviewPress} />
+                            ))}
+                            <TouchableOpacity
+                                style={styles.seeAllReviews}
+                                onPress={() => router.push({ pathname: "/venue-reviews", params: { venueId: venue.id, venueName: venue.name } })}
+                            >
+                                <Text style={styles.seeAllReviewsText}>
+                                    See All Reviews{totalReviews > 0 ? ` (${totalReviews})` : ""}
+                                </Text>
+                                <ChevronRight size={16} color={Colors.primary} />
+                            </TouchableOpacity>
+                        </>
+                    ) : (
+                        <Text style={styles.noReviewsText}>No reviews yet. Be the first to review!</Text>
+                    )}
+
+                    {isSignedIn && canReview && (
+                        <TouchableOpacity
+                            style={[styles.writeReviewButton, hasExistingReview && styles.editReviewButton]}
+                            onPress={() => router.push({ pathname: "/write-review", params: { venueId: venue.id } })}
+                        >
+                            {hasExistingReview ? (
+                                <>
+                                    <Edit3 size={16} color={Colors.primary} />
+                                    <Text style={styles.editReviewText}>Edit Your Review</Text>
+                                </>
+                            ) : (
+                                <>
+                                    <Star size={16} color={Colors.white} />
+                                    <Text style={styles.writeReviewText}>Write a Review</Text>
+                                </>
+                            )}
+                        </TouchableOpacity>
+                    )}
+                </View>
             </ScrollView>
 
             <View style={[styles.bottomBar, { paddingBottom: insets.bottom + 12 }]}>
@@ -301,6 +397,42 @@ export default function VenueDetailScreen() {
                     <Text style={styles.bookButtonText}>Pre-Book This Venue</Text>
                 </TouchableOpacity>
             </View>
+
+            {/* Review Detail Modal */}
+            <Modal visible={reviewDetailVisible} transparent animationType="slide" onRequestClose={() => setReviewDetailVisible(false)}>
+                <View style={[styles.reviewModalContainer, { paddingTop: insets.top }]}>
+                    <View style={styles.reviewModalHeader}>
+                        <Text style={styles.reviewModalTitle}>Review</Text>
+                        <TouchableOpacity onPress={() => setReviewDetailVisible(false)} style={styles.reviewModalCloseBtn}>
+                            <ChevronLeft size={22} color={Colors.text} style={{ transform: [{ rotate: '270deg' }] }} />
+                        </TouchableOpacity>
+                    </View>
+                    {reviewDetailData && (
+                        <ScrollView contentContainerStyle={styles.reviewModalContent}>
+                            <View style={styles.reviewModalReviewerRow}>
+                                <View style={styles.reviewModalAvatarPlaceholder}>
+                                    <Users size={20} color={Colors.textSecondary} />
+                                </View>
+                                <View style={styles.reviewModalReviewerInfo}>
+                                    <Text style={styles.reviewModalReviewerName}>{reviewDetailData.user?.full_name || "Anonymous"}</Text>
+                                    <Text style={styles.reviewModalDate}>
+                                        {new Date(reviewDetailData.created_at).toLocaleDateString("en-IN", { day: "numeric", month: "long", year: "numeric" })}
+                                    </Text>
+                                </View>
+                            </View>
+                            <View style={styles.reviewModalRatingRow}>
+                                <StarDisplay rating={reviewDetailData.rating} size={20} />
+                                <Text style={styles.reviewModalRatingValue}>{reviewDetailData.rating}/5</Text>
+                            </View>
+                            {reviewDetailData.comment ? (
+                                <Text style={styles.reviewModalComment}>{reviewDetailData.comment}</Text>
+                            ) : (
+                                <Text style={styles.reviewModalNoComment}>No written review provided.</Text>
+                            )}
+                        </ScrollView>
+                    )}
+                </View>
+            </Modal>
 
             {/* Subscribe Prompt Modal */}
             <Modal visible={showSubscribePrompt} transparent animationType="fade" onRequestClose={() => setShowSubscribePrompt(false)}>
@@ -678,4 +810,101 @@ const styles = StyleSheet.create({
         fontSize: 15,
         fontWeight: "600" as const,
     },
+    // Reviews section
+    reviewsHeader: {
+        flexDirection: "row",
+        alignItems: "center",
+        justifyContent: "space-between",
+        marginBottom: 4,
+    },
+    reviewsHeaderMeta: {
+        flexDirection: "row",
+        alignItems: "center",
+        gap: 4,
+    },
+    reviewsAvg: {
+        fontSize: 14,
+        fontWeight: "700" as const,
+        color: Colors.text,
+    },
+    reviewsCount: {
+        fontSize: 13,
+        color: Colors.textSecondary,
+    },
+    noReviewsText: {
+        fontSize: 14,
+        color: Colors.textSecondary,
+        textAlign: "center",
+        paddingVertical: 20,
+    },
+    seeAllReviews: {
+        flexDirection: "row",
+        alignItems: "center",
+        justifyContent: "center",
+        paddingVertical: 14,
+        gap: 4,
+    },
+    seeAllReviewsText: {
+        fontSize: 14,
+        fontWeight: "600" as const,
+        color: Colors.primary,
+    },
+    writeReviewButton: {
+        flexDirection: "row",
+        alignItems: "center",
+        justifyContent: "center",
+        backgroundColor: Colors.primary,
+        borderRadius: 12,
+        paddingVertical: 14,
+        gap: 8,
+        marginTop: 12,
+    },
+    writeReviewText: {
+        fontSize: 15,
+        fontWeight: "600" as const,
+        color: Colors.white,
+    },
+    editReviewButton: {
+        backgroundColor: Colors.white,
+        borderWidth: 1.5,
+        borderColor: Colors.primary,
+    },
+    editReviewText: {
+        fontSize: 15,
+        fontWeight: "600" as const,
+        color: Colors.primary,
+    },
+    // Review detail modal
+    reviewModalContainer: {
+        flex: 1,
+        backgroundColor: Colors.background,
+    },
+    reviewModalHeader: {
+        flexDirection: "row" as const,
+        alignItems: "center" as const,
+        justifyContent: "space-between" as const,
+        paddingHorizontal: 20,
+        paddingVertical: 14,
+        borderBottomWidth: 1,
+        borderBottomColor: Colors.border,
+    },
+    reviewModalTitle: { fontSize: 18, fontWeight: "700" as const, color: Colors.text },
+    reviewModalCloseBtn: { padding: 8 },
+    reviewModalContent: { padding: 24 },
+    reviewModalReviewerRow: { flexDirection: "row" as const, alignItems: "center" as const, marginBottom: 20 },
+    reviewModalAvatarPlaceholder: {
+        width: 52,
+        height: 52,
+        borderRadius: 26,
+        backgroundColor: Colors.surface,
+        alignItems: "center" as const,
+        justifyContent: "center" as const,
+    },
+    reviewModalReviewerInfo: { marginLeft: 14, flex: 1 },
+    reviewModalReviewerName: { fontSize: 17, fontWeight: "600" as const, color: Colors.text },
+    reviewModalDate: { fontSize: 13, color: Colors.textSecondary, marginTop: 2 },
+    reviewModalRatingRow: { flexDirection: "row" as const, alignItems: "center" as const, gap: 10, marginBottom: 20 },
+    reviewModalRatingValue: { fontSize: 16, fontWeight: "600" as const, color: Colors.text },
+    reviewModalComment: { fontSize: 16, color: Colors.text, lineHeight: 24 },
+    reviewModalNoComment: { fontSize: 15, color: Colors.textTertiary, fontStyle: "italic" as const },
 });

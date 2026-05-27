@@ -5,8 +5,8 @@ import jwt from '@fastify/jwt';
 import argon2 from 'argon2';
 import Razorpay from 'razorpay';
 import { db } from './db/index.js';
-import { users, venues, categories, bookings, notifications, otps, owners, support_tickets } from './db/schema.js';
-import { eq, and, ilike, or, desc, asc, count, sum, sql, gte, lte, ne } from 'drizzle-orm';
+import { users, venues, categories, bookings, notifications, otps, owners, support_tickets, reviews } from './db/schema.js';
+import { eq, and, ilike, or, desc, asc, count, sum, sql, gte, lte, ne, avg } from 'drizzle-orm';
 import { geocodeAddress, buildAddress } from './lib/geocode.js';
 
 // Haversine formula to calculate distance between two lat/lng points in km
@@ -1665,8 +1665,6 @@ fastify.post('/api/auth/verify-otp', async (request, reply) => {
       email: user.email,
       phone_number: user.phone_number,
       avatar_url: user.avatar_url,
-      trial_ends_at: user.trial_ends_at,
-      is_trial_used: user.is_trial_used,
       subscription_status: user.subscription_status,
     } };
   } catch (err) {
@@ -2631,6 +2629,295 @@ fastify.get('/api/dashboard/city-distribution', { onRequest: [fastify.authentica
 
     return Object.entries(counts).map(([city, count]) => ({ city, count })).sort((a, b) => b.count - a.count);
   } catch (err) {
+    return reply.status(500).send({ error: 'Internal Server Error' });
+  }
+});
+
+// ─── REVIEWS ────────────────────────────────────────────────────────────────
+
+// Helper: Recalculate venue rating and review_count
+async function recalculateVenueRating(venueId, trx = db) {
+  const result = await trx.select({
+    avgRating: avg(reviews.rating),
+    reviewCount: count(reviews.id),
+  }).from(reviews).where(eq(reviews.venue_id, venueId));
+
+  const avgRating = result[0]?.avgRating ? Math.round(parseFloat(result[0].avgRating) * 10) / 10 : 0;
+  const reviewCount = result[0]?.reviewCount || 0;
+
+  await trx.update(venues)
+    .set({ rating: avgRating, review_count: reviewCount })
+    .where(eq(venues.id, venueId));
+
+  return { avgRating, reviewCount };
+}
+
+// Check review eligibility for a venue
+fastify.get('/api/reviews/eligibility/:venueId', { onRequest: [fastify.authenticate] }, async (request, reply) => {
+  try {
+    const { venueId } = request.params;
+    const userId = request.user.id;
+
+    // Check if user has a qualifying booking
+    const qualifying = await db.query.bookings.findFirst({
+      where: and(
+        eq(bookings.venue_id, venueId),
+        eq(bookings.user_id, userId),
+        or(eq(bookings.status, 'confirmed'), eq(bookings.status, 'pre_booked'))
+      ),
+    });
+
+    // Check if user already has a review for this venue
+    const existingReview = await db.query.reviews.findFirst({
+      where: and(eq(reviews.venue_id, venueId), eq(reviews.user_id, userId)),
+    });
+
+    return {
+      eligible: !!qualifying,
+      existing_review: existingReview || null,
+    };
+  } catch (err) {
+    fastify.log.error(err);
+    return reply.status(500).send({ error: 'Internal Server Error' });
+  }
+});
+
+// Create a review
+fastify.post('/api/reviews', { onRequest: [fastify.authenticate] }, async (request, reply) => {
+  try {
+    const { venue_id, rating, comment } = request.body;
+    const userId = request.user.id;
+
+    // Validate rating
+    if (!rating || rating < 1 || rating > 5 || !Number.isInteger(rating)) {
+      return reply.status(400).send({ error: 'Rating must be an integer between 1 and 5' });
+    }
+
+    // Validate comment length
+    if (comment && comment.length > 500) {
+      return reply.status(400).send({ error: 'Comment must be 500 characters or less' });
+    }
+
+    // Validate venue exists
+    const venue = await db.query.venues.findFirst({
+      where: eq(venues.id, venue_id),
+      columns: { id: true },
+    });
+    if (!venue) {
+      return reply.status(400).send({ error: 'Venue not found' });
+    }
+
+    // Check booking eligibility
+    const qualifying = await db.query.bookings.findFirst({
+      where: and(
+        eq(bookings.venue_id, venue_id),
+        eq(bookings.user_id, userId),
+        or(eq(bookings.status, 'confirmed'), eq(bookings.status, 'pre_booked'))
+      ),
+    });
+    if (!qualifying) {
+      return reply.status(403).send({ error: 'You must have a completed booking to review this venue' });
+    }
+
+    // Check if review already exists (upsert)
+    const existing = await db.query.reviews.findFirst({
+      where: and(eq(reviews.venue_id, venue_id), eq(reviews.user_id, userId)),
+    });
+
+    let result;
+    if (existing) {
+      // Update existing review
+      const [updated] = await db.update(reviews)
+        .set({ rating, comment: comment || null, updated_at: new Date() })
+        .where(eq(reviews.id, existing.id))
+        .returning();
+      result = updated;
+    } else {
+      // Insert new review
+      const [inserted] = await db.insert(reviews)
+        .values({ venue_id, user_id: userId, rating, comment: comment || null })
+        .returning();
+      result = inserted;
+    }
+
+    // Recalculate venue rating
+    await recalculateVenueRating(venue_id);
+
+    return reply.status(existing ? 200 : 201).send(result);
+  } catch (err) {
+    fastify.log.error(err);
+    return reply.status(500).send({ error: 'Internal Server Error' });
+  }
+});
+
+// Get reviews for a venue (paginated, public)
+fastify.get('/api/venues/:id/reviews', async (request, reply) => {
+  try {
+    const { id: venueId } = request.params;
+    const page = Math.max(1, parseInt(request.query.page) || 1);
+    const limit = Math.min(50, Math.max(1, parseInt(request.query.limit) || 10));
+    const offset = (page - 1) * limit;
+
+    // Get total count
+    const [{ total }] = await db.select({ total: count(reviews.id) })
+      .from(reviews)
+      .where(eq(reviews.venue_id, venueId));
+
+    // Get paginated reviews with user info
+    const reviewsList = await db.query.reviews.findMany({
+      where: eq(reviews.venue_id, venueId),
+      orderBy: [desc(reviews.created_at)],
+      limit,
+      offset,
+      with: {
+        user: {
+          columns: { id: true, full_name: true, avatar_url: true },
+        },
+      },
+    });
+
+    return {
+      reviews: reviewsList,
+      pagination: {
+        page,
+        limit,
+        total,
+        totalPages: Math.ceil(total / limit),
+      },
+    };
+  } catch (err) {
+    fastify.log.error(err);
+    return reply.status(500).send({ error: 'Internal Server Error' });
+  }
+});
+
+// Update a review (owner only)
+fastify.put('/api/reviews/:id', { onRequest: [fastify.authenticate] }, async (request, reply) => {
+  try {
+    const { id: reviewId } = request.params;
+    const { rating, comment } = request.body;
+    const userId = request.user.id;
+
+    // Find the review
+    const review = await db.query.reviews.findFirst({
+      where: eq(reviews.id, reviewId),
+    });
+    if (!review) {
+      return reply.status(404).send({ error: 'Review not found' });
+    }
+
+    // Check ownership
+    if (review.user_id !== userId) {
+      return reply.status(403).send({ error: 'You can only edit your own reviews' });
+    }
+
+    // Validate rating
+    if (rating && (rating < 1 || rating > 5 || !Number.isInteger(rating))) {
+      return reply.status(400).send({ error: 'Rating must be an integer between 1 and 5' });
+    }
+
+    // Update
+    const [updated] = await db.update(reviews)
+      .set({
+        ...(rating && { rating }),
+        ...(comment !== undefined && { comment: comment || null }),
+        updated_at: new Date(),
+      })
+      .where(eq(reviews.id, reviewId))
+      .returning();
+
+    // Recalculate venue rating
+    await recalculateVenueRating(review.venue_id);
+
+    return updated;
+  } catch (err) {
+    fastify.log.error(err);
+    return reply.status(500).send({ error: 'Internal Server Error' });
+  }
+});
+
+// Delete a review (owner or admin)
+fastify.delete('/api/reviews/:id', { onRequest: [fastify.authenticate] }, async (request, reply) => {
+  try {
+    const { id: reviewId } = request.params;
+    const userId = request.user.id;
+    const userRole = request.user.role;
+
+    // Find the review
+    const review = await db.query.reviews.findFirst({
+      where: eq(reviews.id, reviewId),
+    });
+    if (!review) {
+      return reply.status(404).send({ error: 'Review not found' });
+    }
+
+    // Check ownership or admin role
+    if (review.user_id !== userId && userRole !== 'admin' && userRole !== 'owner') {
+      return reply.status(403).send({ error: 'Insufficient permissions to delete this review' });
+    }
+
+    // Delete
+    await db.delete(reviews).where(eq(reviews.id, reviewId));
+
+    // Recalculate venue rating
+    await recalculateVenueRating(review.venue_id);
+
+    return { success: true, message: 'Review deleted' };
+  } catch (err) {
+    fastify.log.error(err);
+    return reply.status(500).send({ error: 'Internal Server Error' });
+  }
+});
+
+// Admin: Get all reviews with filters
+fastify.get('/api/admin/reviews', { onRequest: [fastify.authenticate] }, async (request, reply) => {
+  try {
+    const page = Math.max(1, parseInt(request.query.page) || 1);
+    const limit = Math.min(50, Math.max(1, parseInt(request.query.limit) || 20));
+    const offset = (page - 1) * limit;
+    const { venue_id, rating: filterRating, date_from, date_to } = request.query;
+
+    // Build conditions
+    const conditions = [];
+    if (venue_id) conditions.push(eq(reviews.venue_id, venue_id));
+    if (filterRating) conditions.push(eq(reviews.rating, parseInt(filterRating)));
+    if (date_from) conditions.push(gte(reviews.created_at, new Date(date_from)));
+    if (date_to) conditions.push(lte(reviews.created_at, new Date(date_to)));
+
+    const whereClause = conditions.length > 0 ? and(...conditions) : undefined;
+
+    // Get total count
+    const [{ total }] = await db.select({ total: count(reviews.id) })
+      .from(reviews)
+      .where(whereClause);
+
+    // Get paginated reviews with user and venue info
+    const reviewsList = await db.query.reviews.findMany({
+      where: whereClause,
+      orderBy: [desc(reviews.created_at)],
+      limit,
+      offset,
+      with: {
+        user: {
+          columns: { id: true, full_name: true, avatar_url: true },
+        },
+        venue: {
+          columns: { id: true, name: true, city: true },
+        },
+      },
+    });
+
+    return {
+      reviews: reviewsList,
+      pagination: {
+        page,
+        limit,
+        total,
+        totalPages: Math.ceil(total / limit),
+      },
+    };
+  } catch (err) {
+    fastify.log.error(err);
     return reply.status(500).send({ error: 'Internal Server Error' });
   }
 });

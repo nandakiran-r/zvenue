@@ -1,4 +1,4 @@
-import { pgTable, uuid, varchar, text, integer, boolean, real, timestamp, jsonb } from 'drizzle-orm/pg-core';
+import { pgTable, uuid, varchar, text, integer, boolean, real, timestamp, jsonb, uniqueIndex, index } from 'drizzle-orm/pg-core';
 import { relations } from 'drizzle-orm';
 
 export const users = pgTable('users', {
@@ -129,6 +129,21 @@ export const support_tickets = pgTable('support_tickets', {
   updated_at: timestamp('updated_at').defaultNow(),
 });
 
+// Reviews
+export const reviews = pgTable('reviews', {
+  id: uuid('id').primaryKey().defaultRandom(),
+  venue_id: uuid('venue_id').references(() => venues.id, { onDelete: 'cascade' }).notNull(),
+  user_id: uuid('user_id').references(() => users.id, { onDelete: 'cascade' }).notNull(),
+  rating: integer('rating').notNull(), // 1-5
+  comment: text('comment'), // nullable, max 500 chars enforced at API level
+  created_at: timestamp('created_at').defaultNow(),
+  updated_at: timestamp('updated_at').defaultNow(),
+}, (table) => [
+  index('reviews_venue_id_idx').on(table.venue_id),
+  index('reviews_user_id_idx').on(table.user_id),
+  uniqueIndex('reviews_user_venue_unique').on(table.venue_id, table.user_id),
+]);
+
 // Relations
 export const ownersRelations = relations(owners, ({ many }) => ({
   venues: many(venues),
@@ -145,6 +160,7 @@ export const venuesRelations = relations(venues, ({ one, many }) => ({
     references: [owners.id],
   }),
   bookings: many(bookings),
+  reviews: many(reviews),
 }));
 
 export const categoriesRelations = relations(categories, ({ many }) => ({
@@ -154,6 +170,7 @@ export const categoriesRelations = relations(categories, ({ many }) => ({
 export const usersRelations = relations(users, ({ many }) => ({
   bookings: many(bookings),
   notifications: many(notifications),
+  reviews: many(reviews),
 }));
 
 export const bookingsRelations = relations(bookings, ({ one }) => ({
@@ -178,5 +195,16 @@ export const supportTicketsRelations = relations(support_tickets, ({ one }) => (
   owner: one(owners, {
     fields: [support_tickets.owner_id],
     references: [owners.id],
+  }),
+}));
+
+export const reviewsRelations = relations(reviews, ({ one }) => ({
+  venue: one(venues, {
+    fields: [reviews.venue_id],
+    references: [venues.id],
+  }),
+  user: one(users, {
+    fields: [reviews.user_id],
+    references: [users.id],
   }),
 }));

@@ -200,7 +200,4 @@ export async function getCheckoutOptions(): Promise<{ checkoutOptions: any; subs
   return data;
 }
 
-export async function activateTrial(): Promise<{ success: boolean; message: string; trial_ends_at: string }> {
-  const { data } = await api.post('/api/subscription/activate-trial');
-  return data;
-}
+// activateTrial removed — no backend endpoint exists for this feature

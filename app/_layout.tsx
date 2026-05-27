@@ -34,6 +34,8 @@ function RootLayoutNav() {
       <Stack.Screen name="category-venues" />
       <Stack.Screen name="settings" />
       <Stack.Screen name="help" />
+      <Stack.Screen name="write-review" />
+      <Stack.Screen name="venue-reviews" />
     </Stack>
   );
 }

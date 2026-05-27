@@ -68,7 +68,7 @@ export default function BookingsScreen() {
 
           <View style={styles.infoRow}>
             <Clock size={14} color={Colors.textSecondary} />
-            <Text style={styles.infoText}>{item.start_time ?? ''} - {item.end_time ?? ''} ({item.duration_hours}h)</Text>
+            <Text style={styles.infoText}>{item.start_time ?? ''} - {item.end_time ?? ''}</Text>
           </View>
         </View>
       </View>

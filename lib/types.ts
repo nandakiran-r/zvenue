@@ -71,7 +71,6 @@ export interface DbBooking {
   booking_date: string;
   start_time: string | null;
   end_time: string | null;
-  duration_hours: number;
   guests: number;
   status: string;
   subtotal: number;
@@ -107,7 +106,6 @@ export interface CreateBookingInput {
   booking_date: string;
   start_time?: string;
   end_time?: string;
-  duration_hours: number;
   guests: number;
   subtotal: number;
   service_fee: number;
@@ -177,4 +175,53 @@ export interface RazorpaySubscription {
   next_bill_at: number;
   customer_notify: number;
   notes: { user_id: string };
+}
+
+// ─── Reviews ───────────────────────────────────────────────────────────────
+
+export interface DbReview {
+  id: string;
+  venue_id: string;
+  user_id: string;
+  rating: number;
+  comment: string | null;
+  created_at: string;
+  updated_at: string;
+  user?: {
+    id: string;
+    full_name: string | null;
+    avatar_url: string | null;
+  };
+  venue?: {
+    id: string;
+    name: string;
+    city: string | null;
+  };
+}
+
+export interface ReviewEligibility {
+  eligible: boolean;
+  existing_review: DbReview | null;
+}
+
+export interface ReviewsResponse {
+  reviews: DbReview[];
+  pagination: {
+    page: number;
+    limit: number;
+    total: number;
+    totalPages: number;
+  };
+}
+
+export interface PendingReview {
+  localId: string;
+  venueId: string;
+  userId: string;
+  rating: number;
+  comment: string;
+  createdAt: string;
+  status: 'pending_sync' | 'synced' | 'sync_failed';
+  retryCount: number;
+  serverId?: string;
 }

@@ -104,4 +104,33 @@ export const broadcastNotification = (data: { title: string; body: string; type?
   api.post('/api/notifications/broadcast', data).then(r => r.data)
 export const deleteNotification = (id: string) => api.delete(`/api/notifications/${id}`).then(r => r.data)
 
+// ─── Reviews ───────────────────────────────────────────────────────────────
+export interface AdminReview {
+  id: string
+  venue_id: string
+  user_id: string
+  rating: number
+  comment: string | null
+  created_at: string
+  updated_at: string
+  user?: { id: string; full_name: string | null; avatar_url: string | null }
+  venue?: { id: string; name: string; city: string | null }
+}
+
+export interface AdminReviewsResponse {
+  reviews: AdminReview[]
+  pagination: { page: number; limit: number; total: number; totalPages: number }
+}
+
+export const fetchAdminReviews = (params?: {
+  page?: number
+  limit?: number
+  venue_id?: string
+  rating?: number
+  date_from?: string
+  date_to?: string
+}): Promise<AdminReviewsResponse> => api.get('/api/admin/reviews', { params }).then(r => r.data)
+
+export const deleteAdminReview = (id: string) => api.delete(`/api/reviews/${id}`).then(r => r.data)
+
 export default api

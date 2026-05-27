@@ -28,6 +28,7 @@ import { Route as AuthenticatedTasksIndexRouteImport } from './routes/_authentic
 import { Route as AuthenticatedSupportIndexRouteImport } from './routes/_authenticated/support/index'
 import { Route as AuthenticatedSubscribersIndexRouteImport } from './routes/_authenticated/subscribers/index'
 import { Route as AuthenticatedSettingsIndexRouteImport } from './routes/_authenticated/settings/index'
+import { Route as AuthenticatedReviewsIndexRouteImport } from './routes/_authenticated/reviews/index'
 import { Route as AuthenticatedOwnersIndexRouteImport } from './routes/_authenticated/owners/index'
 import { Route as AuthenticatedNotificationsIndexRouteImport } from './routes/_authenticated/notifications/index'
 import { Route as AuthenticatedHelpCenterIndexRouteImport } from './routes/_authenticated/help-center/index'
@@ -141,6 +142,12 @@ const AuthenticatedSettingsIndexRoute =
     path: '/',
     getParentRoute: () => AuthenticatedSettingsRouteRoute,
   } as any)
+const AuthenticatedReviewsIndexRoute =
+  AuthenticatedReviewsIndexRouteImport.update({
+    id: '/reviews/',
+    path: '/reviews/',
+    getParentRoute: () => AuthenticatedRouteRoute,
+  } as any)
 const AuthenticatedOwnersIndexRoute =
   AuthenticatedOwnersIndexRouteImport.update({
     id: '/owners/',
@@ -244,6 +251,7 @@ export interface FileRoutesByFullPath {
   '/help-center/': typeof AuthenticatedHelpCenterIndexRoute
   '/notifications/': typeof AuthenticatedNotificationsIndexRoute
   '/owners/': typeof AuthenticatedOwnersIndexRoute
+  '/reviews/': typeof AuthenticatedReviewsIndexRoute
   '/settings/': typeof AuthenticatedSettingsIndexRoute
   '/subscribers/': typeof AuthenticatedSubscribersIndexRoute
   '/support/': typeof AuthenticatedSupportIndexRoute
@@ -276,6 +284,7 @@ export interface FileRoutesByTo {
   '/help-center': typeof AuthenticatedHelpCenterIndexRoute
   '/notifications': typeof AuthenticatedNotificationsIndexRoute
   '/owners': typeof AuthenticatedOwnersIndexRoute
+  '/reviews': typeof AuthenticatedReviewsIndexRoute
   '/settings': typeof AuthenticatedSettingsIndexRoute
   '/subscribers': typeof AuthenticatedSubscribersIndexRoute
   '/support': typeof AuthenticatedSupportIndexRoute
@@ -311,6 +320,7 @@ export interface FileRoutesById {
   '/_authenticated/help-center/': typeof AuthenticatedHelpCenterIndexRoute
   '/_authenticated/notifications/': typeof AuthenticatedNotificationsIndexRoute
   '/_authenticated/owners/': typeof AuthenticatedOwnersIndexRoute
+  '/_authenticated/reviews/': typeof AuthenticatedReviewsIndexRoute
   '/_authenticated/settings/': typeof AuthenticatedSettingsIndexRoute
   '/_authenticated/subscribers/': typeof AuthenticatedSubscribersIndexRoute
   '/_authenticated/support/': typeof AuthenticatedSupportIndexRoute
@@ -346,6 +356,7 @@ export interface FileRouteTypes {
     | '/help-center/'
     | '/notifications/'
     | '/owners/'
+    | '/reviews/'
     | '/settings/'
     | '/subscribers/'
     | '/support/'
@@ -378,6 +389,7 @@ export interface FileRouteTypes {
     | '/help-center'
     | '/notifications'
     | '/owners'
+    | '/reviews'
     | '/settings'
     | '/subscribers'
     | '/support'
@@ -412,6 +424,7 @@ export interface FileRouteTypes {
     | '/_authenticated/help-center/'
     | '/_authenticated/notifications/'
     | '/_authenticated/owners/'
+    | '/_authenticated/reviews/'
     | '/_authenticated/settings/'
     | '/_authenticated/subscribers/'
     | '/_authenticated/support/'
@@ -569,6 +582,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AuthenticatedSettingsIndexRouteImport
       parentRoute: typeof AuthenticatedSettingsRouteRoute
     }
+    '/_authenticated/reviews/': {
+      id: '/_authenticated/reviews/'
+      path: '/reviews'
+      fullPath: '/reviews/'
+      preLoaderRoute: typeof AuthenticatedReviewsIndexRouteImport
+      parentRoute: typeof AuthenticatedRouteRoute
+    }
     '/_authenticated/owners/': {
       id: '/_authenticated/owners/'
       path: '/owners'
@@ -698,6 +718,7 @@ interface AuthenticatedRouteRouteChildren {
   AuthenticatedHelpCenterIndexRoute: typeof AuthenticatedHelpCenterIndexRoute
   AuthenticatedNotificationsIndexRoute: typeof AuthenticatedNotificationsIndexRoute
   AuthenticatedOwnersIndexRoute: typeof AuthenticatedOwnersIndexRoute
+  AuthenticatedReviewsIndexRoute: typeof AuthenticatedReviewsIndexRoute
   AuthenticatedSubscribersIndexRoute: typeof AuthenticatedSubscribersIndexRoute
   AuthenticatedSupportIndexRoute: typeof AuthenticatedSupportIndexRoute
   AuthenticatedTasksIndexRoute: typeof AuthenticatedTasksIndexRoute
@@ -717,6 +738,7 @@ const AuthenticatedRouteRouteChildren: AuthenticatedRouteRouteChildren = {
   AuthenticatedHelpCenterIndexRoute: AuthenticatedHelpCenterIndexRoute,
   AuthenticatedNotificationsIndexRoute: AuthenticatedNotificationsIndexRoute,
   AuthenticatedOwnersIndexRoute: AuthenticatedOwnersIndexRoute,
+  AuthenticatedReviewsIndexRoute: AuthenticatedReviewsIndexRoute,
   AuthenticatedSubscribersIndexRoute: AuthenticatedSubscribersIndexRoute,
   AuthenticatedSupportIndexRoute: AuthenticatedSupportIndexRoute,
   AuthenticatedTasksIndexRoute: AuthenticatedTasksIndexRoute,

@@ -135,6 +135,20 @@ export const deleteAdminReview = (id: string) => api.delete(`/api/reviews/${id}`
 
 // ─── Service Marketplace ───────────────────────────────────────────────────
 
+// Password Reset & Change
+export const requestOwnerPasswordReset = (data: { email?: string; phone_number?: string }) =>
+  api.post('/api/owners/request-password-reset', data).then(r => r.data)
+export const verifyOwnerResetOtp = (data: { phone_number: string; otp: string; new_password: string }) =>
+  api.post('/api/owners/verify-reset-otp', data).then(r => r.data)
+export const changeOwnerPassword = (data: { current_password: string; new_password: string }) =>
+  api.post('/api/owners/change-password', data).then(r => r.data)
+export const requestAdminPasswordReset = (data: { email: string }) =>
+  api.post('/api/admin/request-password-reset', data).then(r => r.data)
+export const verifyAdminResetOtp = (data: { email: string; otp: string; new_password: string }) =>
+  api.post('/api/admin/verify-reset-otp', data).then(r => r.data)
+export const changeAdminPassword = (data: { current_password: string; new_password: string }) =>
+  api.post('/api/admin/change-password', data).then(r => r.data)
+
 // Service Categories
 export const fetchServiceCategories = () => api.get('/api/service-categories').then(r => r.data)
 export const fetchAdminServiceCategories = () => api.get('/api/admin/service-categories').then(r => r.data)

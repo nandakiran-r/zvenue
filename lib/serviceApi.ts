@@ -141,3 +141,11 @@ export async function searchAll(query: string, type: 'all' | 'venues' | 'service
   const { data } = await api.get('/api/search', { params: { q: query, type } });
   return data;
 }
+
+
+// ─── Invoices ──────────────────────────────────────────────────────────────
+
+export async function fetchServiceBookingInvoice(bookingId: string): Promise<any> {
+  const { data } = await api.get(`/api/service-bookings/${bookingId}/invoice`);
+  return data;
+}

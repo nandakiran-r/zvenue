@@ -1,0 +1,172 @@
+/**
+ * Invoice generation and WhatsApp delivery for ZVenue
+ * Sends invoices to both customers and owners via AOC WhatsApp API
+ * Fallback: digital invoice available in-app
+ */
+
+// Generate invoice data from a venue booking
+export function generateVenueInvoiceData(booking, venue, user) {
+  const invoiceNumber = `ZINV-${Date.now().toString().slice(-10)}`;
+  return {
+    invoice_number: invoiceNumber,
+    booking_id: booking.booking_id_display || booking.id.slice(0, 8),
+    type: 'venue',
+    customer: {
+      name: user?.full_name || 'Customer',
+      phone: user?.phone_number || '',
+      email: user?.email || '',
+    },
+    owner: {
+      name: venue?.owner_name || 'Venue Owner',
+      phone: '', // filled by caller if available
+    },
+    items: [
+      {
+        description: `Venue Booking: ${venue?.name || 'Venue'}`,
+        details: `Date: ${booking.booking_date} | ${booking.start_time} - ${booking.end_time}`,
+        quantity: 1,
+        amount: booking.total,
+      },
+    ],
+    subtotal: booking.subtotal || booking.total,
+    service_fee: booking.service_fee || 0,
+    registration_fee_paid: booking.registration_fee_paid || 0,
+    remaining_balance: booking.remaining_balance || 0,
+    total: booking.total,
+    payment_method: booking.payment_method || 'Razorpay',
+    payment_id: booking.payment_id || '',
+    status: booking.status,
+    venue_name: venue?.name || '',
+    city: venue?.city || '',
+    generated_at: new Date().toISOString(),
+  };
+}
+
+// Generate invoice data from a service booking
+export function generateServiceInvoiceData(booking, listing, user) {
+  const invoiceNumber = `ZINV-${Date.now().toString().slice(-10)}`;
+  return {
+    invoice_number: invoiceNumber,
+    booking_id: booking.booking_id_display || booking.id.slice(0, 8),
+    type: 'service',
+    customer: {
+      name: user?.full_name || 'Customer',
+      phone: user?.phone_number || '',
+      email: user?.email || '',
+    },
+    owner: {
+      name: listing?.owner_name || 'Service Provider',
+      phone: '',
+    },
+    items: [
+      {
+        description: `Service: ${listing?.name || 'Service'}`,
+        details: `Quantity: ${booking.quantity}`,
+        quantity: booking.quantity,
+        unit_price: booking.unit_price,
+        amount: booking.total_amount,
+      },
+    ],
+    subtotal: booking.unit_price * booking.quantity,
+    discount: booking.discount_applied || 0,
+    total: booking.total_amount,
+    payment_method: booking.payment_method || 'Razorpay',
+    payment_id: booking.payment_id || '',
+    status: booking.status,
+    service_name: listing?.name || '',
+    city: listing?.city || '',
+    generated_at: new Date().toISOString(),
+  };
+}
+
+// Send invoice via WhatsApp (AOC API)
+export async function sendWhatsAppInvoice(phoneNumber, invoiceData, logger) {
+  try {
+    if (!phoneNumber || !process.env.AOC_API_KEY) {
+      if (logger) logger.warn('WhatsApp invoice skipped: no phone or API key');
+      return false;
+    }
+
+    // Format amount for display
+    const totalFormatted = `₹${(invoiceData.total || 0).toLocaleString('en-IN')}`;
+    const itemName = invoiceData.type === 'venue' ? invoiceData.venue_name : invoiceData.service_name;
+
+    const response = await fetch('https://api.aoc-portal.com/v1/whatsapp', {
+      method: 'POST',
+      headers: {
+        'apikey': process.env.AOC_API_KEY,
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({
+        from: process.env.AOC_WHATSAPP_NUMBER,
+        to: phoneNumber,
+        templateName: 'booking_invoice',
+        type: 'template',
+        language: { code: 'en' },
+        params: {
+          customer_name: invoiceData.customer.name,
+          booking_id: invoiceData.booking_id,
+          item_name: itemName,
+          city: invoiceData.city,
+          total_amount: totalFormatted,
+          payment_id: invoiceData.payment_id || 'N/A',
+          status: invoiceData.status,
+          date: new Date(invoiceData.generated_at).toLocaleDateString('en-IN'),
+        },
+      }),
+    });
+
+    const result = await response.json();
+    if (!response.ok || result.error) {
+      if (logger) logger.error('WhatsApp invoice error:', result);
+      return false;
+    }
+
+    if (logger) logger.info(`WhatsApp invoice sent to ${phoneNumber} for ${invoiceData.booking_id}`);
+    return true;
+  } catch (err) {
+    if (logger) logger.error('WhatsApp invoice failed:', err.message);
+    return false;
+  }
+}
+
+// Send owner notification about new booking (WhatsApp)
+export async function sendOwnerBookingAlert(ownerPhone, invoiceData, logger) {
+  try {
+    if (!ownerPhone || !process.env.AOC_API_KEY) return false;
+
+    const totalFormatted = `₹${(invoiceData.total || 0).toLocaleString('en-IN')}`;
+
+    const response = await fetch('https://api.aoc-portal.com/v1/whatsapp', {
+      method: 'POST',
+      headers: {
+        'apikey': process.env.AOC_API_KEY,
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({
+        from: process.env.AOC_WHATSAPP_NUMBER,
+        to: ownerPhone,
+        templateName: process.env.AOC_PREBOOKING_TEMPLATE_NAME || 'prebooking_alert',
+        type: 'template',
+        language: { code: 'en' },
+        params: {
+          venue_name: invoiceData.type === 'venue' ? invoiceData.venue_name : invoiceData.service_name,
+          booking_date: new Date(invoiceData.generated_at).toLocaleDateString('en-IN'),
+          user_name: invoiceData.customer.name,
+          registration_fee: totalFormatted,
+          remaining_balance: invoiceData.remaining_balance ? `₹${invoiceData.remaining_balance.toLocaleString('en-IN')}` : '₹0',
+        },
+      }),
+    });
+
+    const result = await response.json();
+    if (!response.ok || result.error) {
+      if (logger) logger.error('Owner WhatsApp alert error:', result);
+      return false;
+    }
+    return true;
+  } catch (err) {
+    if (logger) logger.error('Owner WhatsApp alert failed:', err.message);
+    return false;
+  }
+}

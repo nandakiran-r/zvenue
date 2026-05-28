@@ -63,6 +63,7 @@ admin/dist-ssr
 admin/*.local
 
 admin/.env
+admin/server/.env
 
 # Editor directories and files
 admin/.vscode/*

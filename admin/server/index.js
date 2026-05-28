@@ -8,6 +8,13 @@ import { db } from './db/index.js';
 import { users, venues, categories, bookings, notifications, otps, owners, support_tickets, reviews, service_categories, service_listings, service_bookings, service_reviews, service_favorites } from './db/schema.js';
 import { eq, and, ilike, or, desc, asc, count, sum, sql, gte, lte, ne, avg } from 'drizzle-orm';
 import { geocodeAddress, buildAddress } from './lib/geocode.js';
+import { generateVenueInvoiceData, generateServiceInvoiceData, sendWhatsAppInvoice, sendOwnerBookingAlert } from './lib/invoice.js';
+
+// Simple XSS sanitization — strip HTML tags from user input
+function sanitizeText(text) {
+  if (!text || typeof text !== 'string') return text;
+  return text.replace(/<[^>]*>/g, '').trim();
+}
 
 // Haversine formula to calculate distance between two lat/lng points in km
 function haversineDistance(lat1, lon1, lat2, lon2) {
@@ -21,7 +28,10 @@ function haversineDistance(lat1, lon1, lat2, lon2) {
   return R * c;
 }
 
-const fastify = Fastify({ logger: true });
+const fastify = Fastify({
+  logger: true,
+  bodyLimit: 10 * 1024 * 1024, // 10MB max (needed for base64 profile images)
+});
 
 // Generate unique Booking ID in format ZBID-XXXXXXXX (8 random digits)
 async function generateBookingDisplayId() {
@@ -41,9 +51,26 @@ async function generateBookingDisplayId() {
 
 // Plugins
 fastify.register(cors, {
-  origin: '*',
+  origin: process.env.ALLOWED_ORIGINS
+    ? process.env.ALLOWED_ORIGINS.split(',').map(s => s.trim())
+    : ['http://localhost:5173', 'http://localhost:4173', 'http://localhost:8081'],
   methods: ['GET', 'POST', 'PUT', 'DELETE', 'PATCH', 'OPTIONS'],
   allowedHeaders: ['Content-Type', 'Authorization'],
+});
+
+// Security headers
+import helmet from '@fastify/helmet';
+fastify.register(helmet, {
+  contentSecurityPolicy: false, // Disabled for mobile WebView compatibility
+});
+
+// Global rate limiting
+import rateLimit from '@fastify/rate-limit';
+fastify.register(rateLimit, {
+  max: 100,
+  timeWindow: '1 minute',
+  keyGenerator: (request) => request.ip,
+  errorResponseBuilder: () => ({ error: 'Too many requests', message: 'Please slow down. Try again in a minute.' }),
 });
 
 fastify.register(jwt, {
@@ -55,7 +82,43 @@ fastify.decorate('authenticate', async function (request, reply) {
   try {
     await request.jwtVerify();
   } catch (err) {
-    reply.send(err);
+    reply.status(401).send({ error: 'Unauthorized', message: 'Invalid or expired token' });
+  }
+});
+
+// Admin-only middleware (must be used AFTER authenticate)
+fastify.decorate('authenticateAdmin', async function (request, reply) {
+  try {
+    await request.jwtVerify();
+    if (request.user.role !== 'admin') {
+      return reply.status(403).send({ error: 'Forbidden', message: 'Admin access required' });
+    }
+  } catch (err) {
+    reply.status(401).send({ error: 'Unauthorized' });
+  }
+});
+
+// Owner-only middleware (must be used AFTER authenticate)
+fastify.decorate('authenticateOwner', async function (request, reply) {
+  try {
+    await request.jwtVerify();
+    if (request.user.role !== 'owner') {
+      return reply.status(403).send({ error: 'Forbidden', message: 'Owner access required' });
+    }
+  } catch (err) {
+    reply.status(401).send({ error: 'Unauthorized' });
+  }
+});
+
+// Admin OR Owner middleware
+fastify.decorate('authenticateAdminOrOwner', async function (request, reply) {
+  try {
+    await request.jwtVerify();
+    if (request.user.role !== 'admin' && request.user.role !== 'owner') {
+      return reply.status(403).send({ error: 'Forbidden', message: 'Admin or owner access required' });
+    }
+  } catch (err) {
+    reply.status(401).send({ error: 'Unauthorized' });
   }
 });
 
@@ -190,16 +253,34 @@ fastify.post('/api/webhooks/razorpay', async (request, reply) => {
       case 'subscription.cancelled':
         await handleSubscriptionCancelled(payload);
         break;
-      // Payment events
-      case 'payment.captured':
-        await handlePaymentCaptured(payload);
+      // Payment events — route by receipt prefix
+      case 'payment.captured': {
+        const receipt = payload.payment?.entity?.notes?.receipt || payload.order?.entity?.receipt || '';
+        if (receipt.startsWith('service_')) {
+          await handleServicePaymentCaptured(payload);
+        } else {
+          await handlePaymentCaptured(payload);
+        }
         break;
-      case 'payment.failed':
-        await handlePaymentFailed(payload);
+      }
+      case 'payment.failed': {
+        const receipt2 = payload.payment?.entity?.notes?.receipt || '';
+        if (receipt2.startsWith('service_')) {
+          await handleServicePaymentFailed(payload);
+        } else {
+          await handlePaymentFailed(payload);
+        }
         break;
-      case 'refund.processed':
-        await handleRefundProcessed(payload);
+      }
+      case 'refund.processed': {
+        const receipt3 = payload.payment?.entity?.notes?.receipt || '';
+        if (receipt3.startsWith('service_')) {
+          await handleServiceRefundProcessed(payload);
+        } else {
+          await handleRefundProcessed(payload);
+        }
         break;
+      }
       default:
         fastify.log.info(`Unhandled Razorpay event: ${eventType}`);
     }
@@ -415,6 +496,115 @@ async function handleRefundProcessed(payload) {
   }
 }
 
+// ─── SERVICE PAYMENT WEBHOOK HANDLERS ───────────────────────────────────────
+
+async function handleServicePaymentCaptured(payload) {
+  const paymentId = payload.payment.entity.id;
+  const orderId = payload.payment.entity.order_id;
+
+  fastify.log.info(`Service payment captured for order: ${orderId}`);
+
+  // Find service booking by order_id
+  const booking = await db.query.service_bookings.findFirst({
+    where: eq(service_bookings.order_id, orderId),
+  });
+
+  if (booking && booking.status === 'pending') {
+    // Confirm booking and decrement stock
+    await db.update(service_bookings)
+      .set({ status: 'confirmed', payment_id: paymentId })
+      .where(eq(service_bookings.id, booking.id));
+
+    await db.update(service_listings)
+      .set({ quantity_available: sql`${service_listings.quantity_available} - ${booking.quantity}` })
+      .where(eq(service_listings.id, booking.service_listing_id));
+
+    // Notify user
+    if (booking.user_id) {
+      await db.insert(notifications).values({
+        user_id: booking.user_id,
+        title: 'Service Booking Confirmed!',
+        body: `Your service booking ${booking.booking_id_display} has been confirmed.`,
+        type: 'service_booking',
+        is_read: false,
+        data: { booking_id: booking.id, booking_id_display: booking.booking_id_display },
+      });
+
+      const user = await db.query.users.findFirst({ where: eq(users.id, booking.user_id), columns: { push_token: true } });
+      if (user?.push_token) {
+        sendPushNotification(user.push_token, 'Service Booking Confirmed! ✅', `Booking ${booking.booking_id_display} confirmed.`, { booking_id: booking.id });
+      }
+    }
+  }
+}
+
+async function handleServicePaymentFailed(payload) {
+  const orderId = payload.payment.entity.order_id;
+
+  fastify.log.warn(`Service payment failed for order: ${orderId}`);
+
+  const booking = await db.query.service_bookings.findFirst({
+    where: eq(service_bookings.order_id, orderId),
+  });
+
+  if (booking) {
+    await db.update(service_bookings)
+      .set({ status: 'payment_failed' })
+      .where(eq(service_bookings.id, booking.id));
+
+    if (booking.user_id) {
+      await db.insert(notifications).values({
+        user_id: booking.user_id,
+        title: 'Service Payment Failed',
+        body: `Payment for booking ${booking.booking_id_display} failed. Please try again.`,
+        type: 'service_booking',
+        is_read: false,
+        data: { booking_id: booking.id },
+      });
+    }
+  }
+}
+
+async function handleServiceRefundProcessed(payload) {
+  const paymentId = payload.refund?.entity?.payment_id || payload.payment?.entity?.id;
+
+  fastify.log.info(`Service refund processed for payment: ${paymentId}`);
+
+  const booking = await db.query.service_bookings.findFirst({
+    where: eq(service_bookings.payment_id, paymentId),
+  });
+
+  if (booking) {
+    await db.update(service_bookings)
+      .set({ status: 'refunded', refunded_at: new Date() })
+      .where(eq(service_bookings.id, booking.id));
+
+    // Restore quantity
+    if (booking.service_listing_id) {
+      await db.update(service_listings)
+        .set({ quantity_available: sql`${service_listings.quantity_available} + ${booking.quantity}` })
+        .where(eq(service_listings.id, booking.service_listing_id));
+    }
+
+    // Notify user
+    if (booking.user_id) {
+      await db.insert(notifications).values({
+        user_id: booking.user_id,
+        title: 'Service Refund Processed',
+        body: `Refund for booking ${booking.booking_id_display} has been processed.`,
+        type: 'service_booking',
+        is_read: false,
+        data: { booking_id: booking.id },
+      });
+
+      const user = await db.query.users.findFirst({ where: eq(users.id, booking.user_id), columns: { push_token: true } });
+      if (user?.push_token) {
+        sendPushNotification(user.push_token, 'Refund Processed 💰', `Refund for ${booking.booking_id_display} completed.`, { booking_id: booking.id });
+      }
+    }
+  }
+}
+
 // ─── AUTHENTICATION ────────────────────────────────────────────────────────
 
 // Webhook event handlers
@@ -626,6 +816,212 @@ fastify.post('/api/owners/login', async (request, reply) => {
     if (!owner.is_active) return reply.status(403).send({ error: 'Account is deactivated' });
     const token = fastify.jwt.sign({ id: owner.id, email: owner.email, role: 'owner' });
     return { token, owner: { id: owner.id, full_name: owner.full_name, email: owner.email, role: 'owner' } };
+  } catch (err) {
+    fastify.log.error(err);
+    return reply.status(500).send({ error: 'Internal Server Error' });
+  }
+});
+
+// ─── OWNER PASSWORD RESET & CHANGE ─────────────────────────────────────────
+
+// Owner: request password reset (sends OTP to phone)
+fastify.post('/api/owners/request-password-reset', async (request, reply) => {
+  try {
+    const { email, phone_number } = request.body;
+    if (!email && !phone_number) return reply.status(400).send({ error: 'Email or phone number is required' });
+
+    // Find owner by email or phone
+    let owner;
+    if (email) {
+      owner = await db.query.owners.findFirst({ where: eq(owners.email, email) });
+    } else {
+      owner = await db.query.owners.findFirst({ where: eq(owners.phone_number, phone_number) });
+    }
+
+    if (!owner) return reply.status(404).send({ error: 'Account not found' });
+
+    // Generate OTP and send via dual-channel
+    const otp = Math.floor(100000 + Math.random() * 900000).toString();
+    const expires_at = new Date(Date.now() + 10 * 60000);
+    await db.insert(otps).values({ phone_number: owner.phone_number, otp, expires_at });
+
+    const rawPhone = owner.phone_number.replace(/^\+91/, '');
+    const [smsResult, waResult] = await Promise.allSettled([
+      sendSmsMSG2Z(rawPhone, otp),
+      sendWhatsAppOTP(owner.phone_number, otp),
+    ]);
+
+    const smsSent = smsResult.status === 'fulfilled' && smsResult.value;
+    const waSent = waResult.status === 'fulfilled' && waResult.value;
+
+    if (!smsSent && !waSent) {
+      return reply.status(500).send({ error: 'Failed to send OTP. Please try again.' });
+    }
+
+    return { success: true, phone_number: owner.phone_number, message: 'OTP sent to registered phone number' };
+  } catch (err) {
+    fastify.log.error(err);
+    return reply.status(500).send({ error: 'Internal Server Error' });
+  }
+});
+
+// Owner: verify OTP and set new password
+fastify.post('/api/owners/verify-reset-otp', async (request, reply) => {
+  try {
+    const { phone_number, otp, new_password } = request.body;
+    if (!phone_number || !otp || !new_password) {
+      return reply.status(400).send({ error: 'Phone number, OTP, and new password are required' });
+    }
+    if (new_password.length < 6) {
+      return reply.status(400).send({ error: 'Password must be at least 6 characters' });
+    }
+
+    // Verify OTP
+    const otpRecord = await db.query.otps.findFirst({
+      where: eq(otps.phone_number, phone_number),
+      orderBy: [desc(otps.created_at)],
+    });
+
+    if (!otpRecord) return reply.status(400).send({ error: 'Invalid or expired OTP' });
+    if (new Date() > otpRecord.expires_at) return reply.status(400).send({ error: 'OTP has expired' });
+    if (otpRecord.otp !== otp) return reply.status(400).send({ error: 'Invalid OTP' });
+
+    // Find owner and update password
+    const owner = await db.query.owners.findFirst({ where: eq(owners.phone_number, phone_number) });
+    if (!owner) return reply.status(404).send({ error: 'Owner not found' });
+
+    const hashedPassword = await argon2.hash(new_password);
+    await db.update(owners).set({ password: hashedPassword }).where(eq(owners.id, owner.id));
+
+    // Cleanup OTPs
+    await db.delete(otps).where(eq(otps.phone_number, phone_number));
+
+    return { success: true, message: 'Password updated successfully' };
+  } catch (err) {
+    fastify.log.error(err);
+    return reply.status(500).send({ error: 'Internal Server Error' });
+  }
+});
+
+// Owner: change password (authenticated)
+fastify.post('/api/owners/change-password', { onRequest: [fastify.authenticate] }, async (request, reply) => {
+  try {
+    if (request.user.role !== 'owner') return reply.status(403).send({ error: 'Not an owner' });
+    const { current_password, new_password } = request.body;
+    if (!current_password || !new_password) return reply.status(400).send({ error: 'Current and new password are required' });
+    if (new_password.length < 6) return reply.status(400).send({ error: 'New password must be at least 6 characters' });
+
+    const owner = await db.query.owners.findFirst({ where: eq(owners.id, request.user.id) });
+    if (!owner) return reply.status(404).send({ error: 'Owner not found' });
+
+    const valid = await argon2.verify(owner.password, current_password);
+    if (!valid) return reply.status(401).send({ error: 'Current password is incorrect' });
+
+    const hashedPassword = await argon2.hash(new_password);
+    await db.update(owners).set({ password: hashedPassword }).where(eq(owners.id, owner.id));
+
+    return { success: true, message: 'Password changed successfully' };
+  } catch (err) {
+    fastify.log.error(err);
+    return reply.status(500).send({ error: 'Internal Server Error' });
+  }
+});
+
+// ─── ADMIN PASSWORD RESET & CHANGE ─────────────────────────────────────────
+
+// Admin: request password reset (sends OTP to registered phone)
+fastify.post('/api/admin/request-password-reset', async (request, reply) => {
+  try {
+    const { email } = request.body;
+    if (!email) return reply.status(400).send({ error: 'Email is required' });
+
+    const user = await db.query.users.findFirst({ where: eq(users.email, email) });
+    if (!user) return reply.status(404).send({ error: 'Account not found' });
+    if (!user.phone_number) return reply.status(400).send({ error: 'No phone number associated with this account' });
+
+    // Generate OTP and send
+    const otp = Math.floor(100000 + Math.random() * 900000).toString();
+    const expires_at = new Date(Date.now() + 10 * 60000);
+    await db.insert(otps).values({ phone_number: user.phone_number, otp, expires_at });
+
+    const rawPhone = user.phone_number.replace(/^\+91/, '');
+    const [smsResult, waResult] = await Promise.allSettled([
+      sendSmsMSG2Z(rawPhone, otp),
+      sendWhatsAppOTP(user.phone_number, otp),
+    ]);
+
+    const smsSent = smsResult.status === 'fulfilled' && smsResult.value;
+    const waSent = waResult.status === 'fulfilled' && waResult.value;
+
+    if (!smsSent && !waSent) {
+      return reply.status(500).send({ error: 'Failed to send OTP. Please try again.' });
+    }
+
+    // Return masked phone for UI display
+    const maskedPhone = user.phone_number.replace(/(\+91)(\d{2})(\d+)(\d{2})/, '$1$2****$4');
+    return { success: true, phone_hint: maskedPhone, message: 'OTP sent to registered phone number' };
+  } catch (err) {
+    fastify.log.error(err);
+    return reply.status(500).send({ error: 'Internal Server Error' });
+  }
+});
+
+// Admin: verify OTP and set new password
+fastify.post('/api/admin/verify-reset-otp', async (request, reply) => {
+  try {
+    const { email, otp, new_password } = request.body;
+    if (!email || !otp || !new_password) {
+      return reply.status(400).send({ error: 'Email, OTP, and new password are required' });
+    }
+    if (new_password.length < 6) {
+      return reply.status(400).send({ error: 'Password must be at least 6 characters' });
+    }
+
+    // Find user by email to get phone
+    const user = await db.query.users.findFirst({ where: eq(users.email, email) });
+    if (!user) return reply.status(404).send({ error: 'Account not found' });
+
+    // Verify OTP against user's phone
+    const otpRecord = await db.query.otps.findFirst({
+      where: eq(otps.phone_number, user.phone_number),
+      orderBy: [desc(otps.created_at)],
+    });
+
+    if (!otpRecord) return reply.status(400).send({ error: 'Invalid or expired OTP' });
+    if (new Date() > otpRecord.expires_at) return reply.status(400).send({ error: 'OTP has expired' });
+    if (otpRecord.otp !== otp) return reply.status(400).send({ error: 'Invalid OTP' });
+
+    // Update password
+    const hashedPassword = await argon2.hash(new_password);
+    await db.update(users).set({ password: hashedPassword }).where(eq(users.id, user.id));
+
+    // Cleanup OTPs
+    await db.delete(otps).where(eq(otps.phone_number, user.phone_number));
+
+    return { success: true, message: 'Password updated successfully' };
+  } catch (err) {
+    fastify.log.error(err);
+    return reply.status(500).send({ error: 'Internal Server Error' });
+  }
+});
+
+// Admin: change password (authenticated)
+fastify.post('/api/admin/change-password', { onRequest: [fastify.authenticate] }, async (request, reply) => {
+  try {
+    const { current_password, new_password } = request.body;
+    if (!current_password || !new_password) return reply.status(400).send({ error: 'Current and new password are required' });
+    if (new_password.length < 6) return reply.status(400).send({ error: 'New password must be at least 6 characters' });
+
+    const user = await db.query.users.findFirst({ where: eq(users.id, request.user.id) });
+    if (!user || !user.password) return reply.status(404).send({ error: 'Account not found' });
+
+    const valid = await argon2.verify(user.password, current_password);
+    if (!valid) return reply.status(401).send({ error: 'Current password is incorrect' });
+
+    const hashedPassword = await argon2.hash(new_password);
+    await db.update(users).set({ password: hashedPassword }).where(eq(users.id, user.id));
+
+    return { success: true, message: 'Password changed successfully' };
   } catch (err) {
     fastify.log.error(err);
     return reply.status(500).send({ error: 'Internal Server Error' });
@@ -1279,9 +1675,17 @@ fastify.post('/api/bookings/verify-payment', { onRequest: [fastify.authenticate]
       where: eq(bookings.id, booking_id),
       with: {
         venue: { with: { category: true } },
-        user: { columns: { full_name: true, email: true, avatar_url: true } }
+        user: { columns: { full_name: true, email: true, avatar_url: true, phone_number: true } }
       }
     });
+
+    // Send WhatsApp invoice to customer (fire-and-forget)
+    const userForInvoice = await db.query.users.findFirst({ where: eq(users.id, user_id), columns: { full_name: true, phone_number: true, email: true } });
+    const confirmedBookingData = { ...booking, payment_id, status: isPreBooking ? 'pre_booked' : 'confirmed', registration_fee_paid: registrationFeePaid, remaining_balance: remainingBalance };
+    const venueInvoiceData = generateVenueInvoiceData(confirmedBookingData, venue, userForInvoice);
+    if (userForInvoice?.phone_number) {
+      sendWhatsAppInvoice(userForInvoice.phone_number, venueInvoiceData, fastify.log).catch(() => {});
+    }
 
     return {
       success: true,
@@ -1573,7 +1977,7 @@ fastify.post('/api/auth/sign-up', async (request, reply) => {
 });
 
 fastify.post('/api/auth/sign-in', async (request, reply) => {
-  const { email, password } = request.body;
+  const { email, password, role: loginRole } = request.body;
 
   try {
     const user = await db.query.users.findFirst({
@@ -1589,8 +1993,10 @@ fastify.post('/api/auth/sign-in', async (request, reply) => {
       return reply.status(401).send({ error: 'Invalid credentials' });
     }
 
-    const token = fastify.jwt.sign({ id: user.id, email: user.email });
-    return { token, user: { id: user.id, full_name: user.full_name, email: user.email, avatar_url: user.avatar_url } };
+    // Include role in JWT (admin panel sends role: 'admin')
+    const tokenRole = loginRole === 'admin' ? 'admin' : 'user';
+    const token = fastify.jwt.sign({ id: user.id, email: user.email, role: tokenRole });
+    return { token, user: { id: user.id, full_name: user.full_name, email: user.email, avatar_url: user.avatar_url, role: tokenRole } };
   } catch (err) {
     fastify.log.error(err);
     return reply.status(500).send({ error: 'Internal Server Error' });
@@ -3369,9 +3775,24 @@ fastify.post('/api/service-bookings/verify-payment', { onRequest: [fastify.authe
     });
 
     // Push notification
-    const userForPush = await db.query.users.findFirst({ where: eq(users.id, user_id), columns: { push_token: true } });
+    const userForPush = await db.query.users.findFirst({ where: eq(users.id, user_id), columns: { push_token: true, full_name: true, phone_number: true, email: true } });
     if (userForPush?.push_token) {
       sendPushNotification(userForPush.push_token, 'Service Booking Confirmed! ✅', `Booking ${booking.booking_id_display} confirmed.`, { booking_id });
+    }
+
+    // Send WhatsApp invoice to customer (fire-and-forget)
+    const listingForInvoice = await db.query.service_listings.findFirst({ where: eq(service_listings.id, booking.service_listing_id), columns: { name: true, city: true, owner_name: true, owner_id: true } });
+    const confirmedBooking = { ...booking, payment_id, status: 'confirmed' };
+    const invoiceData = generateServiceInvoiceData(confirmedBooking, listingForInvoice, userForPush);
+    if (userForPush?.phone_number) {
+      sendWhatsAppInvoice(userForPush.phone_number, invoiceData, fastify.log).catch(() => {});
+    }
+    // Send to owner
+    if (listingForInvoice?.owner_id) {
+      const ownerForInvoice = await db.query.owners.findFirst({ where: eq(owners.id, listingForInvoice.owner_id), columns: { phone_number: true } });
+      if (ownerForInvoice?.phone_number) {
+        sendOwnerBookingAlert(ownerForInvoice.phone_number, invoiceData, fastify.log).catch(() => {});
+      }
     }
 
     const updatedBooking = await db.query.service_bookings.findFirst({
@@ -3852,6 +4273,52 @@ fastify.get('/api/owners/service-analytics', { onRequest: [fastify.authenticate]
   }
 });
 
+// ─── INVOICE ENDPOINTS (In-App Digital Invoice) ─────────────────────────────
+
+// Get venue booking invoice
+fastify.get('/api/bookings/:id/invoice', { onRequest: [fastify.authenticate] }, async (request, reply) => {
+  try {
+    const booking = await db.query.bookings.findFirst({
+      where: eq(bookings.id, request.params.id),
+      with: { venue: { columns: { name: true, city: true, location: true, owner_name: true } }, user: { columns: { full_name: true, phone_number: true, email: true } } },
+    });
+    if (!booking) return reply.status(404).send({ error: 'Booking not found' });
+    if (booking.user_id !== request.user.id && request.user.role !== 'admin') {
+      return reply.status(403).send({ error: 'Access denied' });
+    }
+    const invoice = generateVenueInvoiceData(booking, booking.venue, booking.user);
+    return invoice;
+  } catch (err) {
+    fastify.log.error(err);
+    return reply.status(500).send({ error: 'Internal Server Error' });
+  }
+});
+
+// Get service booking invoice
+fastify.get('/api/service-bookings/:id/invoice', { onRequest: [fastify.authenticate] }, async (request, reply) => {
+  try {
+    const booking = await db.query.service_bookings.findFirst({
+      where: eq(service_bookings.id, request.params.id),
+      with: { listing: { columns: { name: true, city: true, owner_name: true, owner_id: true } }, user: { columns: { full_name: true, phone_number: true, email: true } } },
+    });
+    if (!booking) return reply.status(404).send({ error: 'Booking not found' });
+    if (booking.user_id !== request.user.id && request.user.role !== 'admin') {
+      return reply.status(403).send({ error: 'Access denied' });
+    }
+    const invoice = generateServiceInvoiceData(booking, booking.listing, booking.user);
+    return invoice;
+  } catch (err) {
+    fastify.log.error(err);
+    return reply.status(500).send({ error: 'Internal Server Error' });
+  }
+});
+
+// ─── HEALTH CHECK ───────────────────────────────────────────────────────────
+
+fastify.get('/health', async () => {
+  return { status: 'ok', uptime: Math.round(process.uptime()), timestamp: new Date().toISOString() };
+});
+
 // Start Server
 const start = async () => {
   try {
@@ -3863,4 +4330,15 @@ const start = async () => {
     process.exit(1);
   }
 };
+
+// Graceful shutdown
+const signals = ['SIGINT', 'SIGTERM'];
+signals.forEach(signal => {
+  process.on(signal, async () => {
+    fastify.log.info(`Received ${signal}, shutting down gracefully...`);
+    await fastify.close();
+    process.exit(0);
+  });
+});
+
 start();

@@ -201,3 +201,10 @@ export async function getCheckoutOptions(): Promise<{ checkoutOptions: any; subs
 }
 
 // activateTrial removed — no backend endpoint exists for this feature
+
+// ─── Invoices ──────────────────────────────────────────────────────────────
+
+export async function fetchBookingInvoice(bookingId: string): Promise<any> {
+  const { data } = await api.get(`/api/bookings/${bookingId}/invoice`);
+  return data;
+}

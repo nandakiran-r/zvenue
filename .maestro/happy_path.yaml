@@ -1,0 +1,97 @@
+appId: com.zvenue.app
+name: "Happy Path - Login Home Search Profile Logout"
+tags:
+  - e2e
+  - happy-path
+  - smoke
+---
+# Primary Happy Path: Full user journey through the app.
+# Login -> Browse Home -> Search for venue -> View Profile -> Logout
+#
+# Prerequisites:
+# - App must be connected to Metro bundler (dev build)
+# - Backend running at the configured API URL
+# - Test user auto-created by backend for phone +919999999999 with OTP 123456
+
+- launchApp
+
+# Wait for app to fully load
+- waitForAnimationToEnd
+- waitForAnimationToEnd
+- waitForAnimationToEnd
+
+# ONBOARDING - Skip if visible, otherwise already on login
+- runFlow:
+    when:
+      visible:
+        id: "onboarding-skip"
+    file: onboarding_skip_step.yaml
+
+# LOGIN - wait for login screen
+- assertVisible:
+    id: "login-screen"
+- tapOn:
+    id: "login-phone-input"
+- inputText: "9999999999"
+- hideKeyboard
+- tapOn:
+    id: "login-submit-button"
+- waitForAnimationToEnd
+
+# OTP VERIFICATION
+- assertVisible: "Enter OTP Code"
+- tapOn:
+    id: "otp-input-0"
+- inputText: "1"
+- tapOn:
+    id: "otp-input-1"
+- inputText: "2"
+- tapOn:
+    id: "otp-input-2"
+- inputText: "3"
+- tapOn:
+    id: "otp-input-3"
+- inputText: "4"
+- tapOn:
+    id: "otp-input-4"
+- inputText: "5"
+- tapOn:
+    id: "otp-input-5"
+- inputText: "6"
+- tapOn:
+    id: "otp-verify"
+
+# HOME SCREEN - wait for it to load
+- waitForAnimationToEnd
+- waitForAnimationToEnd
+- assertVisible: "Home"
+- assertVisible: "Search venues & services"
+
+# NAVIGATE TO SEARCH TAB
+- tapOn: "Search"
+- waitForAnimationToEnd
+
+# Type a search query
+- tapOn:
+    id: "search-input"
+- inputText: "wedding"
+- waitForAnimationToEnd
+
+# NAVIGATE TO PROFILE TAB
+- tapOn: "Profile"
+- waitForAnimationToEnd
+
+# Verify profile screen
+- assertVisible: "Edit Profile"
+- assertVisible: "My Bookings"
+- assertVisible: "Settings"
+
+# LOGOUT
+- scroll
+- tapOn:
+    id: "profile-logout"
+- waitForAnimationToEnd
+
+# Verify we're back on Login
+- assertVisible:
+    id: "login-screen"

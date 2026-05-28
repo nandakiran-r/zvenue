@@ -1,0 +1,37 @@
+appId: com.zvenue.app
+name: "Onboarding Flow - First Launch"
+tags:
+  - onboarding
+  - smoke
+---
+# Onboarding Flow: Verifies the 3-slide onboarding carousel
+# and navigation to the login screen.
+
+- launchApp:
+    clearState: true
+
+# Slide 1 should be visible
+- assertVisible: "Find the perfect"
+- assertVisible: "Skip"
+
+# Tap Next to go to Slide 2
+- tapOn: "Next"
+- waitForAnimationToEnd
+
+# Slide 2
+- assertVisible: "Explore halls"
+
+# Tap Next to go to Slide 3
+- tapOn: "Next"
+- waitForAnimationToEnd
+
+# Slide 3
+- assertVisible: "Book your dream"
+- assertVisible: "Get Started"
+
+# Tap Get Started to navigate to Login
+- tapOn: "Get Started"
+- waitForAnimationToEnd
+
+# Verify we landed on the Login screen
+- assertVisible: "Enter 10-digit number"

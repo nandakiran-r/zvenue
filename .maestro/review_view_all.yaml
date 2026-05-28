@@ -1,0 +1,29 @@
+appId: com.zvenue.app
+name: "Reviews - View All Venue Reviews"
+tags:
+  - review
+  - view
+  - list
+---
+# Tests viewing all reviews for a venue.
+# Flow: Navigate to venue detail → Scroll to reviews section →
+#       Tap "See All Reviews" → Verify reviews list screen
+#
+# Prerequisites: User must be logged in. Venue must have reviews.
+
+- runFlow: auth_login_flow.yaml
+
+# Navigate to Search and find a venue
+- tapOn: "Search"
+- waitForAnimationToEnd
+- tapOn:
+    id: "search-input"
+- inputText: "wedding"
+- waitForAnimationToEnd
+- waitForAnimationToEnd
+
+# Scroll to find venue results
+- scroll
+- waitForAnimationToEnd
+- scroll
+- waitForAnimationToEnd

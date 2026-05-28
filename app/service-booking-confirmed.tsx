@@ -13,6 +13,8 @@ export default function ServiceBookingConfirmedScreen() {
     serviceName: string;
     quantity: string;
     total: string;
+    bookingDate: string;
+    session: string;
   }>();
 
   // Prevent back to payment flow
@@ -61,6 +63,18 @@ export default function ServiceBookingConfirmedScreen() {
             <Text style={styles.detailLabel}>Service</Text>
             <Text style={styles.detailValue}>{params.serviceName || "Service"}</Text>
           </View>
+          {params.bookingDate && (
+            <View style={styles.detailRow}>
+              <Text style={styles.detailLabel}>Date</Text>
+              <Text style={styles.detailValue}>{new Date(params.bookingDate + 'T00:00:00').toLocaleDateString('en-IN', { day: 'numeric', month: 'long', year: 'numeric' })}</Text>
+            </View>
+          )}
+          {params.session && (
+            <View style={styles.detailRow}>
+              <Text style={styles.detailLabel}>Session</Text>
+              <Text style={styles.detailValue}>{params.session}</Text>
+            </View>
+          )}
           <View style={styles.detailRow}>
             <Text style={styles.detailLabel}>Quantity</Text>
             <Text style={styles.detailValue}>{params.quantity || "1"}</Text>

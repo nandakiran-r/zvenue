@@ -153,6 +153,12 @@ export default function ViewServiceBookingScreen() {
         {/* Booking Details */}
         <View style={styles.card}>
           <Text style={styles.cardTitle}>Booking Details</Text>
+          {booking.booking_date && (
+            <View style={styles.row}><Text style={styles.label}>Booking Date</Text><Text style={styles.value}>{new Date(booking.booking_date + 'T00:00:00').toLocaleDateString('en-IN', { day: 'numeric', month: 'long', year: 'numeric' })}</Text></View>
+          )}
+          {booking.start_time && booking.end_time && (
+            <View style={styles.row}><Text style={styles.label}>Session</Text><Text style={styles.value}>{booking.start_time} – {booking.end_time}</Text></View>
+          )}
           <View style={styles.row}><Text style={styles.label}>Quantity</Text><Text style={styles.value}>{booking.quantity}</Text></View>
           <View style={styles.row}><Text style={styles.label}>Unit Price</Text><Text style={styles.value}>{formatPrice(booking.unit_price)}</Text></View>
           {booking.discount_applied > 0 && (
@@ -161,7 +167,7 @@ export default function ViewServiceBookingScreen() {
           <View style={styles.divider} />
           <View style={styles.row}><Text style={styles.totalLabel}>Total Paid</Text><Text style={styles.totalValue}>{formatPrice(booking.total_amount)}</Text></View>
           <View style={styles.row}><Text style={styles.label}>Payment Method</Text><Text style={styles.value}>{booking.payment_method || 'Razorpay'}</Text></View>
-          <View style={styles.row}><Text style={styles.label}>Date</Text><Text style={styles.value}>{new Date(booking.created_at).toLocaleDateString('en-IN', { day: 'numeric', month: 'long', year: 'numeric' })}</Text></View>
+          <View style={styles.row}><Text style={styles.label}>Booked On</Text><Text style={styles.value}>{new Date(booking.created_at).toLocaleDateString('en-IN', { day: 'numeric', month: 'long', year: 'numeric' })}</Text></View>
         </View>
 
         {/* Cancel Button */}

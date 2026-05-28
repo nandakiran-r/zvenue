@@ -1,0 +1,39 @@
+appId: com.zvenue.app
+name: "Venue Detail - View Venue and Pre-Book"
+tags:
+  - venue
+  - booking
+  - detail
+---
+# Tests opening a venue detail screen from search results,
+# scrolling through details, and tapping the Pre-Book button.
+
+- runFlow: auth_login_flow.yaml
+
+# Navigate to Search tab
+- tapOn: "Search"
+- waitForAnimationToEnd
+
+# Wait for venues to load, then tap the first venue card
+- tapOn:
+    id: "search-input"
+- waitForAnimationToEnd
+
+# Go back to Home to find a venue card
+- tapOn: "Home"
+- waitForAnimationToEnd
+
+# Scroll down to find venue cards
+- scroll
+- waitForAnimationToEnd
+
+# Tap on a venue card (using "View All" or first visible venue)
+- scroll
+- waitForAnimationToEnd
+
+# Try tapping on any visible venue-related element
+# (Venues are rendered as cards with names - tap the first one visible)
+- swipe:
+    direction: UP
+    duration: 500
+- waitForAnimationToEnd

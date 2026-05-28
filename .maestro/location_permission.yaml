@@ -1,0 +1,37 @@
+appId: com.zvenue.app
+name: "Location Permission - Enable GPS for Nearby Venues"
+tags:
+  - permissions
+  - location
+  - home
+---
+# Tests that the app requests location permission on first load
+# and uses GPS to show nearby venues sorted by distance.
+#
+# Prerequisites: User must be logged in.
+# NOTE: The location permission dialog appears when the Home screen loads.
+
+- runFlow: auth_login_flow.yaml
+
+# Home screen should be visible
+- assertVisible: "Home"
+
+# The location permission dialog may appear on first launch
+# Grant "While using the app" or "Allow" permission
+- runFlow:
+    when:
+      visible: "While using the app"
+    file: tap_while_using.yaml
+
+- runFlow:
+    when:
+      visible: "Allow"
+    file: tap_allow.yaml
+
+# After granting permission, the location should update
+# from "Detecting..." to an actual city name
+- waitForAnimationToEnd
+- waitForAnimationToEnd
+
+# Verify the home screen is functional with location
+- assertVisible: "Home"

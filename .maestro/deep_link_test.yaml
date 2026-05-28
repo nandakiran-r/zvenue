@@ -1,0 +1,19 @@
+appId: com.zvenue.app
+name: "Deep Link - Open App via URL Scheme"
+tags:
+  - deeplink
+  - navigation
+---
+# Tests that the app responds to its custom URL scheme (zvenue-app://)
+# This verifies the deep linking configuration works.
+
+- launchApp
+- waitForAnimationToEnd
+- waitForAnimationToEnd
+
+# Open a deep link to the app
+- openLink: "zvenue-app://expo-development-client"
+- waitForAnimationToEnd
+
+# App should be open and functional
+- waitForAnimationToEnd

@@ -50,6 +50,9 @@ export interface DbServiceBooking {
   payment_id: string | null;
   signature: string | null;
   status: string; // pending, confirmed, cancelled, refunded, payment_failed
+  booking_date: string | null;
+  start_time: string | null;
+  end_time: string | null;
   cancellation_reason: string | null;
   refunded_at: string | null;
   created_at: string;
@@ -77,9 +80,18 @@ export interface DbServiceReview {
   listing?: { id: string; name: string; city: string | null };
 }
 
+export interface ServiceBookedDateEntry {
+  booking_date: string;
+  start_time: string;
+  end_time: string;
+}
+
 export interface ServiceCreateOrderInput {
   service_listing_id: string;
   quantity: number;
+  booking_date: string;
+  start_time: string;
+  end_time: string;
 }
 
 export interface ServiceCreateOrderResponse {

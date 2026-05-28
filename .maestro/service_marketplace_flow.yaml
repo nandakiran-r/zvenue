@@ -1,0 +1,27 @@
+appId: com.zvenue.app
+name: "Service Marketplace - Browse Services"
+tags:
+  - services
+  - marketplace
+---
+# Tests the Service Marketplace: switch to Services tab on Home,
+# browse service categories.
+
+- runFlow: auth_login_flow.yaml
+
+# Verify we're on Home
+- assertVisible: "Home"
+
+# Switch to Services tab on Home screen
+- tapOn: "Services"
+- waitForAnimationToEnd
+
+# Verify service categories are visible
+- waitForAnimationToEnd
+
+# Switch back to Venues
+- tapOn: "Venues"
+- waitForAnimationToEnd
+
+# Verify venues are back
+- assertVisible: "Search venues & services"

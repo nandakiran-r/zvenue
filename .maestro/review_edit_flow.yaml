@@ -1,0 +1,33 @@
+appId: com.zvenue.app
+name: "Review - Edit Existing Review"
+tags:
+  - review
+  - edit
+---
+# Tests editing an existing review.
+# Flow: Navigate to venue detail → Tap "Edit Review" (shown if user has existing review) →
+#       Modify star rating → Update comment → Submit → Verify "Review Updated" modal
+#
+# Prerequisites:
+# - User must be logged in
+# - User must have already submitted a review for this venue
+#
+# NOTE: The write-review screen auto-detects existing reviews and
+# pre-fills the form with the current rating and comment.
+
+- runFlow: auth_login_flow.yaml
+
+# Navigate to Search and find a venue the user has reviewed
+- tapOn: "Search"
+- waitForAnimationToEnd
+- tapOn:
+    id: "search-input"
+- inputText: "hall"
+- waitForAnimationToEnd
+- waitForAnimationToEnd
+
+# Scroll to find venue results
+- scroll
+- waitForAnimationToEnd
+- scroll
+- waitForAnimationToEnd

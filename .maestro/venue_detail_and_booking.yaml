@@ -1,0 +1,41 @@
+appId: com.zvenue.app
+name: "Venue Detail - View and Attempt Booking"
+tags:
+  - venue
+  - booking
+  - detail
+---
+# Tests opening a venue from the home screen, scrolling through
+# details (images, amenities, reviews), and tapping Pre-Book.
+#
+# Prerequisites: User must be logged in. Venues must exist in DB.
+
+- runFlow: auth_login_flow.yaml
+
+# Home screen
+- assertVisible: "Home"
+
+# Scroll down to find venue cards
+- scroll
+- waitForAnimationToEnd
+- scroll
+- waitForAnimationToEnd
+
+# Tap "View All" to see all venues in a category (if visible)
+- runFlow:
+    when:
+      visible: "View All"
+    file: tap_view_all.yaml
+
+# Go to Search tab to find a specific venue
+- tapOn: "Search"
+- waitForAnimationToEnd
+- tapOn:
+    id: "search-input"
+- inputText: "hall"
+- waitForAnimationToEnd
+- waitForAnimationToEnd
+
+# Tap on the first venue result (if any appear)
+# This will navigate to venue-detail screen
+- scroll

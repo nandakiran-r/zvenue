@@ -1,0 +1,27 @@
+appId: com.zvenue.app
+name: "Service Booking - Purchase with Razorpay"
+tags:
+  - service
+  - booking
+  - payment
+  - razorpay
+---
+# Tests the service marketplace booking flow with Razorpay payment.
+# Flow: Home → Services tab → Select category → Select service →
+#       Adjust quantity → Tap "Buy Now" → Razorpay checkout opens
+#
+# Prerequisites:
+# - User must be logged in
+# - Service listings must exist in the database
+# - Backend must be running with Razorpay test keys
+
+- runFlow: auth_login_flow.yaml
+
+# Switch to Services tab on Home
+- assertVisible: "Home"
+- tapOn: "Services"
+- waitForAnimationToEnd
+
+# Scroll to see service categories
+- scroll
+- waitForAnimationToEnd

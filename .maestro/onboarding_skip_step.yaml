@@ -1,0 +1,6 @@
+appId: com.zvenue.app
+---
+# Helper: Skip onboarding if visible
+- tapOn:
+    id: "onboarding-skip"
+- waitForAnimationToEnd

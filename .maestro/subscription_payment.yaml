@@ -1,0 +1,32 @@
+appId: com.zvenue.app
+name: "Subscription - Subscribe with Razorpay"
+tags:
+  - subscription
+  - payment
+  - razorpay
+---
+# Tests the subscription flow with Razorpay payment.
+# Flow: Attempt to book venue → Subscription prompt appears →
+#       Tap "Subscribe Now" → Razorpay subscription checkout opens
+#
+# Prerequisites:
+# - User must be logged in but NOT subscribed
+# - Backend must be running with Razorpay test keys
+# - At least one venue must exist
+
+- runFlow: auth_login_flow.yaml
+
+# Navigate to Search and find a venue
+- tapOn: "Search"
+- waitForAnimationToEnd
+- tapOn:
+    id: "search-input"
+- inputText: "hall"
+- waitForAnimationToEnd
+- waitForAnimationToEnd
+
+# Scroll to find venues
+- scroll
+- waitForAnimationToEnd
+- scroll
+- waitForAnimationToEnd

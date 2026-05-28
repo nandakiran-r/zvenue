@@ -1,0 +1,33 @@
+appId: com.zvenue.app
+name: "Edit Profile - Update User Info"
+tags:
+  - profile
+  - edit
+---
+# Tests the Edit Profile screen: navigate, verify fields,
+# update name, and save.
+
+- runFlow: auth_login_flow.yaml
+
+# Navigate to Profile tab
+- tapOn: "Profile"
+- waitForAnimationToEnd
+
+# Tap Edit Profile
+- tapOn: "Edit Profile"
+- waitForAnimationToEnd
+
+# Verify Edit Profile screen loaded
+- assertVisible: "Edit Profile"
+
+# Verify form fields are present (phone should be read-only)
+- assertVisible: "First Name"
+- assertVisible: "Last Name"
+- assertVisible: "Email"
+
+# Go back without saving
+- back
+- waitForAnimationToEnd
+
+# Verify we're back on Profile
+- assertVisible: "Edit Profile"

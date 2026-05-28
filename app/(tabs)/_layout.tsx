@@ -2,11 +2,13 @@ import { useAuth } from "@/context/AuthContext";
 import { Redirect, Tabs } from "expo-router";
 import { CalendarCheck, Heart, Home, Search, User } from "lucide-react-native";
 import React from "react";
-import { ActivityIndicator, View } from "react-native";
+import { ActivityIndicator, Platform, View } from "react-native";
+import { useSafeAreaInsets } from "react-native-safe-area-context";
 import Colors from "@/constants/colors";
 
 export default function TabLayout() {
   const { isSignedIn, isLoaded } = useAuth();
+  const insets = useSafeAreaInsets();
 
   if (!isLoaded) {
     return (
@@ -20,6 +22,11 @@ export default function TabLayout() {
     return <Redirect href="/login" />;
   }
 
+  // Calculate tab bar height accounting for bottom safe area (system navigation)
+  const bottomInset = insets.bottom;
+  const tabBarHeight = 60 + bottomInset;
+  const tabBarPaddingBottom = bottomInset > 0 ? bottomInset : 8;
+
   return (
     <Tabs
       screenOptions={{
@@ -31,8 +38,8 @@ export default function TabLayout() {
           elevation: 0,
           shadowOpacity: 0,
           backgroundColor: Colors.background,
-          height: 60,
-          paddingBottom: 8,
+          height: tabBarHeight,
+          paddingBottom: tabBarPaddingBottom,
           paddingTop: 4,
         },
         tabBarLabelStyle: {

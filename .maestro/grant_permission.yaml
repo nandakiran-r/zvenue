@@ -1,0 +1,12 @@
+appId: com.zvenue.app
+---
+# Helper: Grant Android permission dialog
+# Handles various Android permission button texts
+- runFlow:
+    when:
+      visible: "While using the app"
+    file: tap_while_using.yaml
+- runFlow:
+    when:
+      visible: "Allow"
+    file: tap_allow.yaml

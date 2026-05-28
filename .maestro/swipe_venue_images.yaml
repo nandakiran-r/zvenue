@@ -1,0 +1,26 @@
+appId: com.zvenue.app
+name: "Venue Detail - Swipe Through Images"
+tags:
+  - venue
+  - ui
+  - gestures
+---
+# Tests swiping through venue images in the detail screen carousel.
+# Verifies the image gallery interaction works correctly.
+#
+# Prerequisites: User must be logged in. Navigate to a venue detail.
+
+- runFlow: auth_login_flow.yaml
+
+# Go to Search and find a venue
+- tapOn: "Search"
+- waitForAnimationToEnd
+- tapOn:
+    id: "search-input"
+- inputText: "wedding"
+- waitForAnimationToEnd
+- waitForAnimationToEnd
+
+# Scroll to see results
+- scroll
+- waitForAnimationToEnd

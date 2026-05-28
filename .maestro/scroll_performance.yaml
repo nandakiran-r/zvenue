@@ -1,0 +1,44 @@
+appId: com.zvenue.app
+name: "Performance - Scroll Through Long Lists"
+tags:
+  - performance
+  - ui
+  - scroll
+---
+# Tests scrolling performance on the home screen with many venues.
+# Verifies no crashes or freezes during rapid scrolling.
+#
+# Prerequisites: User must be logged in.
+
+- runFlow: auth_login_flow.yaml
+
+# Home screen
+- assertVisible: "Home"
+
+# Rapid scroll down multiple times
+- scroll
+- scroll
+- scroll
+- scroll
+
+# Scroll back up
+- swipe:
+    direction: DOWN
+- swipe:
+    direction: DOWN
+- swipe:
+    direction: DOWN
+
+# Verify app is still responsive
+- assertVisible: "Home"
+
+# Navigate to Search and scroll results
+- tapOn: "Search"
+- waitForAnimationToEnd
+- scroll
+- scroll
+- scroll
+
+# Verify search is still functional
+- assertVisible:
+    id: "search-input"

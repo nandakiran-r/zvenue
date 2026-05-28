@@ -262,6 +262,9 @@ export const service_bookings = pgTable('service_bookings', {
   payment_id: varchar('payment_id', { length: 255 }),
   signature: varchar('signature', { length: 500 }),
   status: varchar('status', { length: 50 }).notNull().default('pending'), // pending, confirmed, cancelled, refunded, payment_failed
+  booking_date: varchar('booking_date', { length: 10 }), // YYYY-MM-DD
+  start_time: varchar('start_time', { length: 20 }), // e.g. "08:00 AM"
+  end_time: varchar('end_time', { length: 20 }), // e.g. "12:00 PM"
   cancellation_reason: text('cancellation_reason'),
   refunded_at: timestamp('refunded_at'),
   created_at: timestamp('created_at').defaultNow(),

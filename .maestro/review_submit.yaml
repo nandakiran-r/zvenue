@@ -1,0 +1,35 @@
+appId: com.zvenue.app
+name: "Review - Submit New Venue Review"
+tags:
+  - review
+  - venue
+  - submit
+---
+# Tests submitting a new review for a venue.
+# Flow: Navigate to venue detail → Tap "Write a Review" → Select stars →
+#       Type comment → Submit → Verify success modal
+#
+# Prerequisites:
+# - User must be logged in
+# - User must have a completed booking at the venue (eligibility check)
+# - If not eligible, the screen shows "You need a completed booking" message
+#
+# NOTE: This test verifies the review UI flow. If the user is not eligible,
+# it verifies the ineligibility message is shown correctly.
+
+- runFlow: auth_login_flow.yaml
+
+# Navigate to Search and find a venue
+- tapOn: "Search"
+- waitForAnimationToEnd
+- tapOn:
+    id: "search-input"
+- inputText: "wedding"
+- waitForAnimationToEnd
+- waitForAnimationToEnd
+
+# Scroll to find venue results
+- scroll
+- waitForAnimationToEnd
+- scroll
+- waitForAnimationToEnd

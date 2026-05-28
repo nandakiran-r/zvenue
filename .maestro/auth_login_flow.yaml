@@ -1,0 +1,22 @@
+appId: com.zvenue.app
+name: "Auth - Ensure Logged In"
+tags:
+  - auth
+  - login
+---
+# Ensures the user is logged in. Handles all possible app states:
+# 1. Already on Home (logged in) → does nothing
+# 2. On onboarding → skips → logs in
+# 3. On login screen → logs in
+#
+# Uses test phone +919999999999 with OTP 123456.
+
+- launchApp
+
+# Wait for app to settle
+- waitForAnimationToEnd
+- waitForAnimationToEnd
+- waitForAnimationToEnd
+- waitForAnimationToEnd
+- waitForAnimationToEnd
+- waitForAnimationToEnd

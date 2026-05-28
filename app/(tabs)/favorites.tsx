@@ -127,9 +127,9 @@ export default function FavoritesScreen() {
 const styles = StyleSheet.create({
   container: { flex: 1, backgroundColor: Colors.background },
   headerTitle: { fontSize: 22, fontWeight: "700", color: Colors.text, paddingHorizontal: 20, paddingTop: 16, paddingBottom: 8 },
-  tabRow: { flexDirection: "row", marginHorizontal: 20, marginBottom: 14, backgroundColor: Colors.surface, borderRadius: 12, padding: 3 },
-  tabButton: { flex: 1, paddingVertical: 10, borderRadius: 10, alignItems: "center" },
-  tabButtonActive: { backgroundColor: Colors.primary },
+  tabRow: { flexDirection: "row", marginHorizontal: 20, marginBottom: 14, gap: 10 },
+  tabButton: { flex: 1, paddingVertical: 10, borderRadius: 24, backgroundColor: Colors.surface, alignItems: "center" },
+  tabButtonActive: { backgroundColor: Colors.primary, shadowColor: Colors.primary, shadowOffset: { width: 0, height: 2 }, shadowOpacity: 0.2, shadowRadius: 4, elevation: 3 },
   tabText: { fontSize: 14, fontWeight: "600", color: Colors.textSecondary },
   tabTextActive: { color: Colors.white },
   scrollContent: { paddingHorizontal: 20, paddingBottom: 90 },

@@ -1,0 +1,32 @@
+appId: com.zvenue.app
+name: "Login Validation - Invalid Phone Number"
+tags:
+  - auth
+  - validation
+  - negative
+---
+# Tests login validation: submitting with empty/short phone number
+# should show a warning toast.
+
+- launchApp:
+    clearState: true
+
+# Skip onboarding
+- tapOn: "Skip"
+- waitForAnimationToEnd
+
+# Try to login without entering phone number
+- tapOn: "Log in or Sign up"
+- waitForAnimationToEnd
+
+# Should show validation warning (still on login screen)
+- assertVisible: "Enter 10-digit number"
+
+# Enter too-short phone number
+- tapOn: "Enter 10-digit number"
+- inputText: "12345"
+- tapOn: "Log in or Sign up"
+- waitForAnimationToEnd
+
+# Should still be on login screen (validation failed)
+- assertVisible: "Enter 10-digit number"

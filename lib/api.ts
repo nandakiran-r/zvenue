@@ -142,6 +142,10 @@ export async function markNotificationRead(id: string): Promise<void> {
   await api.patch(`/api/notifications/${id}/read`);
 }
 
+export async function markAllNotificationsRead(userId: string): Promise<void> {
+  await api.patch(`/api/notifications/read-all`, { user_id: userId });
+}
+
 // ─── Users ─────────────────────────────────────────────────────────────────
 // No longer using clerk_id, we use user id
 export async function fetchUser(userId: string): Promise<DbUser | null> {

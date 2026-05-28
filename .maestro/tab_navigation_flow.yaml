@@ -1,0 +1,38 @@
+appId: com.zvenue.app
+name: "Tab Navigation - All Tabs Accessible"
+tags:
+  - navigation
+  - tabs
+  - smoke
+---
+# Smoke test: verifies all 5 bottom tabs are accessible and load correctly.
+
+- runFlow: auth_login_flow.yaml
+
+# Tab 1: Home (already here after login)
+- assertVisible: "Home"
+
+# Tab 2: Search
+- tapOn: "Search"
+- waitForAnimationToEnd
+- assertVisible:
+    id: "search-input"
+
+# Tab 3: Bookings
+- tapOn: "Bookings"
+- waitForAnimationToEnd
+
+# Tab 4: Favorites
+- tapOn: "Favorites"
+- waitForAnimationToEnd
+
+# Tab 5: Profile
+- tapOn: "Profile"
+- waitForAnimationToEnd
+- assertVisible: "Edit Profile"
+
+# Navigate back to Home
+- tapOn:
+    id: "tab-home"
+- waitForAnimationToEnd
+- assertVisible: "Home"

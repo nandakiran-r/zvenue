@@ -1,0 +1,26 @@
+appId: com.zvenue.app
+name: "My Bookings - View Bookings List"
+tags:
+  - bookings
+  - tabs
+---
+# Tests the My Bookings tab: navigate, verify sub-tabs for
+# Venues and Services bookings.
+
+- runFlow: auth_login_flow.yaml
+
+# Navigate to Bookings tab
+- tapOn: "Bookings"
+- waitForAnimationToEnd
+
+# Verify Bookings screen loaded with sub-tabs
+- assertVisible: "Venues"
+- assertVisible: "Services"
+
+# Switch to Services bookings
+- tapOn: "Services"
+- waitForAnimationToEnd
+
+# Switch back to Venues bookings
+- tapOn: "Venues"
+- waitForAnimationToEnd

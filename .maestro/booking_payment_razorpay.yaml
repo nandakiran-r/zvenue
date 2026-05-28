@@ -1,0 +1,44 @@
+appId: com.zvenue.app
+name: "Booking Payment - Razorpay Checkout with BHIM UPI"
+tags:
+  - booking
+  - payment
+  - razorpay
+---
+# Tests the full venue booking flow with Razorpay payment.
+# Flow: Search venue → Open detail → Pre-Book → Select date → Select session →
+#       Confirm & Pay → Razorpay opens → Select BHIM UPI → Complete payment
+#
+# Prerequisites:
+# - User must be logged in and subscribed (or test with non-subscriber prompt)
+# - Backend must be running with Razorpay test keys
+# - At least one venue must exist in the database
+#
+# NOTE: Uses Razorpay TEST mode. Payment will not charge real money.
+
+- runFlow: auth_login_flow.yaml
+
+# Navigate to Search and find a venue
+- tapOn: "Search"
+- waitForAnimationToEnd
+- tapOn:
+    id: "search-input"
+- inputText: "hall"
+- waitForAnimationToEnd
+- waitForAnimationToEnd
+
+# Scroll to see venue results
+- scroll
+- waitForAnimationToEnd
+
+# Tap on the first venue card (navigate to venue-detail)
+# NOTE: This depends on venues existing in the DB
+- scroll
+- waitForAnimationToEnd
+
+# If we can see the Pre-Book button, tap it
+- runFlow:
+    when:
+      visible:
+        id: "book-venue"
+    file: tap_book_venue.yaml

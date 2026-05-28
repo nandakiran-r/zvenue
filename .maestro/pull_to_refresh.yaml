@@ -1,0 +1,26 @@
+appId: com.zvenue.app
+name: "Home - Pull to Refresh Venues"
+tags:
+  - home
+  - ui
+  - gestures
+---
+# Tests pull-to-refresh gesture on the home screen to reload venues.
+#
+# Prerequisites: User must be logged in.
+
+- runFlow: auth_login_flow.yaml
+
+# Verify Home screen
+- assertVisible: "Home"
+- assertVisible: "Search venues & services"
+
+# Pull down to refresh (swipe down from top of content area)
+- swipe:
+    direction: DOWN
+    duration: 1000
+- waitForAnimationToEnd
+- waitForAnimationToEnd
+
+# Verify home content is still visible after refresh
+- assertVisible: "Home"

@@ -1,0 +1,6 @@
+appId: com.zvenue.app
+---
+# Helper: Tap the Pre-Book button on venue detail
+- tapOn:
+    id: "book-venue"
+- waitForAnimationToEnd

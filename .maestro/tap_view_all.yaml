@@ -1,0 +1,4 @@
+appId: com.zvenue.app
+---
+- tapOn: "View All"
+- waitForAnimationToEnd

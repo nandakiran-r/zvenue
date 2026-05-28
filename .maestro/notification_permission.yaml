@@ -1,0 +1,42 @@
+appId: com.zvenue.app
+name: "Notification Permission - Push Notifications"
+tags:
+  - permissions
+  - notifications
+---
+# Tests that push notification permission is handled gracefully.
+# On Android 13+, the app needs POST_NOTIFICATIONS permission.
+#
+# Prerequisites: User must be logged in.
+
+- runFlow: auth_login_flow.yaml
+
+# Navigate to Profile > Settings
+- tapOn: "Profile"
+- waitForAnimationToEnd
+- tapOn: "Settings"
+- waitForAnimationToEnd
+
+# Verify Settings screen
+- assertVisible: "Settings"
+- assertVisible: "Push Notifications"
+- assertVisible: "SMS Notifications"
+
+# Toggle Push Notifications switch
+- tapOn: "Push Notifications"
+- waitForAnimationToEnd
+
+# If Android 13+ permission dialog appears, grant it
+- runFlow:
+    when:
+      visible: "Allow"
+    file: tap_allow.yaml
+
+# Toggle back
+- tapOn: "Push Notifications"
+- waitForAnimationToEnd
+
+# Go back
+- back
+- waitForAnimationToEnd
+- assertVisible: "Edit Profile"

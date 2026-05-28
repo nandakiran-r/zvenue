@@ -96,7 +96,7 @@ export default function LoginScreen() {
   };
 
   return (
-    <View style={styles.container}>
+    <View style={styles.container} testID="login-screen">
       <KeyboardAvoidingView
         behavior={Platform.OS === "ios" ? "padding" : "height"}
         style={styles.flex}
@@ -104,7 +104,7 @@ export default function LoginScreen() {
         <ScrollView
           contentContainerStyle={styles.scrollContent}
           showsVerticalScrollIndicator={false}
-          keyboardShouldPersistTaps="handled"
+          keyboardShouldPersistTaps="always"
         >
           {/* Photo Grid Collage */}
           <View style={styles.collageContainer}>
@@ -163,6 +163,7 @@ export default function LoginScreen() {
                 onChangeText={setPhone}
                 keyboardType="phone-pad"
                 maxLength={10}
+                testID="login-phone-input"
               />
             </View>
 
@@ -171,6 +172,7 @@ export default function LoginScreen() {
               onPress={handlePhoneLogin}
               activeOpacity={0.8}
               disabled={loading}
+              testID="login-submit-button"
             >
               {loading ? (
                 <ActivityIndicator color={Colors.white} />

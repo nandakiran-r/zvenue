@@ -1,0 +1,24 @@
+appId: com.zvenue.app
+name: "Error Handling - Network Connectivity"
+tags:
+  - error
+  - network
+  - negative
+---
+# Tests app behavior when network requests fail.
+# Verifies error toasts/messages appear gracefully.
+#
+# NOTE: This test works best when the backend is stopped.
+# For automated testing, toggle airplane mode via ADB.
+
+- launchApp
+- waitForAnimationToEnd
+- waitForAnimationToEnd
+- waitForAnimationToEnd
+
+# If on login screen, try to login (will fail if backend is down)
+- runFlow:
+    when:
+      visible:
+        id: "login-screen"
+    file: attempt_login_offline.yaml

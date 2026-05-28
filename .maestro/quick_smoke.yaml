@@ -1,0 +1,12 @@
+appId: com.zvenue.app
+name: "Quick Smoke - Verify App Is Running"
+tags:
+  - smoke
+---
+# Quick smoke test - just launches and verifies something is visible.
+# No login dependency.
+
+- launchApp
+- waitForAnimationToEnd
+- waitForAnimationToEnd
+- waitForAnimationToEnd

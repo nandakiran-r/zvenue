@@ -1,0 +1,21 @@
+appId: com.zvenue.app
+name: "Onboarding Skip - Direct to Login"
+tags:
+  - onboarding
+  - smoke
+---
+# Verifies the Skip button on onboarding takes user directly to Login.
+
+- launchApp:
+    clearState: true
+
+# Onboarding should appear on fresh install
+- assertVisible: "Find the perfect"
+
+# Tap Skip
+- tapOn: "Skip"
+- waitForAnimationToEnd
+
+# Verify Login screen is shown
+- assertVisible: "Enter 10-digit number"
+- assertVisible: "Log in or Sign up"

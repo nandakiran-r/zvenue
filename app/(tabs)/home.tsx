@@ -1,7 +1,7 @@
 import { router } from "expo-router";
 import { MaterialIcons } from "@expo/vector-icons";
 import { Bell, ChevronDown, ChevronRight, Heart, MapPin, Navigation, Search, SlidersHorizontal, Star, Users, X } from "lucide-react-native";
-import React, { useEffect, useState } from "react";
+import React, { useCallback, useEffect, useRef, useState } from "react";
 import {
   ActivityIndicator,
   FlatList,
@@ -19,10 +19,12 @@ import Colors from "@/constants/colors";
 import { useAuth } from "@/context/AuthContext";
 import { useFavorites } from "@/context/FavoritesContext";
 import { useLocationStore } from "@/store/locationStore";
+import { useNotificationStore } from "@/store/notificationStore";
 import { fetchCategories, fetchVenues } from "@/lib/api";
-import { fetchServiceCategories } from "@/lib/serviceApi";
+import { fetchServiceCategories, searchAll } from "@/lib/serviceApi";
+import { addNotificationReceivedListener } from "@/lib/notifications";
 import type { DbCategory, DbVenue } from "@/lib/types";
-import type { DbServiceCategory } from "@/lib/serviceTypes";
+import type { DbServiceCategory, SearchResults } from "@/lib/serviceTypes";
 
 const CITIES = [
   { id: "1", name: "Ahmedabad", state: "Gujarat" },
@@ -54,6 +56,8 @@ export default function HomeScreen() {
   
   const { isFavorite, toggleFavorite } = useFavorites();
   const locationStore = useLocationStore();
+  const { dbUser } = useAuth();
+  const { unreadCount, fetchUnreadCount } = useNotificationStore();
 
   const [categories, setCategories] = useState<DbCategory[]>([]);
   const [venuesByCategory, setVenuesByCategory] = useState<Record<string, DbVenue[]>>({});
@@ -70,9 +74,36 @@ export default function HomeScreen() {
   const [activeTab, setActiveTab] = useState<'venues' | 'services'>('venues');
   const [serviceCategories, setServiceCategories] = useState<DbServiceCategory[]>([]);
 
+  // Search state
+  const [searchQuery, setSearchQuery] = useState("");
+  const [isSearching, setIsSearching] = useState(false);
+  const [searchResults, setSearchResults] = useState<SearchResults | null>(null);
+  const [searchLoading, setSearchLoading] = useState(false);
+  const searchTimeout = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  // Filter state
+  const [filterModalVisible, setFilterModalVisible] = useState(false);
+  const [filterType, setFilterType] = useState<'all' | 'venues' | 'services'>('all');
+  const [sortBy, setSortBy] = useState<'none' | 'price_low' | 'price_high' | 'rating'>('none');
+
   // Initialize location on mount
   useEffect(() => {
     locationStore.initialize();
+  }, []);
+
+  // Fetch unread notification count
+  useEffect(() => {
+    if (dbUser?.id) {
+      fetchUnreadCount(dbUser.id);
+    }
+  }, [dbUser?.id]);
+
+  // Increment badge when a push notification arrives in foreground
+  useEffect(() => {
+    const subscription = addNotificationReceivedListener(() => {
+      useNotificationStore.getState().incrementUnread();
+    });
+    return () => subscription.remove();
   }, []);
 
   // Update selected location when GPS resolves
@@ -159,6 +190,131 @@ export default function HomeScreen() {
     return `₹${amount.toLocaleString("en-IN")}`;
   };
 
+  // Debounced search
+  const handleSearchChange = useCallback((text: string) => {
+    setSearchQuery(text);
+    if (searchTimeout.current) clearTimeout(searchTimeout.current);
+
+    if (text.trim().length < 2) {
+      setIsSearching(false);
+      setSearchResults(null);
+      return;
+    }
+
+    searchTimeout.current = setTimeout(async () => {
+      try {
+        setSearchLoading(true);
+        setIsSearching(true);
+        const results = await searchAll(text.trim(), filterType);
+        console.log('Search results:', JSON.stringify({ venues: results.venues.length, services: results.services.length }));
+        setSearchResults(sortResults(results));
+      } catch (err) {
+        console.error("Search failed:", err);
+      } finally {
+        setSearchLoading(false);
+      }
+    }, 300);
+  }, [filterType, sortBy]);
+
+  // Re-search when filter/sort changes
+  useEffect(() => {
+    if (isSearching && searchQuery.trim().length >= 2) {
+      const doSearch = async () => {
+        try {
+          setSearchLoading(true);
+          const results = await searchAll(searchQuery.trim(), filterType);
+          setSearchResults(sortResults(results));
+        } catch (err) {
+          console.error("Search failed:", err);
+        } finally {
+          setSearchLoading(false);
+        }
+      };
+      doSearch();
+    }
+  }, [filterType, sortBy]);
+
+  const sortResults = (results: SearchResults): SearchResults => {
+    let venues = [...results.venues];
+    let services = [...results.services];
+
+    if (sortBy === 'price_low') {
+      venues.sort((a, b) => a.price_per_day - b.price_per_day);
+      services.sort((a, b) => a.price - b.price);
+    } else if (sortBy === 'price_high') {
+      venues.sort((a, b) => b.price_per_day - a.price_per_day);
+      services.sort((a, b) => b.price - a.price);
+    } else if (sortBy === 'rating') {
+      venues.sort((a, b) => b.rating - a.rating);
+      services.sort((a, b) => b.rating - a.rating);
+    }
+
+    return { venues, services };
+  };
+
+  const clearSearch = () => {
+    setSearchQuery("");
+    setIsSearching(false);
+    setSearchResults(null);
+  };
+
+  const applyFilters = () => {
+    setFilterModalVisible(false);
+    // Sync filter type with the active tab on browse view
+    if (filterType === 'venues') setActiveTab('venues');
+    else if (filterType === 'services') setActiveTab('services');
+
+    if (isSearching && searchQuery.trim().length >= 2) {
+      // Re-trigger search with new filters
+      const doSearch = async () => {
+        try {
+          setSearchLoading(true);
+          const results = await searchAll(searchQuery.trim(), filterType);
+          setSearchResults(sortResults(results));
+        } catch (err) {
+          console.error("Search failed:", err);
+        } finally {
+          setSearchLoading(false);
+        }
+      };
+      doSearch();
+    } else {
+      // Apply sort to the browse view
+      applySortToBrowseView();
+    }
+  };
+
+  const applySortToBrowseView = () => {
+    if (sortBy === 'none') return;
+    const sorted: Record<string, DbVenue[]> = {};
+    for (const [catName, venues] of Object.entries(venuesByCategory)) {
+      const copy = [...venues];
+      if (sortBy === 'price_low') {
+        copy.sort((a, b) => (a.price_per_day ?? 0) - (b.price_per_day ?? 0));
+      } else if (sortBy === 'price_high') {
+        copy.sort((a, b) => (b.price_per_day ?? 0) - (a.price_per_day ?? 0));
+      } else if (sortBy === 'rating') {
+        copy.sort((a, b) => (b.rating ?? 0) - (a.rating ?? 0));
+      }
+      sorted[catName] = copy;
+    }
+    setVenuesByCategory(sorted);
+  };
+
+  // Apply sort when sortBy changes on browse view
+  useEffect(() => {
+    if (!isSearching && sortBy !== 'none') {
+      applySortToBrowseView();
+    }
+  }, [sortBy]);
+
+  const clearFilters = () => {
+    setFilterType('all');
+    setSortBy('none');
+    // Reload original data without sort
+    loadData();
+  };
+
   return (
     <View style={[styles.container, { paddingTop: insets.top }]}>
       <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={styles.scrollContent}>
@@ -177,6 +333,13 @@ export default function HomeScreen() {
           </TouchableOpacity>
           <TouchableOpacity style={styles.notificationButton} onPress={() => router.push("/notifications" as any)}>
             <Bell size={22} color={Colors.text} />
+            {unreadCount > 0 && (
+              <View style={styles.notificationBadge}>
+                <Text style={styles.notificationBadgeText}>
+                  {unreadCount > 99 ? "99+" : unreadCount}
+                </Text>
+              </View>
+            )}
           </TouchableOpacity>
         </View>
 
@@ -335,16 +498,190 @@ export default function HomeScreen() {
           </View>
         </Modal>
 
-        <View style={styles.searchRow}>
-          <TouchableOpacity style={styles.searchContainer} onPress={() => router.push("/(tabs)/search" as any)} activeOpacity={0.7}>
+        <View style={styles.searchRow} testID="home-search-bar">
+          <View style={styles.searchContainer}>
             <Search size={18} color={Colors.textSecondary} />
-            <Text style={[styles.searchInput, { color: Colors.textTertiary }]}>Search venues & services</Text>
-          </TouchableOpacity>
-          <TouchableOpacity style={styles.filterButton} onPress={() => router.push("/(tabs)/search" as any)}>
-            <SlidersHorizontal size={18} color={Colors.text} />
+            <TextInput
+              style={styles.searchInput}
+              placeholder="Search venues & services"
+              placeholderTextColor={Colors.textTertiary}
+              value={searchQuery}
+              onChangeText={handleSearchChange}
+              returnKeyType="search"
+            />
+            {searchQuery.length > 0 && (
+              <TouchableOpacity onPress={clearSearch}>
+                <X size={16} color={Colors.textSecondary} />
+              </TouchableOpacity>
+            )}
+          </View>
+          <TouchableOpacity
+            style={[styles.filterButton, (filterType !== 'all' || sortBy !== 'none') && styles.filterButtonActive]}
+            onPress={() => setFilterModalVisible(true)}
+          >
+            <SlidersHorizontal size={18} color={(filterType !== 'all' || sortBy !== 'none') ? Colors.primary : Colors.text} />
           </TouchableOpacity>
         </View>
 
+        {/* Filter Modal */}
+        <Modal
+          visible={filterModalVisible}
+          transparent
+          animationType="slide"
+          onRequestClose={() => setFilterModalVisible(false)}
+        >
+          <View style={styles.filterModalOverlay}>
+            <View style={styles.filterModalContainer}>
+              <View style={styles.filterModalHeader}>
+                <Text style={styles.filterModalTitle}>Filter & Sort</Text>
+                <TouchableOpacity onPress={() => setFilterModalVisible(false)} style={styles.modalCloseBtn}>
+                  <X size={20} color={Colors.text} />
+                </TouchableOpacity>
+              </View>
+
+              <Text style={styles.filterSectionTitle}>Show</Text>
+              <View style={styles.filterChipsRow}>
+                {(['all', 'venues', 'services'] as const).map((type) => (
+                  <TouchableOpacity
+                    key={type}
+                    style={[styles.filterChip, filterType === type && styles.filterChipActive]}
+                    onPress={() => setFilterType(type)}
+                  >
+                    <Text style={[styles.filterChipText, filterType === type && styles.filterChipTextActive]}>
+                      {type === 'all' ? 'All' : type === 'venues' ? 'Venues' : 'Services'}
+                    </Text>
+                  </TouchableOpacity>
+                ))}
+              </View>
+
+              <Text style={styles.filterSectionTitle}>Sort by</Text>
+              <View style={styles.sortOptionsContainer}>
+                {([
+                  { key: 'none', label: 'Default' },
+                  { key: 'price_low', label: 'Price: Low to High' },
+                  { key: 'price_high', label: 'Price: High to Low' },
+                  { key: 'rating', label: 'Rating: Highest First' },
+                ] as const).map((option) => (
+                  <TouchableOpacity
+                    key={option.key}
+                    style={styles.sortOption}
+                    onPress={() => setSortBy(option.key)}
+                  >
+                    <View style={[styles.radioOuter, sortBy === option.key && styles.radioOuterActive]}>
+                      {sortBy === option.key && <View style={styles.radioInner} />}
+                    </View>
+                    <Text style={[styles.sortOptionText, sortBy === option.key && styles.sortOptionTextActive]}>
+                      {option.label}
+                    </Text>
+                  </TouchableOpacity>
+                ))}
+              </View>
+
+              <View style={styles.filterActions}>
+                <TouchableOpacity style={styles.clearFilterBtn} onPress={clearFilters}>
+                  <Text style={styles.clearFilterText}>Clear All</Text>
+                </TouchableOpacity>
+                <TouchableOpacity style={styles.applyFilterBtn} onPress={applyFilters}>
+                  <Text style={styles.applyFilterText}>Apply</Text>
+                </TouchableOpacity>
+              </View>
+            </View>
+          </View>
+        </Modal>
+
+        {/* Search Results (shown when searching) */}
+        {isSearching ? (
+          searchLoading ? (
+            <ActivityIndicator size="large" color={Colors.primary} style={{ marginTop: 40 }} />
+          ) : searchResults ? (
+            <View style={styles.searchResultsContainer}>
+              {/* Venue Results */}
+              {(filterType === 'all' || filterType === 'venues') && searchResults.venues.length > 0 && (
+                <>
+                  <Text style={styles.searchResultsTitle}>Venues</Text>
+                  {searchResults.venues.map((venue) => (
+                    <TouchableOpacity
+                      key={venue.id}
+                      style={styles.searchResultCard}
+                      onPress={() => router.push({ pathname: "/venue-detail", params: { id: venue.id } })}
+                      activeOpacity={0.7}
+                    >
+                      <Image source={{ uri: venue.image_url ?? undefined }} style={styles.searchResultImage} />
+                      <View style={styles.searchResultInfo}>
+                        <View style={styles.searchResultBadgeRow}>
+                          <View style={styles.searchResultBadge}>
+                            <Text style={styles.searchResultBadgeText}>Venue</Text>
+                          </View>
+                        </View>
+                        <Text style={styles.searchResultName} numberOfLines={1}>{venue.name}</Text>
+                        <View style={styles.searchResultMeta}>
+                          <MapPin size={11} color={Colors.textSecondary} />
+                          <Text style={styles.searchResultCity}>{venue.city}</Text>
+                        </View>
+                        <View style={styles.searchResultFooter}>
+                          <View style={styles.ratingRow}>
+                            <Star size={12} color="#FFB800" fill="#FFB800" />
+                            <Text style={styles.ratingText}>{venue.rating}</Text>
+                          </View>
+                          <Text style={styles.searchResultPrice}>{formatPrice(venue.price_per_day)}/day</Text>
+                        </View>
+                      </View>
+                    </TouchableOpacity>
+                  ))}
+                </>
+              )}
+
+              {/* Service Results */}
+              {(filterType === 'all' || filterType === 'services') && searchResults.services.length > 0 && (
+                <>
+                  <Text style={styles.searchResultsTitle}>Services</Text>
+                  {searchResults.services.map((service) => (
+                    <TouchableOpacity
+                      key={service.id}
+                      style={styles.searchResultCard}
+                      onPress={() => router.push({ pathname: "/service-detail" as any, params: { id: service.id } })}
+                      activeOpacity={0.7}
+                    >
+                      <Image source={{ uri: service.image_url ?? (service.images?.[0] ?? undefined) }} style={styles.searchResultImage} />
+                      <View style={styles.searchResultInfo}>
+                        <View style={styles.searchResultBadgeRow}>
+                          <View style={[styles.searchResultBadge, styles.searchResultBadgeService]}>
+                            <Text style={[styles.searchResultBadgeText, styles.searchResultBadgeServiceText]}>Service</Text>
+                          </View>
+                          {service.category?.name && (
+                            <Text style={styles.searchResultCategory}>{service.category.name}</Text>
+                          )}
+                        </View>
+                        <Text style={styles.searchResultName} numberOfLines={1}>{service.name}</Text>
+                        <View style={styles.searchResultMeta}>
+                          <MapPin size={11} color={Colors.textSecondary} />
+                          <Text style={styles.searchResultCity}>{service.city}</Text>
+                        </View>
+                        <View style={styles.searchResultFooter}>
+                          <View style={styles.ratingRow}>
+                            <Star size={12} color="#FFB800" fill="#FFB800" />
+                            <Text style={styles.ratingText}>{service.rating}</Text>
+                          </View>
+                          <Text style={styles.searchResultPrice}>{formatPrice(service.price)}</Text>
+                        </View>
+                      </View>
+                    </TouchableOpacity>
+                  ))}
+                </>
+              )}
+
+              {/* No results */}
+              {searchResults.venues.length === 0 && searchResults.services.length === 0 && (
+                <View style={styles.noResultsContainer}>
+                  <Search size={48} color={Colors.textTertiary} />
+                  <Text style={styles.noResultsTitle}>No results found</Text>
+                  <Text style={styles.noResultsSubtitle}>Try a different search term or adjust your filters</Text>
+                </View>
+              )}
+            </View>
+          ) : null
+        ) : (
+          <>
         {/* Venues / Services Toggle */}
         <View style={styles.toggleRow}>
           <TouchableOpacity
@@ -495,6 +832,8 @@ export default function HomeScreen() {
             )}
           </View>
         )}
+          </>
+        )}
       </ScrollView>
     </View>
   );
@@ -506,7 +845,7 @@ const styles = StyleSheet.create({
     backgroundColor: Colors.background,
   },
   scrollContent: {
-    paddingBottom: 24,
+    paddingBottom: 80,
   },
   header: {
     flexDirection: "row",
@@ -540,6 +879,25 @@ const styles = StyleSheet.create({
     borderColor: Colors.border,
     alignItems: "center",
     justifyContent: "center",
+  },
+  notificationBadge: {
+    position: "absolute",
+    top: 4,
+    right: 4,
+    minWidth: 18,
+    height: 18,
+    borderRadius: 9,
+    backgroundColor: "#E53935",
+    alignItems: "center",
+    justifyContent: "center",
+    paddingHorizontal: 4,
+    borderWidth: 2,
+    borderColor: Colors.background,
+  },
+  notificationBadgeText: {
+    fontSize: 10,
+    fontWeight: "700" as const,
+    color: "#FFFFFF",
   },
   // --- Modal styles ---
   modalOverlay: {
@@ -937,14 +1295,13 @@ const styles = StyleSheet.create({
     flexDirection: "row",
     marginHorizontal: 20,
     marginBottom: 14,
-    backgroundColor: Colors.surface,
-    borderRadius: 14,
-    padding: 4,
+    gap: 10,
   },
   toggleButton: {
     flex: 1,
     paddingVertical: 10,
-    borderRadius: 11,
+    borderRadius: 24,
+    backgroundColor: Colors.surface,
     alignItems: "center",
   },
   toggleButtonActive: {
@@ -995,5 +1352,234 @@ const styles = StyleSheet.create({
     fontSize: 16,
     fontWeight: "600" as const,
     color: Colors.text,
+  },
+  // Filter button active state
+  filterButtonActive: {
+    borderColor: Colors.primary,
+    backgroundColor: Colors.primaryLight,
+  },
+  // Filter Modal
+  filterModalOverlay: {
+    flex: 1,
+    backgroundColor: "rgba(0,0,0,0.45)",
+    justifyContent: "flex-end",
+  },
+  filterModalContainer: {
+    backgroundColor: Colors.white,
+    borderTopLeftRadius: 24,
+    borderTopRightRadius: 24,
+    paddingHorizontal: 20,
+    paddingTop: 20,
+    paddingBottom: 32,
+  },
+  filterModalHeader: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "space-between",
+    marginBottom: 20,
+  },
+  filterModalTitle: {
+    fontSize: 18,
+    fontWeight: "700" as const,
+    color: Colors.text,
+  },
+  filterSectionTitle: {
+    fontSize: 14,
+    fontWeight: "600" as const,
+    color: Colors.textSecondary,
+    marginBottom: 10,
+    marginTop: 8,
+    textTransform: "uppercase",
+    letterSpacing: 0.5,
+  },
+  filterChipsRow: {
+    flexDirection: "row",
+    gap: 10,
+    marginBottom: 16,
+  },
+  filterChip: {
+    paddingHorizontal: 18,
+    paddingVertical: 10,
+    borderRadius: 20,
+    backgroundColor: Colors.surface,
+    borderWidth: 1,
+    borderColor: Colors.border,
+  },
+  filterChipActive: {
+    backgroundColor: Colors.primary,
+    borderColor: Colors.primary,
+  },
+  filterChipText: {
+    fontSize: 13,
+    fontWeight: "600" as const,
+    color: Colors.text,
+  },
+  filterChipTextActive: {
+    color: Colors.white,
+  },
+  sortOptionsContainer: {
+    gap: 4,
+    marginBottom: 20,
+  },
+  sortOption: {
+    flexDirection: "row",
+    alignItems: "center",
+    paddingVertical: 12,
+    gap: 12,
+  },
+  radioOuter: {
+    width: 20,
+    height: 20,
+    borderRadius: 10,
+    borderWidth: 2,
+    borderColor: Colors.border,
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  radioOuterActive: {
+    borderColor: Colors.primary,
+  },
+  radioInner: {
+    width: 10,
+    height: 10,
+    borderRadius: 5,
+    backgroundColor: Colors.primary,
+  },
+  sortOptionText: {
+    fontSize: 14,
+    color: Colors.text,
+  },
+  sortOptionTextActive: {
+    fontWeight: "600" as const,
+    color: Colors.primary,
+  },
+  filterActions: {
+    flexDirection: "row",
+    gap: 12,
+  },
+  clearFilterBtn: {
+    flex: 1,
+    paddingVertical: 14,
+    borderRadius: 14,
+    borderWidth: 1,
+    borderColor: Colors.border,
+    alignItems: "center",
+  },
+  clearFilterText: {
+    fontSize: 14,
+    fontWeight: "600" as const,
+    color: Colors.textSecondary,
+  },
+  applyFilterBtn: {
+    flex: 1,
+    paddingVertical: 14,
+    borderRadius: 14,
+    backgroundColor: Colors.primary,
+    alignItems: "center",
+  },
+  applyFilterText: {
+    fontSize: 14,
+    fontWeight: "700" as const,
+    color: Colors.white,
+  },
+  // Search Results
+  searchResultsContainer: {
+    paddingHorizontal: 20,
+    paddingTop: 8,
+  },
+  searchResultsTitle: {
+    fontSize: 16,
+    fontWeight: "700" as const,
+    color: Colors.text,
+    marginBottom: 12,
+    marginTop: 8,
+  },
+  searchResultCard: {
+    flexDirection: "row",
+    backgroundColor: Colors.white,
+    borderRadius: 14,
+    borderWidth: 1,
+    borderColor: Colors.border,
+    overflow: "hidden",
+    marginBottom: 12,
+  },
+  searchResultImage: {
+    width: 100,
+    height: 100,
+  },
+  searchResultInfo: {
+    flex: 1,
+    padding: 12,
+    justifyContent: "center",
+  },
+  searchResultBadgeRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 8,
+    marginBottom: 4,
+  },
+  searchResultBadge: {
+    paddingHorizontal: 8,
+    paddingVertical: 2,
+    borderRadius: 6,
+    backgroundColor: Colors.primaryLight,
+  },
+  searchResultBadgeService: {
+    backgroundColor: "#E8F5E9",
+  },
+  searchResultBadgeText: {
+    fontSize: 10,
+    fontWeight: "700" as const,
+    color: Colors.primary,
+  },
+  searchResultBadgeServiceText: {
+    color: "#2E7D32",
+  },
+  searchResultCategory: {
+    fontSize: 11,
+    color: Colors.textSecondary,
+  },
+  searchResultName: {
+    fontSize: 14,
+    fontWeight: "600" as const,
+    color: Colors.text,
+    marginBottom: 4,
+  },
+  searchResultMeta: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 4,
+    marginBottom: 6,
+  },
+  searchResultCity: {
+    fontSize: 12,
+    color: Colors.textSecondary,
+  },
+  searchResultFooter: {
+    flexDirection: "row",
+    justifyContent: "space-between",
+    alignItems: "center",
+  },
+  searchResultPrice: {
+    fontSize: 13,
+    fontWeight: "700" as const,
+    color: Colors.primary,
+  },
+  noResultsContainer: {
+    alignItems: "center",
+    paddingTop: 60,
+    paddingHorizontal: 32,
+  },
+  noResultsTitle: {
+    fontSize: 18,
+    fontWeight: "700" as const,
+    color: Colors.text,
+    marginTop: 16,
+    marginBottom: 8,
+  },
+  noResultsSubtitle: {
+    fontSize: 14,
+    color: Colors.textSecondary,
+    textAlign: "center",
   },
 });

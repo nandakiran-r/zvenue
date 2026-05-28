@@ -1,0 +1,41 @@
+appId: com.zvenue.app
+name: "Settings - Toggle Notifications"
+tags:
+  - settings
+  - profile
+---
+# Tests the Settings screen: toggle notification switches,
+# verify app version display.
+
+- runFlow: auth_login_flow.yaml
+
+# Navigate to Profile tab
+- tapOn: "Profile"
+- waitForAnimationToEnd
+
+# Tap Settings menu item
+- tapOn: "Settings"
+- waitForAnimationToEnd
+
+# Verify Settings screen elements
+- assertVisible: "Settings"
+- assertVisible: "Push Notifications"
+- assertVisible: "SMS Notifications"
+- assertVisible: "Privacy Policy"
+- assertVisible: "App Version"
+- assertVisible: "1.0.0"
+
+# Toggle Push Notifications (tap the switch area)
+- tapOn: "Push Notifications"
+- waitForAnimationToEnd
+
+# Toggle SMS Notifications
+- tapOn: "SMS Notifications"
+- waitForAnimationToEnd
+
+# Go back
+- back
+- waitForAnimationToEnd
+
+# Verify we're back on Profile
+- assertVisible: "Edit Profile"

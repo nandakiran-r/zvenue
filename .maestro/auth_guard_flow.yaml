@@ -1,0 +1,20 @@
+appId: com.zvenue.app
+name: "Auth Guard - Unauthenticated Redirect"
+tags:
+  - auth
+  - security
+  - smoke
+---
+# Verifies that unauthenticated users cannot access protected screens
+# and are redirected to the login screen.
+
+- launchApp:
+    clearState: true
+
+# Skip onboarding
+- tapOn: "Skip"
+- waitForAnimationToEnd
+
+# Verify we're on Login (not on Home/tabs)
+- assertVisible: "Log in or Sign up"
+- assertVisible: "Enter 10-digit number"

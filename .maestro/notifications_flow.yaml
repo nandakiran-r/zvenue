@@ -1,0 +1,27 @@
+appId: com.zvenue.app
+name: "Notifications - View Notifications"
+tags:
+  - notifications
+  - profile
+---
+# Tests navigating to the Notifications screen from Profile.
+
+- runFlow: auth_login_flow.yaml
+
+# Navigate to Profile tab
+- tapOn: "Profile"
+- waitForAnimationToEnd
+
+# Tap Notifications menu item
+- tapOn: "Notifications"
+- waitForAnimationToEnd
+
+# Verify Notifications screen header
+- assertVisible: "Notifications"
+
+# Go back to Profile
+- back
+- waitForAnimationToEnd
+
+# Verify we're back on Profile
+- assertVisible: "Edit Profile"

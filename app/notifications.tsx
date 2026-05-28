@@ -1,6 +1,6 @@
 import { router } from "expo-router";
-import { ArrowLeft, Bell, Check } from "lucide-react-native";
-import React, { useEffect, useState } from "react";
+import { ArrowLeft, Bell, CheckCheck } from "lucide-react-native";
+import React, { useEffect } from "react";
 import {
   ActivityIndicator,
   FlatList,
@@ -12,44 +12,24 @@ import {
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import Colors from "@/constants/colors";
 import { useAuth } from "@/context/AuthContext";
-import { fetchNotifications, markNotificationRead } from "@/lib/api";
-import type { DbNotification } from "@/lib/types";
+import { useNotificationStore } from "@/store/notificationStore";
 
 export default function NotificationsScreen() {
   const insets = useSafeAreaInsets();
   const { dbUser } = useAuth();
-
-  const [notifications, setNotifications] = useState<DbNotification[]>([]);
-  const [loading, setLoading] = useState(true);
+  const {
+    notifications,
+    unreadCount,
+    isLoading,
+    loadNotifications,
+    markAsRead,
+    markAllAsRead,
+  } = useNotificationStore();
 
   useEffect(() => {
-    if (!dbUser) return;
-    loadNotifications();
+    if (!dbUser?.id) return;
+    loadNotifications(dbUser.id);
   }, [dbUser?.id]);
-
-  const loadNotifications = async () => {
-    if (!dbUser) return;
-    try {
-      setLoading(true);
-      const data = await fetchNotifications(dbUser.id);
-      setNotifications(data);
-    } catch (err) {
-      console.error("Failed to load notifications:", err);
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  const handleMarkRead = async (id: string) => {
-    try {
-      await markNotificationRead(id);
-      setNotifications((prev) =>
-        prev.map((n) => (n.id === id ? { ...n, is_read: true } : n))
-      );
-    } catch (err) {
-      console.error("Failed to mark notification read:", err);
-    }
-  };
 
   const formatTime = (dateStr: string) => {
     const d = new Date(dateStr);
@@ -71,10 +51,30 @@ export default function NotificationsScreen() {
           <ArrowLeft size={24} color={Colors.text} />
         </TouchableOpacity>
         <Text style={styles.headerTitle}>Notifications</Text>
-        <View style={styles.placeholder} />
+        {unreadCount > 0 ? (
+          <TouchableOpacity
+            onPress={() => dbUser?.id && markAllAsRead(dbUser.id)}
+            style={styles.markAllButton}
+          >
+            <CheckCheck size={18} color={Colors.primary} />
+          </TouchableOpacity>
+        ) : (
+          <View style={styles.placeholder} />
+        )}
       </View>
 
-      {loading ? (
+      {unreadCount > 0 && (
+        <View style={styles.unreadBanner}>
+          <Text style={styles.unreadBannerText}>
+            {unreadCount} unread notification{unreadCount !== 1 ? "s" : ""}
+          </Text>
+          <TouchableOpacity onPress={() => dbUser?.id && markAllAsRead(dbUser.id)}>
+            <Text style={styles.markAllText}>Mark all as read</Text>
+          </TouchableOpacity>
+        </View>
+      )}
+
+      {isLoading ? (
         <ActivityIndicator size="large" color={Colors.primary} style={{ marginTop: 40 }} />
       ) : (
         <FlatList
@@ -96,7 +96,7 @@ export default function NotificationsScreen() {
           renderItem={({ item }) => (
             <TouchableOpacity
               style={[styles.notificationCard, !item.is_read && styles.unreadCard]}
-              onPress={() => !item.is_read && handleMarkRead(item.id)}
+              onPress={() => !item.is_read && markAsRead(item.id)}
               activeOpacity={0.7}
             >
               <View style={[styles.dot, item.is_read && styles.dotRead]} />
@@ -106,7 +106,7 @@ export default function NotificationsScreen() {
                 <Text style={styles.notificationTime}>{formatTime(item.created_at)}</Text>
               </View>
               {!item.is_read && (
-                <View style={styles.unreadBadge} />
+                <View style={styles.unreadDot} />
               )}
             </TouchableOpacity>
           )}
@@ -141,6 +141,34 @@ const styles = StyleSheet.create({
   },
   placeholder: {
     width: 32,
+  },
+  markAllButton: {
+    width: 36,
+    height: 36,
+    borderRadius: 18,
+    backgroundColor: Colors.primaryLight,
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  unreadBanner: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "space-between",
+    paddingHorizontal: 20,
+    paddingVertical: 12,
+    backgroundColor: Colors.primaryLight,
+    borderBottomWidth: 1,
+    borderBottomColor: Colors.border,
+  },
+  unreadBannerText: {
+    fontSize: 13,
+    fontWeight: "600",
+    color: Colors.text,
+  },
+  markAllText: {
+    fontSize: 13,
+    fontWeight: "600",
+    color: Colors.primary,
   },
   listContent: {
     paddingHorizontal: 20,
@@ -192,7 +220,7 @@ const styles = StyleSheet.create({
     fontSize: 11,
     color: Colors.textTertiary,
   },
-  unreadBadge: {
+  unreadDot: {
     width: 8,
     height: 8,
     borderRadius: 4,

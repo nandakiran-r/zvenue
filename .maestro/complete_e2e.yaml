@@ -1,0 +1,172 @@
+appId: com.zvenue.app
+name: "Complete E2E - Onboarding to Logout"
+tags:
+  - e2e
+  - complete
+---
+# Complete end-to-end test from fresh install.
+# Onboarding → Login → OTP → Home → Search → Bookings → Favorites → Profile → Settings → Help → Edit Profile → Logout
+
+- launchApp
+
+# Wait for app to load (fresh install shows onboarding)
+- waitForAnimationToEnd
+- waitForAnimationToEnd
+- waitForAnimationToEnd
+- waitForAnimationToEnd
+- waitForAnimationToEnd
+- waitForAnimationToEnd
+- waitForAnimationToEnd
+- waitForAnimationToEnd
+
+# ═══ ONBOARDING ═══
+- assertVisible:
+    id: "onboarding-screen"
+- tapOn:
+    id: "onboarding-skip"
+- waitForAnimationToEnd
+
+# ═══ LOGIN ═══
+- assertVisible:
+    id: "login-screen"
+- tapOn:
+    id: "login-phone-input"
+- inputText: "9999999999"
+- hideKeyboard
+- tapOn:
+    id: "login-submit-button"
+- waitForAnimationToEnd
+- waitForAnimationToEnd
+- waitForAnimationToEnd
+- waitForAnimationToEnd
+
+# ═══ OTP ═══
+- assertVisible: "Enter OTP Code"
+- tapOn:
+    id: "otp-input-0"
+- inputText: "1"
+- tapOn:
+    id: "otp-input-1"
+- inputText: "2"
+- tapOn:
+    id: "otp-input-2"
+- inputText: "3"
+- tapOn:
+    id: "otp-input-3"
+- inputText: "4"
+- tapOn:
+    id: "otp-input-4"
+- inputText: "5"
+- tapOn:
+    id: "otp-input-5"
+- inputText: "6"
+- tapOn:
+    id: "otp-verify"
+- waitForAnimationToEnd
+- waitForAnimationToEnd
+- waitForAnimationToEnd
+
+# ═══ HOME ═══
+- assertVisible: "Home"
+- waitForAnimationToEnd
+- waitForAnimationToEnd
+- scroll
+- waitForAnimationToEnd
+
+# ═══ SEARCH TAB ═══
+- tapOn:
+    point: "30%,97%"
+- waitForAnimationToEnd
+- waitForAnimationToEnd
+- assertVisible:
+    id: "search-input"
+- tapOn:
+    id: "search-input"
+- inputText: "wedding"
+- waitForAnimationToEnd
+- hideKeyboard
+- waitForAnimationToEnd
+
+# ═══ BOOKINGS TAB ═══
+- tapOn:
+    point: "50%,97%"
+- waitForAnimationToEnd
+
+# ═══ FAVORITES TAB ═══
+- tapOn:
+    point: "70%,97%"
+- waitForAnimationToEnd
+
+# ═══ PROFILE TAB ═══
+- tapOn:
+    point: "90%,97%"
+- waitForAnimationToEnd
+- assertVisible: "Edit Profile"
+- assertVisible: "My Bookings"
+- assertVisible: "Settings"
+- assertVisible: "Help & Support"
+
+# ═══ SETTINGS ═══
+- tapOn: "Settings"
+- waitForAnimationToEnd
+- assertVisible: "Settings"
+- assertVisible: "Push Notifications"
+- assertVisible: "SMS Notifications"
+- assertVisible: "App Version"
+- assertVisible: "1.0.0"
+- back
+- waitForAnimationToEnd
+
+# ═══ HELP & SUPPORT ═══
+- tapOn: "Help & Support"
+- waitForAnimationToEnd
+- assertVisible: "Help & Support"
+- assertVisible: "Contact Us"
+- assertVisible: "Chat on WhatsApp"
+- scroll
+- assertVisible: "Frequently Asked Questions"
+- assertVisible: "How do I book a venue?"
+- back
+- waitForAnimationToEnd
+
+# ═══ NOTIFICATIONS ═══
+- tapOn: "Notifications"
+- waitForAnimationToEnd
+- assertVisible: "Notifications"
+- back
+- waitForAnimationToEnd
+
+# ═══ EDIT PROFILE ═══
+- tapOn: "Edit Profile"
+- waitForAnimationToEnd
+- assertVisible: "Edit Profile"
+- assertVisible: "First Name"
+- assertVisible: "Last Name"
+- assertVisible: "Email Address"
+- assertVisible: "Phone Number"
+- assertVisible: "Save Changes"
+- assertVisible: "Tap camera to change photo"
+
+# Test profile picture bottom sheet
+- tapOn: "Tap camera to change photo"
+- waitForAnimationToEnd
+- assertVisible: "Profile Picture"
+- assertVisible: "Take Photo"
+- assertVisible: "Choose from Gallery"
+- assertVisible: "Cancel"
+- tapOn: "Cancel"
+- waitForAnimationToEnd
+
+# Go back to Profile
+- back
+- waitForAnimationToEnd
+
+# ═══ LOGOUT ═══
+- scroll
+- tapOn:
+    id: "profile-logout"
+- waitForAnimationToEnd
+
+# Verify back on login
+- assertVisible:
+    id: "login-screen"

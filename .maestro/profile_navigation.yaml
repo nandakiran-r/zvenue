@@ -1,0 +1,41 @@
+appId: com.zvenue.app
+name: "Profile - Menu Navigation"
+tags:
+  - profile
+  - navigation
+---
+# Tests profile screen menu items and navigation.
+# Prerequisites: User must be logged in.
+
+- runFlow: auth_login_flow.yaml
+
+# Navigate to Profile tab
+- tapOn: "Profile"
+- waitForAnimationToEnd
+
+# Verify profile elements
+- assertVisible: "Profile"
+- assertVisible: "Edit Profile"
+- assertVisible: "My Bookings"
+- assertVisible: "Notifications"
+- assertVisible: "Settings"
+- assertVisible: "Help & Support"
+
+# Navigate to Settings
+- tapOn: "Settings"
+- waitForAnimationToEnd
+
+# Go back to Profile
+- back
+- waitForAnimationToEnd
+
+# Navigate to Help & Support
+- tapOn: "Help & Support"
+- waitForAnimationToEnd
+
+# Go back
+- back
+- waitForAnimationToEnd
+
+# Verify we're back on Profile
+- assertVisible: "Edit Profile"

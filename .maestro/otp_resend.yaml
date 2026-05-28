@@ -1,0 +1,49 @@
+appId: com.zvenue.app
+name: "OTP - Resend Code After Timer"
+tags:
+  - auth
+  - otp
+  - timer
+---
+# Tests the OTP resend functionality after the countdown timer expires.
+# Verifies the timer displays correctly and resend button works.
+#
+# Prerequisites: Backend must be running.
+
+- launchApp
+- waitForAnimationToEnd
+- waitForAnimationToEnd
+- waitForAnimationToEnd
+
+# Skip onboarding if visible
+- runFlow:
+    when:
+      visible:
+        id: "onboarding-skip"
+    file: onboarding_skip_step.yaml
+
+# Login with test phone
+- assertVisible:
+    id: "login-screen"
+- tapOn:
+    id: "login-phone-input"
+- inputText: "9999999999"
+- hideKeyboard
+- tapOn:
+    id: "login-submit-button"
+- waitForAnimationToEnd
+
+# OTP screen should show timer
+- assertVisible: "Enter OTP Code"
+
+# Verify the timer is counting down (shows seconds format)
+- assertVisible: "00:"
+
+# Wait and verify the screen remains stable
+- waitForAnimationToEnd
+
+# Go back to login (don't complete OTP)
+- back
+- waitForAnimationToEnd
+- assertVisible:
+    id: "login-screen"

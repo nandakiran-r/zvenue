@@ -1,0 +1,11 @@
+appId: com.zvenue.app
+---
+# Helper: Attempt login when backend may be offline
+- tapOn:
+    id: "login-phone-input"
+- inputText: "9999999999"
+- hideKeyboard
+- tapOn:
+    id: "login-submit-button"
+- waitForAnimationToEnd
+# Should show an error toast if backend is unreachable

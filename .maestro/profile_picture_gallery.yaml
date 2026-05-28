@@ -1,0 +1,55 @@
+appId: com.zvenue.app
+name: "Profile Picture - Choose from Gallery"
+tags:
+  - profile
+  - permissions
+  - gallery
+---
+# Tests the profile picture update flow via gallery selection.
+# This flow triggers the media library permission dialog and
+# opens the system image picker.
+#
+# Prerequisites: User must be logged in.
+# NOTE: On first run, Android will show a permission dialog.
+
+- runFlow: auth_login_flow.yaml
+
+# Navigate to Profile > Edit Profile
+- tapOn: "Profile"
+- waitForAnimationToEnd
+- tapOn: "Edit Profile"
+- waitForAnimationToEnd
+
+# Verify Edit Profile screen loaded
+- assertVisible: "Edit Profile"
+- assertVisible: "Tap camera to change photo"
+
+# Tap the camera button to open image picker sheet
+- tapOn: "Tap camera to change photo"
+- waitForAnimationToEnd
+
+# Verify the bottom sheet appeared
+- assertVisible: "Profile Picture"
+- assertVisible: "Take Photo"
+- assertVisible: "Choose from Gallery"
+- assertVisible: "Cancel"
+
+# Tap "Choose from Gallery"
+- tapOn: "Choose from Gallery"
+- waitForAnimationToEnd
+
+# Android permission dialog may appear - grant it
+- runFlow:
+    when:
+      visible: "Allow"
+    file: grant_permission.yaml
+
+# At this point the system gallery picker is open
+# We can verify it opened by checking for system UI elements
+# Then press back to return to the app
+- waitForAnimationToEnd
+- back
+- waitForAnimationToEnd
+
+# Verify we're back on Edit Profile
+- assertVisible: "Edit Profile"

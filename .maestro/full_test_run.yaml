@@ -1,0 +1,110 @@
+appId: com.zvenue.app
+name: "Full Test - Home Search Profile Settings Help"
+tags:
+  - e2e
+  - smoke
+---
+# Full test run assuming user is already logged in.
+# Tests: Home → Search → Profile → Settings → Help → Bookings → Favorites
+
+- launchApp
+- waitForAnimationToEnd
+- waitForAnimationToEnd
+- waitForAnimationToEnd
+- waitForAnimationToEnd
+
+# HOME - verify content loaded
+- assertVisible: "Home"
+- assertVisible:
+    id: "home-search-bar"
+- assertVisible: "Venues"
+
+# Scroll home content
+- scroll
+- waitForAnimationToEnd
+
+# Dismiss LogBox warning if visible (tap the X or the banner)
+- tapOn:
+    point: "95%,93%"
+- waitForAnimationToEnd
+
+# SEARCH TAB (2nd tab)
+- tapOn:
+    point: "30%,95%"
+- waitForAnimationToEnd
+- assertVisible:
+    id: "search-input"
+- tapOn:
+    id: "search-input"
+- inputText: "wedding"
+- waitForAnimationToEnd
+- hideKeyboard
+
+# BOOKINGS TAB (3rd tab)
+- tapOn:
+    point: "50%,97%"
+- waitForAnimationToEnd
+
+# FAVORITES TAB (4th tab)
+- tapOn:
+    point: "70%,97%"
+- waitForAnimationToEnd
+
+# PROFILE TAB (5th tab)
+- tapOn:
+    point: "90%,97%"
+- waitForAnimationToEnd
+- assertVisible: "Edit Profile"
+- assertVisible: "My Bookings"
+- assertVisible: "Settings"
+- assertVisible: "Help & Support"
+
+# SETTINGS
+- tapOn: "Settings"
+- waitForAnimationToEnd
+- assertVisible: "Settings"
+- assertVisible: "Push Notifications"
+- assertVisible: "SMS Notifications"
+- assertVisible: "App Version"
+- assertVisible: "1.0.0"
+- back
+- waitForAnimationToEnd
+
+# HELP & SUPPORT
+- tapOn: "Help & Support"
+- waitForAnimationToEnd
+- assertVisible: "Help & Support"
+- assertVisible: "Contact Us"
+- assertVisible: "Chat on WhatsApp"
+- back
+- waitForAnimationToEnd
+
+# NOTIFICATIONS
+- tapOn: "Notifications"
+- waitForAnimationToEnd
+- assertVisible: "Notifications"
+- back
+- waitForAnimationToEnd
+
+# EDIT PROFILE
+- tapOn: "Edit Profile"
+- waitForAnimationToEnd
+- assertVisible: "Edit Profile"
+- assertVisible: "First Name"
+- assertVisible: "Last Name"
+- assertVisible: "Email Address"
+- assertVisible: "Phone Number"
+- assertVisible: "Save Changes"
+- assertVisible: "Tap camera to change photo"
+- back
+- waitForAnimationToEnd
+
+# LOGOUT
+- scroll
+- tapOn:
+    id: "profile-logout"
+- waitForAnimationToEnd
+
+# Verify back on login
+- assertVisible:
+    id: "login-screen"

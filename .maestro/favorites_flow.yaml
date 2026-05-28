@@ -1,0 +1,35 @@
+appId: com.zvenue.app
+name: "Favorites - Add and View Favorites"
+tags:
+  - favorites
+  - venues
+---
+# Tests the Favorites tab: navigate, verify empty/populated state,
+# switch between Venues and Services sub-tabs.
+
+- runFlow: auth_login_flow.yaml
+
+# Navigate to Favorites tab
+- tapOn: "Favorites"
+- waitForAnimationToEnd
+
+# Verify Favorites screen loaded
+- assertVisible: "Venues"
+- assertVisible: "Services"
+
+# Switch to Services sub-tab
+- tapOn: "Services"
+- waitForAnimationToEnd
+
+# Switch back to Venues sub-tab
+- tapOn: "Venues"
+- waitForAnimationToEnd
+
+# Go to Home and open a venue to favorite it
+- tapOn: "Home"
+- waitForAnimationToEnd
+- scroll
+- waitForAnimationToEnd
+
+# Verify we're still on a functional screen
+- assertVisible: "Home"

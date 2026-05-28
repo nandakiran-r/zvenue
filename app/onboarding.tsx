@@ -103,9 +103,9 @@ export default function OnboardingScreen() {
   const isLastSlide = currentIndex === SLIDES.length - 1;
 
   return (
-    <View style={[styles.container, { paddingBottom: insets.bottom }]}>
+    <View style={[styles.container, { paddingBottom: insets.bottom }]} testID="onboarding-screen">
       {/* Skip button */}
-      <TouchableOpacity style={[styles.skipButton, { top: insets.top + 12 }]} onPress={handleSkip}>
+      <TouchableOpacity style={[styles.skipButton, { top: insets.top + 12 }]} onPress={handleSkip} testID="onboarding-skip">
         <Text style={styles.skipText}>Skip</Text>
       </TouchableOpacity>
 
@@ -137,6 +137,7 @@ export default function OnboardingScreen() {
           style={styles.button}
           onPress={handleNext}
           activeOpacity={0.8}
+          testID="onboarding-next"
         >
           <Text style={styles.buttonText}>
             {isLastSlide ? "Get Started" : "Next"}

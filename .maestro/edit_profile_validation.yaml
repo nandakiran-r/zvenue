@@ -1,0 +1,38 @@
+appId: com.zvenue.app
+name: "Edit Profile - Form Validation Errors"
+tags:
+  - profile
+  - validation
+  - negative
+---
+# Tests that the edit profile form shows validation errors
+# when required fields are empty or invalid.
+#
+# Prerequisites: User must be logged in.
+
+- runFlow: auth_login_flow.yaml
+
+# Navigate to Profile > Edit Profile
+- tapOn: "Profile"
+- waitForAnimationToEnd
+- tapOn: "Edit Profile"
+- waitForAnimationToEnd
+
+# Clear the first name field completely
+- tapOn: "First name"
+- eraseText: 30
+- hideKeyboard
+
+# Clear the email field and enter invalid email
+- tapOn: "Enter your email"
+- eraseText: 50
+- inputText: "not-an-email"
+- hideKeyboard
+
+# Tap Save - should show validation errors
+- tapOn: "Save Changes"
+- waitForAnimationToEnd
+
+# Verify validation error messages appear
+- assertVisible: "First name is required"
+- assertVisible: "Enter a valid email address"

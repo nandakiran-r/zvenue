@@ -1,0 +1,25 @@
+appId: com.zvenue.app
+name: "View Booking - Booking Detail with QR Code"
+tags:
+  - booking
+  - detail
+  - qr
+---
+# Tests the View Booking screen that shows booking details and QR code.
+# Verifies: booking ID, venue name, date, session, status badge,
+# QR code display, and progress tracker.
+#
+# Prerequisites: User must have at least one booking.
+
+- runFlow: auth_login_flow.yaml
+
+# Navigate to Bookings tab
+- tapOn: "Bookings"
+- waitForAnimationToEnd
+
+# Verify bookings screen
+- assertVisible: "Venues"
+
+# Scroll to see booking cards
+- scroll
+- waitForAnimationToEnd

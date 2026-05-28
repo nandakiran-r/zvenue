@@ -153,7 +153,7 @@ export default function MyBookingsScreen() {
             <Text style={styles.metaText}>Qty: {item.quantity}</Text>
             <View style={styles.dot} />
             <CalendarCheck size={12} color={Colors.textSecondary} />
-            <Text style={styles.metaText}>{new Date(item.created_at).toLocaleDateString('en-IN')}</Text>
+            <Text style={styles.metaText}>{item.booking_date ? new Date(item.booking_date + 'T00:00:00').toLocaleDateString('en-IN', { day: 'numeric', month: 'short', year: 'numeric' }) : new Date(item.created_at).toLocaleDateString('en-IN')}</Text>
           </View>
           <View style={styles.bottomRow}>
             <View style={[styles.statusBadge, { backgroundColor: colors.bg }]}>
@@ -231,7 +231,7 @@ export default function MyBookingsScreen() {
             <View style={styles.emptyState}>
               <ShoppingBag size={48} color={Colors.textTertiary} />
               <Text style={styles.emptyTitle}>No service bookings yet</Text>
-              <Text style={styles.emptySubtitle}>Your service purchases will appear here</Text>
+              <Text style={styles.emptySubtitle}>Your service bookings will appear here</Text>
               <TouchableOpacity style={styles.browseBtn} onPress={() => router.push("/(tabs)/home")}>
                 <Text style={styles.browseBtnText}>Browse Services</Text>
               </TouchableOpacity>
@@ -249,13 +249,13 @@ const styles = StyleSheet.create({
   headerTitle: { fontSize: 24, fontWeight: "700", color: Colors.text },
   headerSubtitle: { fontSize: 13, color: Colors.textSecondary, marginTop: 4 },
   // Sub-tabs
-  tabRow: { flexDirection: "row", marginHorizontal: 20, marginBottom: 14, backgroundColor: Colors.surface, borderRadius: 12, padding: 3 },
-  tabButton: { flex: 1, paddingVertical: 10, borderRadius: 10, alignItems: "center" },
-  tabButtonActive: { backgroundColor: Colors.primary },
+  tabRow: { flexDirection: "row", marginHorizontal: 20, marginBottom: 14, gap: 10 },
+  tabButton: { flex: 1, paddingVertical: 10, borderRadius: 24, backgroundColor: Colors.surface, alignItems: "center" },
+  tabButtonActive: { backgroundColor: Colors.primary, shadowColor: Colors.primary, shadowOffset: { width: 0, height: 2 }, shadowOpacity: 0.2, shadowRadius: 4, elevation: 3 },
   tabText: { fontSize: 14, fontWeight: "600", color: Colors.textSecondary },
   tabTextActive: { color: Colors.white },
   // List
-  listContent: { paddingHorizontal: 20, paddingBottom: 20 },
+  listContent: { paddingHorizontal: 20, paddingBottom: 80 },
   bookingCard: {
     flexDirection: "row", backgroundColor: Colors.white, borderRadius: 16, padding: 12,
     marginBottom: 12, shadowColor: "#000", shadowOffset: { width: 0, height: 2 },

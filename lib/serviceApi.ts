@@ -4,6 +4,7 @@ import type {
   DbServiceListing,
   DbServiceBooking,
   DbServiceReview,
+  ServiceBookedDateEntry,
   ServiceCreateOrderInput,
   ServiceCreateOrderResponse,
   ServiceVerifyPaymentInput,
@@ -39,6 +40,14 @@ export async function fetchServiceListingById(id: string): Promise<DbServiceList
   } catch {
     return null;
   }
+}
+
+export async function fetchServiceBookedDates(listingId: string): Promise<{ bookings: ServiceBookedDateEntry[]; blocked_dates: string[] }> {
+  const { data } = await api.get(`/api/service-listings/${listingId}/booked-dates`);
+  if (Array.isArray(data)) {
+    return { bookings: data, blocked_dates: [] };
+  }
+  return data;
 }
 
 // ─── Service Bookings ──────────────────────────────────────────────────────

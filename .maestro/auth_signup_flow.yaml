@@ -1,0 +1,71 @@
+appId: com.zvenue.app
+name: "Auth - New User Signup"
+tags:
+  - auth
+  - signup
+---
+# Signup flow for a new user: fills registration form,
+# verifies OTP, and lands on Home.
+
+- launchApp:
+    clearState: true
+
+# Skip onboarding
+- tapOn: "Skip"
+- waitForAnimationToEnd
+
+# On Login screen, tap Create Account
+- tapOn: "Create Account"
+- waitForAnimationToEnd
+
+# Fill in first name
+- tapOn: "John"
+- inputText: "Test"
+
+# Fill in last name
+- tapOn: "Doe"
+- inputText: "User"
+
+# Fill in email
+- tapOn: "name@example.com"
+- inputText: "testuser@example.com"
+
+# Fill in phone number
+- tapOn: "10-digit number"
+- inputText: "8888888888"
+
+# Submit signup
+- scroll
+- tapOn: "Create Account"
+
+# Wait for OTP screen
+- waitForAnimationToEnd
+- assertVisible: "Enter OTP Code"
+
+# Enter test OTP
+- tapOn:
+    id: "otp-input-0"
+- inputText: "1"
+- tapOn:
+    id: "otp-input-1"
+- inputText: "2"
+- tapOn:
+    id: "otp-input-2"
+- inputText: "3"
+- tapOn:
+    id: "otp-input-3"
+- inputText: "4"
+- tapOn:
+    id: "otp-input-4"
+- inputText: "5"
+- tapOn:
+    id: "otp-input-5"
+- inputText: "6"
+
+# Verify
+- tapOn:
+    id: "otp-verify"
+
+# Should land on Home
+- waitForAnimationToEnd
+- assertVisible: "Home"

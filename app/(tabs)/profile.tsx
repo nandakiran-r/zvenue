@@ -133,6 +133,7 @@ export default function ProfileScreen() {
           style={styles.logoutButton}
           onPress={handleLogout}
           activeOpacity={0.7}
+          testID="profile-logout"
         >
           <LogOut size={20} color="#FFFFFF" />
           <Text style={styles.logoutText}>Log Out</Text>

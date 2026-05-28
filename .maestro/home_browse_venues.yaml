@@ -1,0 +1,34 @@
+appId: com.zvenue.app
+name: "Home - Browse Venues and Categories"
+tags:
+  - home
+  - venues
+---
+# Verifies the Home screen loads venues and category filters work.
+# Prerequisites: User must be logged in.
+
+- runFlow: auth_login_flow.yaml
+
+# Home screen should be visible with venues
+- assertVisible: "Search venues & services"
+
+# Verify Venues tab is active by default
+- assertVisible: "Venues"
+
+# Scroll down to see venue cards
+- scroll
+
+# Scroll back up
+- swipe:
+    direction: DOWN
+
+# Switch to Services tab
+- tapOn: "Services"
+- waitForAnimationToEnd
+
+# Switch back to Venues
+- tapOn: "Venues"
+- waitForAnimationToEnd
+
+# Verify venues are still visible
+- assertVisible: "Search venues & services"

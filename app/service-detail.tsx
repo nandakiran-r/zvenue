@@ -1,6 +1,6 @@
 import { router, useLocalSearchParams, useFocusEffect } from "expo-router";
 import { safeBack } from "@/constants/navigation";
-import { ChevronLeft, ChevronRight, Heart, MapPin, Minus, Plus, Star, ShoppingBag, X } from "lucide-react-native";
+import { ChevronLeft, ChevronRight, Heart, MapPin, Star, ShoppingBag } from "lucide-react-native";
 import React, { useCallback, useEffect, useRef, useState } from "react";
 import {
   ActivityIndicator,
@@ -8,7 +8,6 @@ import {
   FlatList,
   Image,
   Linking,
-  Modal,
   ScrollView,
   StyleSheet,
   Text,
@@ -16,11 +15,10 @@ import {
   View,
 } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
-import { WebView } from "react-native-webview";
 import Colors from "@/constants/colors";
 import { useAuth } from "@/context/AuthContext";
 import { useToast } from "@/context/ToastContext";
-import { fetchServiceListingById, fetchServiceReviews, addServiceFavorite, removeServiceFavorite, createServiceOrder, verifyServicePayment } from "@/lib/serviceApi";
+import { fetchServiceListingById, fetchServiceReviews, addServiceFavorite, removeServiceFavorite } from "@/lib/serviceApi";
 import type { DbServiceListing, DbServiceReview } from "@/lib/serviceTypes";
 
 const screenWidth = Dimensions.get("window").width;
@@ -29,19 +27,14 @@ export default function ServiceDetailScreen() {
   const { id } = useLocalSearchParams<{ id: string }>();
   const insets = useSafeAreaInsets();
   const { isSubscribed, isSignedIn, userId } = useAuth();
-  const { showAlert, warning, error: showError } = useToast();
+  const { showAlert } = useToast();
 
   const [listing, setListing] = useState<DbServiceListing | null>(null);
   const [loading, setLoading] = useState(true);
-  const [quantity, setQuantity] = useState(1);
   const [activeImageIndex, setActiveImageIndex] = useState(0);
   const [isFav, setIsFav] = useState(false);
   const [reviews, setReviews] = useState<DbServiceReview[]>([]);
   const [totalReviews, setTotalReviews] = useState(0);
-  const [paymentModalVisible, setPaymentModalVisible] = useState(false);
-  const [paymentHtml, setPaymentHtml] = useState<string | null>(null);
-  const [pendingBookingId, setPendingBookingId] = useState<string | null>(null);
-  const [submitting, setSubmitting] = useState(false);
   const flatListRef = useRef<FlatList>(null);
   const autoScrollRef = useRef<ReturnType<typeof setInterval> | null>(null);
   const lastSwipeRef = useRef<number>(0);
@@ -102,16 +95,6 @@ export default function ServiceDetailScreen() {
     setActiveImageIndex(Math.round(e.nativeEvent.contentOffset.x / screenWidth));
   };
 
-  const incrementQty = () => {
-    if (!listing) return;
-    if (quantity >= listing.quantity_available) {
-      warning("Maximum Reached", "Maximum available quantity reached.");
-      return;
-    }
-    setQuantity(q => q + 1);
-  };
-  const decrementQty = () => setQuantity(q => Math.max(1, q - 1));
-
   const toggleFavorite = async () => {
     if (!id) return;
     try {
@@ -120,96 +103,13 @@ export default function ServiceDetailScreen() {
     } catch {}
   };
 
-  const handleBuyNow = async () => {
+  const handleBookNow = () => {
     if (!isSignedIn) {
-      showAlert({ type: "confirm", title: "Login Required", message: "Please log in to purchase this service.", actions: [{ text: "Cancel", style: "cancel" }, { text: "Log In", style: "default", onPress: () => router.push("/login" as any) }] });
+      showAlert({ type: "confirm", title: "Login Required", message: "Please log in to book this service.", actions: [{ text: "Cancel", style: "cancel" }, { text: "Log In", style: "default", onPress: () => router.push("/login" as any) }] });
       return;
     }
-    if (!listing || submitting) return;
-
-    setSubmitting(true);
-    try {
-      const orderResponse = await createServiceOrder({ service_listing_id: listing.id, quantity });
-      const { order, booking } = orderResponse;
-      setPendingBookingId(booking.id);
-
-      const html = `
-        <html>
-        <head><meta name="viewport" content="width=device-width, initial-scale=1">
-        <script src="https://checkout.razorpay.com/v1/checkout.js"></script></head>
-        <body style="background:#fff;display:flex;justify-content:center;align-items:center;height:100vh;margin:0;font-family:sans-serif;">
-          <div style="text-align:center;"><h3 style="color:#333;">Loading payment...</h3><p style="color:#666;font-size:14px;">Please do not close this window.</p></div>
-          <script>
-            var options = {
-              key: "${process.env.EXPO_PUBLIC_RAZORPAY_KEY || 'rzp_test_SpDyznKPQ9nviQ'}",
-              amount: ${order.amount},
-              currency: "INR",
-              name: "Zvenue",
-              description: "Service: ${listing.name.replace(/"/g, '\\"')}",
-              order_id: "${order.id}",
-              prefill: { email: "", contact: "", name: "" },
-              theme: { color: "#7a3317" },
-              handler: function(response) {
-                window.ReactNativeWebView.postMessage(JSON.stringify({ event: 'success', data: { orderId: response.razorpay_order_id, paymentId: response.razorpay_payment_id, signature: response.razorpay_signature } }));
-              },
-              modal: { ondismiss: function() { window.ReactNativeWebView.postMessage(JSON.stringify({ event: 'cancel' })); } }
-            };
-            var rzp = new Razorpay(options);
-            rzp.on('payment.failed', function(response) { window.ReactNativeWebView.postMessage(JSON.stringify({ event: 'failed', data: response.error })); });
-            rzp.open();
-          </script>
-        </body></html>
-      `;
-      setPaymentHtml(html);
-      setPaymentModalVisible(true);
-    } catch (err: any) {
-      const msg = err.response?.data?.error || "Failed to create payment order. Please try again.";
-      showError("Payment Error", msg);
-    } finally {
-      setSubmitting(false);
-    }
-  };
-
-  const handlePaymentMessage = async (event: any) => {
-    try {
-      const data = JSON.parse(event.nativeEvent.data);
-      if (data.event === 'success') {
-        setPaymentModalVisible(false);
-        setPaymentHtml(null);
-
-        const response = await verifyServicePayment({
-          order_id: data.data.orderId,
-          payment_id: data.data.paymentId,
-          signature: data.data.signature,
-          booking_id: pendingBookingId!,
-        });
-
-        if (response.success) {
-          router.replace({
-            pathname: "/service-booking-confirmed" as any,
-            params: {
-              id: response.booking.id,
-              bookingDisplayId: response.booking.booking_id_display || '',
-              serviceName: listing!.name,
-              quantity: String(quantity),
-              total: String(response.booking.total_amount),
-            },
-          });
-        } else {
-          showError("Verification Failed", "Payment received but verification failed. Contact support.");
-        }
-      } else if (data.event === 'cancel') {
-        setPaymentModalVisible(false);
-        setPaymentHtml(null);
-        showError("Payment Cancelled", "You cancelled the payment.");
-      } else if (data.event === 'failed') {
-        setPaymentModalVisible(false);
-        setPaymentHtml(null);
-        showError("Payment Failed", data.data?.description || "Payment could not be processed.");
-      }
-    } catch (err) {
-      console.error("Payment message error:", err);
-    }
+    if (!listing) return;
+    router.push({ pathname: "/service-booking-detail" as any, params: { id: listing.id } });
   };
 
   const formatPrice = (amount: number) => `₹${amount.toLocaleString("en-IN")}`;
@@ -223,9 +123,6 @@ export default function ServiceDetailScreen() {
 
   const images = listing.images?.length > 0 ? listing.images : [];
   const unitPrice = listing.price;
-  const subtotal = unitPrice * quantity;
-  const discount = isSubscribed && listing.subscriber_discount_percent > 0 ? Math.round(subtotal * listing.subscriber_discount_percent / 100) : 0;
-  const total = subtotal - discount;
 
   return (
     <View style={styles.container}>
@@ -283,16 +180,6 @@ export default function ServiceDetailScreen() {
           </View>
         </View>
 
-        {/* Quantity Selector */}
-        <View style={styles.section}>
-          <Text style={styles.sectionTitle}>Quantity</Text>
-          <View style={styles.qtyRow}>
-            <TouchableOpacity style={styles.qtyBtn} onPress={decrementQty}><Minus size={18} color={Colors.text} /></TouchableOpacity>
-            <Text style={styles.qtyValue}>{quantity}</Text>
-            <TouchableOpacity style={styles.qtyBtn} onPress={incrementQty}><Plus size={18} color={Colors.text} /></TouchableOpacity>
-          </View>
-        </View>
-
         {/* About */}
         {listing.description && (
           <View style={styles.section}>
@@ -321,7 +208,7 @@ export default function ServiceDetailScreen() {
             <Text style={styles.sectionTitle}>🎁 Subscriber Benefits</Text>
             <View style={styles.benefitsCard}>
               {listing.subscriber_discount_percent > 0 && (
-                <Text style={styles.benefitHighlight}>Subscribers save {listing.subscriber_discount_percent}% on every purchase</Text>
+                <Text style={styles.benefitHighlight}>Subscribers save {listing.subscriber_discount_percent}% on every booking</Text>
               )}
               {(listing.subscriber_benefits as string[]).map((b, i) => (
                 <View key={i} style={styles.benefitRow}>
@@ -392,30 +279,13 @@ export default function ServiceDetailScreen() {
       {/* Bottom Bar */}
       <View style={[styles.bottomBar, { paddingBottom: insets.bottom + 12 }]}>
         <View style={styles.bottomPricing}>
-          <Text style={styles.bottomTotal}>{formatPrice(total)}</Text>
-          {discount > 0 && <Text style={styles.bottomOriginal}>{formatPrice(subtotal)}</Text>}
-          {discount > 0 && <View style={styles.discountBadge}><Text style={styles.discountText}>-{listing.subscriber_discount_percent}%</Text></View>}
+          <Text style={styles.bottomTotal}>{formatPrice(unitPrice)}</Text>
+          <Text style={styles.bottomLabel}>/unit</Text>
         </View>
-        <TouchableOpacity style={[styles.buyButton, submitting && { opacity: 0.6 }]} onPress={handleBuyNow} activeOpacity={0.8} disabled={submitting}>
-          {submitting ? <ActivityIndicator size="small" color={Colors.white} /> : <Text style={styles.buyButtonText}>Buy Now</Text>}
+        <TouchableOpacity style={styles.buyButton} onPress={handleBookNow} activeOpacity={0.8}>
+          <Text style={styles.buyButtonText}>Book Now</Text>
         </TouchableOpacity>
       </View>
-
-      {/* Payment WebView Modal */}
-      <Modal visible={paymentModalVisible} onRequestClose={() => { setPaymentModalVisible(false); setPaymentHtml(null); }}>
-        <View style={{ flex: 1, backgroundColor: Colors.white }}>
-          <View style={styles.paymentHeader}>
-            <TouchableOpacity onPress={() => { setPaymentModalVisible(false); setPaymentHtml(null); }} style={{ padding: 8 }}>
-              <X size={24} color={Colors.text} />
-            </TouchableOpacity>
-            <Text style={{ fontSize: 16, fontWeight: "600", color: Colors.text }}>Complete Payment</Text>
-            <View style={{ width: 40 }} />
-          </View>
-          {paymentHtml && (
-            <WebView source={{ html: paymentHtml }} style={{ flex: 1 }} onMessage={handlePaymentMessage} />
-          )}
-        </View>
-      </Modal>
     </View>
   );
 }
@@ -445,10 +315,6 @@ const styles = StyleSheet.create({
   section: { paddingHorizontal: 20, marginBottom: 24 },
   sectionTitle: { fontSize: 18, fontWeight: "700", color: Colors.text, marginBottom: 12 },
   description: { fontSize: 14, color: Colors.textSecondary, lineHeight: 22 },
-  // Quantity
-  qtyRow: { flexDirection: "row", alignItems: "center", gap: 20 },
-  qtyBtn: { width: 44, height: 44, borderRadius: 14, borderWidth: 1.5, borderColor: Colors.border, alignItems: "center", justifyContent: "center" },
-  qtyValue: { fontSize: 20, fontWeight: "700", color: Colors.text, minWidth: 40, textAlign: "center" },
   // Video
   videoCard: { backgroundColor: "#FFF0F5", borderRadius: 12, padding: 16, flexDirection: "row", alignItems: "center", gap: 12 },
   videoPlayIcon: { width: 48, height: 48, borderRadius: 24, backgroundColor: "#FF0000", alignItems: "center", justifyContent: "center" },
@@ -477,13 +343,9 @@ const styles = StyleSheet.create({
   noReviews: { fontSize: 14, color: Colors.textTertiary, fontStyle: "italic" },
   // Bottom bar
   bottomBar: { position: "absolute", bottom: 0, left: 0, right: 0, paddingHorizontal: 20, paddingTop: 12, backgroundColor: Colors.white, borderTopWidth: 1, borderTopColor: Colors.border, flexDirection: "row", alignItems: "center", justifyContent: "space-between" },
-  bottomPricing: { flexDirection: "row", alignItems: "center", gap: 6 },
+  bottomPricing: { flexDirection: "row", alignItems: "baseline", gap: 4 },
   bottomTotal: { fontSize: 20, fontWeight: "800", color: Colors.primary },
-  bottomOriginal: { fontSize: 14, color: Colors.textTertiary, textDecorationLine: "line-through" },
-  discountBadge: { backgroundColor: "#E8F5E9", borderRadius: 6, paddingHorizontal: 6, paddingVertical: 2 },
-  discountText: { fontSize: 11, fontWeight: "700", color: "#2E7D32" },
+  bottomLabel: { fontSize: 14, color: Colors.textSecondary },
   buyButton: { backgroundColor: Colors.primary, borderRadius: 14, paddingVertical: 16, paddingHorizontal: 32 },
   buyButtonText: { color: Colors.white, fontSize: 16, fontWeight: "700" },
-  // Payment modal
-  paymentHeader: { flexDirection: "row", alignItems: "center", justifyContent: "space-between", paddingHorizontal: 16, paddingVertical: 12, borderBottomWidth: 1, borderBottomColor: Colors.border },
 });

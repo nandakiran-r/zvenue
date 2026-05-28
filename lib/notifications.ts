@@ -96,3 +96,13 @@ export function addNotificationResponseListener(
   if (!Notifications) return { remove: () => {} };
   return Notifications.addNotificationResponseReceivedListener(callback);
 }
+
+/**
+ * Add a listener for notifications received while app is in foreground
+ */
+export function addNotificationReceivedListener(
+  callback: (notification: any) => void
+) {
+  if (!Notifications) return { remove: () => {} };
+  return Notifications.addNotificationReceivedListener(callback);
+}

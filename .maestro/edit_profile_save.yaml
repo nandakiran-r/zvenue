@@ -1,0 +1,42 @@
+appId: com.zvenue.app
+name: "Edit Profile - Update Name and Save"
+tags:
+  - profile
+  - edit
+  - form
+---
+# Tests editing the profile name fields and saving.
+# Verifies form validation and successful save.
+#
+# Prerequisites: User must be logged in.
+
+- runFlow: auth_login_flow.yaml
+
+# Navigate to Profile > Edit Profile
+- tapOn: "Profile"
+- waitForAnimationToEnd
+- tapOn: "Edit Profile"
+- waitForAnimationToEnd
+
+# Verify Edit Profile screen loaded with form fields
+- assertVisible: "Edit Profile"
+- assertVisible: "First Name"
+- assertVisible: "Last Name"
+- assertVisible: "Email Address"
+- assertVisible: "Phone Number"
+- assertVisible: "Phone number cannot be changed"
+- assertVisible: "Save Changes"
+
+# Clear first name and type new one
+- tapOn: "First name"
+- eraseText: 20
+- inputText: "TestUpdated"
+- hideKeyboard
+
+# Tap Save Changes
+- tapOn: "Save Changes"
+- waitForAnimationToEnd
+- waitForAnimationToEnd
+
+# Should show success alert or navigate back
+- assertVisible: "Profile"

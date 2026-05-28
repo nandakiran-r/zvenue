@@ -1,0 +1,49 @@
+appId: com.zvenue.app
+name: "Profile Picture - Take Photo with Camera"
+tags:
+  - profile
+  - permissions
+  - camera
+---
+# Tests the profile picture update flow via camera.
+# This flow triggers the camera permission dialog.
+#
+# Prerequisites: User must be logged in.
+# NOTE: On first run, Android will show a permission dialog.
+
+- runFlow: auth_login_flow.yaml
+
+# Navigate to Profile > Edit Profile
+- tapOn: "Profile"
+- waitForAnimationToEnd
+- tapOn: "Edit Profile"
+- waitForAnimationToEnd
+
+# Verify Edit Profile screen loaded
+- assertVisible: "Edit Profile"
+
+# Tap the camera button to open image picker sheet
+- tapOn: "Tap camera to change photo"
+- waitForAnimationToEnd
+
+# Verify the bottom sheet appeared
+- assertVisible: "Profile Picture"
+- assertVisible: "Take Photo"
+
+# Tap "Take Photo"
+- tapOn: "Take Photo"
+- waitForAnimationToEnd
+
+# Android permission dialog may appear - grant it
+- runFlow:
+    when:
+      visible: "Allow"
+    file: grant_permission.yaml
+
+# Camera should open - press back to cancel
+- waitForAnimationToEnd
+- back
+- waitForAnimationToEnd
+
+# Verify we're back on Edit Profile
+- assertVisible: "Edit Profile"

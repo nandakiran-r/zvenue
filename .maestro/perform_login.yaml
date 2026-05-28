@@ -1,0 +1,35 @@
+appId: com.zvenue.app
+---
+# Helper: Performs the actual login flow (phone + OTP)
+- tapOn:
+    id: "login-phone-input"
+- inputText: "9999999999"
+- hideKeyboard
+- tapOn:
+    id: "login-submit-button"
+- waitForAnimationToEnd
+- waitForAnimationToEnd
+
+# OTP entry
+- tapOn:
+    id: "otp-input-0"
+- inputText: "1"
+- tapOn:
+    id: "otp-input-1"
+- inputText: "2"
+- tapOn:
+    id: "otp-input-2"
+- inputText: "3"
+- tapOn:
+    id: "otp-input-3"
+- inputText: "4"
+- tapOn:
+    id: "otp-input-4"
+- inputText: "5"
+- tapOn:
+    id: "otp-input-5"
+- inputText: "6"
+- tapOn:
+    id: "otp-verify"
+- waitForAnimationToEnd
+- waitForAnimationToEnd

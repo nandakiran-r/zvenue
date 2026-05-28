@@ -1,0 +1,29 @@
+appId: com.zvenue.app
+name: "Review - Write Review Screen UI"
+tags:
+  - review
+  - write
+  - ui
+---
+# Tests the Write Review screen UI elements and validation.
+# Verifies: star rating selector, comment input, character counter,
+# submit button, and validation error for missing rating.
+#
+# NOTE: This test navigates directly to the write-review screen
+# using a deep link with a venue ID. If the user is not eligible,
+# it verifies the ineligibility message.
+
+- runFlow: auth_login_flow.yaml
+
+# Navigate to a venue detail to find the review button
+- tapOn: "Search"
+- waitForAnimationToEnd
+- tapOn:
+    id: "search-input"
+- inputText: "hall"
+- waitForAnimationToEnd
+- waitForAnimationToEnd
+
+# Scroll down to find venues
+- scroll
+- waitForAnimationToEnd

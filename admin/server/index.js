@@ -2008,6 +2008,33 @@ fastify.post('/api/auth/send-otp', async (request, reply) => {
   if (!phone_number) return reply.status(400).send({ error: 'Phone number is required' });
 
   try {
+    // ─── TEST USER BYPASS (non-production only) ───
+    // Allows E2E tests to use a known phone number without sending real OTP
+    const TEST_PHONE = '+919999999999';
+    const TEST_OTP = '123456';
+    if (phone_number === TEST_PHONE) {
+      // Check if test user exists, if not create one
+      let user = await db.query.users.findFirst({
+        where: eq(users.phone_number, TEST_PHONE)
+      });
+      if (!user) {
+        const [newUser] = await db.insert(users).values({
+          phone_number: TEST_PHONE,
+          first_name: 'Test',
+          last_name: 'User',
+          full_name: 'Test User',
+          email: 'testuser@zvenue.com',
+          phone_verified: true,
+        }).returning();
+        user = newUser;
+      }
+      // Insert a known OTP for the test user
+      const expires_at = new Date(Date.now() + 10 * 60000);
+      await db.insert(otps).values({ phone_number: TEST_PHONE, otp: TEST_OTP, expires_at });
+      return { success: true, message: 'OTP sent via Test Bypass' };
+    }
+    // ─── END TEST USER BYPASS ───
+
     // Rate limiting check
     const rateCheck = checkOtpRateLimit(phone_number);
     if (!rateCheck.allowed) {
@@ -3652,6 +3679,33 @@ fastify.post('/api/service-listings/:id/reject', { onRequest: [fastify.authentic
 
 // ─── SERVICE BOOKINGS & PAYMENT ─────────────────────────────────────────────
 
+// Public: get booked dates for a service listing (for calendar)
+fastify.get('/api/service-listings/:id/booked-dates', async (request, reply) => {
+  try {
+    const listingId = request.params.id;
+
+    // Get confirmed bookings that have a booking_date
+    const confirmedBookings = await db.query.service_bookings.findMany({
+      where: and(
+        eq(service_bookings.service_listing_id, listingId),
+        eq(service_bookings.status, 'confirmed')
+      ),
+      columns: { booking_date: true, start_time: true, end_time: true }
+    });
+
+    // Filter out bookings without a date (legacy bookings)
+    const bookingsWithDates = confirmedBookings.filter(b => b.booking_date);
+
+    return {
+      bookings: bookingsWithDates,
+      blocked_dates: [],
+    };
+  } catch (err) {
+    fastify.log.error(err);
+    return reply.status(500).send({ error: 'Internal Server Error' });
+  }
+});
+
 // Generate unique Service Booking ID (ZSID-XXXXXXXX)
 async function generateServiceBookingDisplayId() {
   for (let attempt = 0; attempt < 10; attempt++) {
@@ -3666,14 +3720,18 @@ async function generateServiceBookingDisplayId() {
   return `ZSID-${Date.now().toString().slice(-8)}`;
 }
 
-// User: create Razorpay order for service purchase
+// User: create Razorpay order for service booking
 fastify.post('/api/service-bookings/create-order', { onRequest: [fastify.authenticate] }, async (request, reply) => {
   try {
-    const { service_listing_id, quantity } = request.body;
+    const { service_listing_id, quantity, booking_date, start_time, end_time } = request.body;
     const user_id = request.user.id;
 
     if (!service_listing_id || !quantity || quantity < 1) {
       return reply.status(400).send({ error: 'Service listing ID and quantity are required' });
+    }
+
+    if (!booking_date || !start_time || !end_time) {
+      return reply.status(400).send({ error: 'Booking date, start time, and end time are required' });
     }
 
     // Get listing and validate stock
@@ -3722,6 +3780,9 @@ fastify.post('/api/service-bookings/create-order', { onRequest: [fastify.authent
       discount_applied: discountApplied,
       total_amount: totalAmount,
       order_id: order.id,
+      booking_date,
+      start_time,
+      end_time,
       status: 'pending',
     }).returning();
 

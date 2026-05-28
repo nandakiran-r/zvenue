@@ -1,0 +1,40 @@
+appId: com.zvenue.app
+name: "Help and Support - FAQ and Contact"
+tags:
+  - help
+  - support
+  - profile
+---
+# Tests the Help & Support screen: verify FAQ items and contact options.
+
+- runFlow: auth_login_flow.yaml
+
+# Navigate to Profile tab
+- tapOn: "Profile"
+- waitForAnimationToEnd
+
+# Tap Help & Support
+- tapOn: "Help & Support"
+- waitForAnimationToEnd
+
+# Verify Help screen loaded
+- assertVisible: "Help & Support"
+- assertVisible: "Contact Us"
+- assertVisible: "Email"
+- assertVisible: "Phone"
+- assertVisible: "Chat on WhatsApp"
+
+# Verify FAQ section
+- scroll
+- assertVisible: "Frequently Asked Questions"
+- assertVisible: "How do I book a venue?"
+- assertVisible: "Can I cancel a booking?"
+- assertVisible: "What are subscriber benefits?"
+- assertVisible: "How do I get a refund?"
+
+# Go back
+- back
+- waitForAnimationToEnd
+
+# Verify we're back on Profile
+- assertVisible: "Edit Profile"

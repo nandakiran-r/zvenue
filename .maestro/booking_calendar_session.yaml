@@ -1,0 +1,29 @@
+appId: com.zvenue.app
+name: "Booking - Calendar Date and Session Selection"
+tags:
+  - booking
+  - calendar
+  - ui
+---
+# Tests the booking detail screen: calendar navigation,
+# date selection, session selection, guest count, and price summary.
+#
+# Prerequisites: User must be logged in. Must navigate to a venue's booking page.
+# This test assumes you're already on the booking-detail screen.
+
+- runFlow: auth_login_flow.yaml
+
+# Navigate to Search and find a venue
+- tapOn: "Search"
+- waitForAnimationToEnd
+- tapOn:
+    id: "search-input"
+- inputText: "wedding"
+- waitForAnimationToEnd
+- waitForAnimationToEnd
+
+# Scroll to find venue cards
+- scroll
+- waitForAnimationToEnd
+- scroll
+- waitForAnimationToEnd

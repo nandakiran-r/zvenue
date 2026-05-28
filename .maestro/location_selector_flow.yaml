@@ -1,0 +1,28 @@
+appId: com.zvenue.app
+name: "Location Selector - Change City"
+tags:
+  - home
+  - location
+---
+# Tests the location selector modal on the Home screen.
+
+- runFlow: auth_login_flow.yaml
+
+# Verify Home screen
+- assertVisible: "Home"
+
+# Tap on the location selector (shows current city)
+- tapOn: "Location"
+- waitForAnimationToEnd
+
+# Verify location modal opened with city options
+- assertVisible: "Mumbai"
+- assertVisible: "Delhi"
+- assertVisible: "Bengaluru"
+
+# Select a city
+- tapOn: "Mumbai"
+- waitForAnimationToEnd
+
+# Verify we're back on Home with updated location
+- assertVisible: "Home"

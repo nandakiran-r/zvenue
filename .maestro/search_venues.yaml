@@ -1,0 +1,33 @@
+appId: com.zvenue.app
+name: "Search - Find and Filter Venues"
+tags:
+  - search
+  - venues
+---
+# Tests the search functionality: text search and filter interactions.
+# Prerequisites: User must be logged in.
+
+- runFlow: auth_login_flow.yaml
+
+# Navigate to Search tab
+- tapOn: "Search"
+- waitForAnimationToEnd
+
+# Verify search input is present
+- assertVisible:
+    id: "search-input"
+
+# Type a search query
+- tapOn:
+    id: "search-input"
+- inputText: "banquet"
+- waitForAnimationToEnd
+
+# Clear search and try another term
+- eraseText: 7
+- inputText: "wedding hall"
+- waitForAnimationToEnd
+
+# Verify search screen is still functional
+- assertVisible:
+    id: "search-input"

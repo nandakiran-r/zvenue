@@ -1,0 +1,23 @@
+appId: com.zvenue.app
+name: "Subscription - View Plans"
+tags:
+  - subscription
+  - payment
+---
+# Tests navigating to the Subscription screen and viewing plan details.
+# NOTE: Actual payment (Razorpay WebView) cannot be tested in E2E.
+
+- runFlow: auth_login_flow.yaml
+
+# Navigate to Profile tab
+- tapOn: "Profile"
+- waitForAnimationToEnd
+
+# Scroll to find subscription option or navigate via venue booking
+# The subscription screen is typically accessed when trying to book
+# without a subscription. Let's navigate via a venue.
+- tapOn: "Home"
+- waitForAnimationToEnd
+
+# Verify home loaded
+- assertVisible: "Home"

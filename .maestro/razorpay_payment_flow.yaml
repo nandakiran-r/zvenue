@@ -1,0 +1,35 @@
+appId: com.zvenue.app
+name: "Razorpay Payment - Select BHIM UPI and Pay"
+tags:
+  - payment
+  - razorpay
+  - upi
+---
+# Tests the Razorpay payment WebView flow.
+# After the booking order is created, Razorpay checkout opens in a WebView.
+# This test navigates through the Razorpay UI to select BHIM UPI.
+#
+# Prerequisites:
+# - Must already be on the Razorpay checkout WebView
+# - Uses Razorpay TEST mode (rzp_test_*)
+#
+# NOTE: In test mode, Razorpay shows a test payment page.
+# The flow is: Razorpay opens → Select UPI → Enter UPI ID → Pay
+#
+# IMPORTANT: Razorpay test mode has a "Success" button to simulate payment.
+
+- runFlow: auth_login_flow.yaml
+
+# Go to Search, find a venue, open it
+- tapOn: "Search"
+- waitForAnimationToEnd
+- tapOn:
+    id: "search-input"
+- inputText: "hall"
+- waitForAnimationToEnd
+- waitForAnimationToEnd
+- scroll
+- waitForAnimationToEnd
+
+# At this point we need a venue to be visible and tappable
+# The test will proceed if venues exist in the database

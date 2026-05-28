@@ -1,0 +1,4 @@
+appId: com.zvenue.app
+---
+# No-op helper - does nothing (used for conditional flow skipping)
+- waitForAnimationToEnd

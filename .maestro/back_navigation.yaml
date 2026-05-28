@@ -1,0 +1,57 @@
+appId: com.zvenue.app
+name: "Navigation - Hardware Back Button"
+tags:
+  - navigation
+  - android
+  - gestures
+---
+# Tests Android hardware back button behavior across screens.
+# Verifies proper back navigation without crashes.
+#
+# Prerequisites: User must be logged in.
+
+- runFlow: auth_login_flow.yaml
+
+# Home screen
+- assertVisible: "Home"
+
+# Navigate to Search
+- tapOn: "Search"
+- waitForAnimationToEnd
+- assertVisible:
+    id: "search-input"
+
+# Navigate to Profile
+- tapOn: "Profile"
+- waitForAnimationToEnd
+- assertVisible: "Edit Profile"
+
+# Go into Settings
+- tapOn: "Settings"
+- waitForAnimationToEnd
+- assertVisible: "Settings"
+
+# Press hardware back
+- back
+- waitForAnimationToEnd
+- assertVisible: "Edit Profile"
+
+# Go into Help
+- tapOn: "Help & Support"
+- waitForAnimationToEnd
+- assertVisible: "Help & Support"
+
+# Press hardware back
+- back
+- waitForAnimationToEnd
+- assertVisible: "Edit Profile"
+
+# Go into Notifications
+- tapOn: "Notifications"
+- waitForAnimationToEnd
+- assertVisible: "Notifications"
+
+# Press hardware back
+- back
+- waitForAnimationToEnd
+- assertVisible: "Edit Profile"

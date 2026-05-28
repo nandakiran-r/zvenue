@@ -1,5 +1,5 @@
 import { router, useFocusEffect } from "expo-router";
-import { Bell, Calendar, ChevronRight, HelpCircle, LogOut, Settings, Trash2, User } from "lucide-react-native";
+import { Bell, Calendar, ChevronRight, Crown, HelpCircle, LogOut, Settings, Trash2, User } from "lucide-react-native";
 import { useAuth } from "@/context/AuthContext";
 import React, { useCallback, useState } from "react";
 import {
@@ -20,6 +20,7 @@ import { deleteMyAccount } from "@/lib/api";
 
 const MENU_ITEMS = [
   { icon: User, label: "Edit Profile", route: "/edit-profile" },
+  { icon: Crown, label: "My Subscription", route: "/my-subscription" },
   { icon: Calendar, label: "My Bookings", route: "/(tabs)/my-bookings" },
   { icon: Bell, label: "Notifications", route: "/notifications" },
   { icon: Settings, label: "Settings", route: "/settings" },

@@ -122,7 +122,12 @@ export default function EnterOtpScreen() {
         full_name: full_name
       });
       await login(response.data.token, response.data.user);
-      router.replace("/(tabs)/home");
+      // If coming from signup (full_name present), show subscription prompt
+      if (full_name) {
+        router.replace({ pathname: "/subscription" as any, params: { fromSignup: "true" } });
+      } else {
+        router.replace("/(tabs)/home");
+      }
     } catch (err: any) {
       if (!err.response) {
         // Network error — don't clear OTP inputs

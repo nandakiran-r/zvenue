@@ -19,11 +19,13 @@ import { useToast } from "@/context/ToastContext";
 
 export default function SubscriptionScreen() {
   const { dbUser, refreshSubscriptionInfo, isSubscribed } = useAuth();
-  const { returnTo } = useLocalSearchParams<{ returnTo?: string }>();
+  const { returnTo, fromSignup } = useLocalSearchParams<{ returnTo?: string; fromSignup?: string }>();
   const [loading, setLoading] = useState(false);
   const [checkoutModalVisible, setCheckoutModalVisible] = useState(false);
   const [checkoutHtml, setCheckoutHtml] = useState<string | null>(null);
   const { error: showError, showAlert } = useToast();
+
+  const isFromSignup = fromSignup === 'true';
 
   useEffect(() => {
     if (isSubscribed) {
@@ -136,8 +138,8 @@ export default function SubscriptionScreen() {
 
       <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={styles.scrollContent}>
         {/* Back button */}
-        <TouchableOpacity style={styles.backBtn} onPress={() => router.back()}>
-          <Text style={{ fontSize: 15, color: Colors.textSecondary }}>← Back</Text>
+        <TouchableOpacity style={styles.backBtn} onPress={() => isFromSignup ? router.replace("/(tabs)/home") : router.back()}>
+          <Text style={{ fontSize: 15, color: Colors.textSecondary }}>{isFromSignup ? "← Skip" : "← Back"}</Text>
         </TouchableOpacity>
 
         <View style={styles.header}>
@@ -179,6 +181,16 @@ export default function SubscriptionScreen() {
         </View>
 
         <Text style={styles.secureBadge}>🔒 Secure payment powered by Razorpay</Text>
+
+        {isFromSignup && (
+          <TouchableOpacity
+            style={styles.skipButton}
+            onPress={() => router.replace("/(tabs)/home")}
+            activeOpacity={0.7}
+          >
+            <Text style={styles.skipButtonText}>Skip for now</Text>
+          </TouchableOpacity>
+        )}
       </ScrollView>
     </SafeAreaView>
   );
@@ -218,6 +230,8 @@ const styles = StyleSheet.create({
   },
   subscribeButtonText: { color: Colors.white, fontSize: 16, fontWeight: "700" },
   secureBadge: { fontSize: 12, color: Colors.textSecondary, textAlign: "center", marginTop: 20 },
+  skipButton: { alignItems: "center", paddingVertical: 16, marginTop: 8 },
+  skipButtonText: { fontSize: 15, fontWeight: "600", color: Colors.textSecondary },
   // Success state
   successContainer: { flex: 1, justifyContent: "center", alignItems: "center", paddingHorizontal: 24 },
   successTitle: { fontSize: 24, fontWeight: "700", color: Colors.text, marginTop: 16 },

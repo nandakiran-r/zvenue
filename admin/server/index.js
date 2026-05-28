@@ -3130,6 +3130,19 @@ fastify.post('/api/notifications/broadcast', { onRequest: [fastify.authenticate]
   }
 });
 
+fastify.patch('/api/notifications/read-all', { onRequest: [fastify.authenticate] }, async (request, reply) => {
+  try {
+    const user_id = request.body?.user_id || request.user.id;
+    await db.update(notifications).set({ is_read: true }).where(
+      and(eq(notifications.user_id, user_id), eq(notifications.is_read, false))
+    );
+    return { success: true };
+  } catch (err) {
+    fastify.log.error('Mark all read error:', err);
+    return reply.status(500).send({ error: 'Internal Server Error' });
+  }
+});
+
 fastify.patch('/api/notifications/:id/read', { onRequest: [fastify.authenticate] }, async (request, reply) => {
   try {
     await db.update(notifications).set({ is_read: true }).where(eq(notifications.id, request.params.id));

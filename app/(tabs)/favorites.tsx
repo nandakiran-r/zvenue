@@ -23,7 +23,7 @@ export default function FavoritesScreen() {
   const insets = useSafeAreaInsets();
   const { favorites, toggleFavorite } = useFavorites();
 
-  const [activeTab, setActiveTab] = useState<'venues' | 'services'>('venues');
+  const [activeTab, setActiveTab] = useState<'all' | 'venues' | 'services'>('all');
   const [favoriteVenues, setFavoriteVenues] = useState<DbVenue[]>([]);
   const [favoriteServices, setFavoriteServices] = useState<DbServiceListing[]>([]);
   const [loading, setLoading] = useState(true);
@@ -75,6 +75,9 @@ export default function FavoritesScreen() {
 
       {/* Sub-tabs */}
       <View style={styles.tabRow}>
+        <TouchableOpacity style={[styles.tabButton, activeTab === 'all' && styles.tabButtonActive]} onPress={() => setActiveTab('all')}>
+          <Text style={[styles.tabText, activeTab === 'all' && styles.tabTextActive]}>All ({favoriteVenues.length + favoriteServices.length})</Text>
+        </TouchableOpacity>
         <TouchableOpacity style={[styles.tabButton, activeTab === 'venues' && styles.tabButtonActive]} onPress={() => setActiveTab('venues')}>
           <Text style={[styles.tabText, activeTab === 'venues' && styles.tabTextActive]}>Venues ({favoriteVenues.length})</Text>
         </TouchableOpacity>
@@ -104,7 +107,7 @@ export default function FavoritesScreen() {
             <View style={styles.emptyState}><Heart size={48} color={Colors.textTertiary} /><Text style={styles.emptyText}>No saved venues</Text><Text style={styles.emptySubtext}>Tap the heart icon on venues to save them</Text></View>
           )}
         </ScrollView>
-      ) : (
+      ) : activeTab === 'services' ? (
         <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={styles.scrollContent} refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor={Colors.primary} />}>
           {favoriteServices.map((svc) => (
             <TouchableOpacity key={svc.id} style={styles.card} onPress={() => router.push({ pathname: "/service-detail" as any, params: { id: svc.id } })} activeOpacity={0.7}>
@@ -124,6 +127,39 @@ export default function FavoritesScreen() {
             <View style={styles.emptyState}><ShoppingBag size={48} color={Colors.textTertiary} /><Text style={styles.emptyText}>No saved services</Text><Text style={styles.emptySubtext}>Tap the heart icon on services to save them</Text></View>
           )}
         </ScrollView>
+      ) : (
+        <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={styles.scrollContent} refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor={Colors.primary} />}>
+          {favoriteVenues.map((venue) => (
+            <TouchableOpacity key={venue.id} style={styles.card} onPress={() => router.push({ pathname: "/venue-detail", params: { id: venue.id } })} activeOpacity={0.7}>
+              <Image source={{ uri: venue.image_url ?? undefined }} style={styles.cardImage} />
+              <View style={styles.cardInfo}>
+                <Text style={styles.cardTitle} numberOfLines={2}>{venue.name}</Text>
+                <View style={styles.metaRow}><MapPin size={12} color={Colors.textSecondary} /><Text style={styles.metaText}>{venue.city}</Text></View>
+                <View style={styles.metaRow}><Star size={12} color="#FFB800" fill="#FFB800" /><Text style={styles.ratingText}>{venue.rating}</Text><Text style={styles.priceText}>{formatPrice(venue.price_per_day)}/day</Text></View>
+              </View>
+              <TouchableOpacity style={styles.heartButton} onPress={() => toggleFavorite(venue.id)}>
+                <Heart size={20} color={Colors.primary} fill={Colors.primary} />
+              </TouchableOpacity>
+            </TouchableOpacity>
+          ))}
+          {favoriteServices.map((svc) => (
+            <TouchableOpacity key={svc.id} style={styles.card} onPress={() => router.push({ pathname: "/service-detail" as any, params: { id: svc.id } })} activeOpacity={0.7}>
+              {svc.images?.[0] ? (
+                <Image source={{ uri: svc.images[0] }} style={styles.cardImage} />
+              ) : (
+                <View style={[styles.cardImage, { backgroundColor: Colors.surface, justifyContent: 'center', alignItems: 'center' }]}><ShoppingBag size={24} color={Colors.textTertiary} /></View>
+              )}
+              <View style={styles.cardInfo}>
+                <Text style={styles.cardTitle} numberOfLines={2}>{svc.name}</Text>
+                <View style={styles.metaRow}><MapPin size={12} color={Colors.textSecondary} /><Text style={styles.metaText}>{svc.city}</Text></View>
+                <View style={styles.metaRow}><Star size={12} color="#FFB800" fill="#FFB800" /><Text style={styles.ratingText}>{svc.rating?.toFixed(1)}</Text><Text style={styles.priceText}>{formatPrice(svc.price)}</Text></View>
+              </View>
+            </TouchableOpacity>
+          ))}
+          {favoriteVenues.length === 0 && favoriteServices.length === 0 && (
+            <View style={styles.emptyState}><Heart size={48} color={Colors.textTertiary} /><Text style={styles.emptyText}>No favorites yet</Text><Text style={styles.emptySubtext}>Tap the heart icon to save venues and services</Text></View>
+          )}
+        </ScrollView>
       )}
     </View>
   );
@@ -132,11 +168,11 @@ export default function FavoritesScreen() {
 const styles = StyleSheet.create({
   container: { flex: 1, backgroundColor: Colors.background },
   headerTitle: { fontSize: 22, fontWeight: "700", color: Colors.text, paddingHorizontal: 20, paddingTop: 16, paddingBottom: 8 },
-  tabRow: { flexDirection: "row", marginHorizontal: 20, marginBottom: 14, gap: 10 },
-  tabButton: { flex: 1, paddingVertical: 10, borderRadius: 24, backgroundColor: Colors.surface, alignItems: "center" },
-  tabButtonActive: { backgroundColor: Colors.primary, shadowColor: Colors.primary, shadowOffset: { width: 0, height: 2 }, shadowOpacity: 0.2, shadowRadius: 4, elevation: 3 },
-  tabText: { fontSize: 14, fontWeight: "600", color: Colors.textSecondary },
-  tabTextActive: { color: Colors.white },
+  tabRow: { flexDirection: "row", marginHorizontal: 20, marginBottom: 14, gap: 8 },
+  tabButton: { paddingHorizontal: 16, paddingVertical: 8, borderRadius: 20, backgroundColor: Colors.surface, borderWidth: 1, borderColor: Colors.border },
+  tabButtonActive: { backgroundColor: Colors.primary, borderColor: Colors.primary, shadowColor: undefined, shadowOffset: undefined, shadowOpacity: undefined, shadowRadius: undefined, elevation: undefined },
+  tabText: { fontSize: 13, fontWeight: "500", color: Colors.textSecondary },
+  tabTextActive: { color: Colors.white, fontWeight: "600" },
   scrollContent: { paddingHorizontal: 20, paddingBottom: 90 },
   card: { flexDirection: "row", alignItems: "center", marginBottom: 16, gap: 14, backgroundColor: Colors.surface, borderRadius: 14, padding: 12 },
   cardImage: { width: 80, height: 80, borderRadius: 12 },

@@ -15,9 +15,9 @@ import { useSafeAreaInsets } from "react-native-safe-area-context";
 import Colors from "@/constants/colors";
 import { useFavorites } from "@/context/FavoritesContext";
 import { fetchCategories, fetchVenues } from "@/lib/api";
-import { searchAll } from "@/lib/serviceApi";
+import { searchAll, fetchServiceListings, fetchServiceCategories } from "@/lib/serviceApi";
 import type { DbCategory, DbVenue } from "@/lib/types";
-import type { SearchResults } from "@/lib/serviceTypes";
+import type { SearchResults, DbServiceListing, DbServiceCategory } from "@/lib/serviceTypes";
 
 type SearchType = 'all' | 'venues' | 'services';
 
@@ -29,16 +29,20 @@ export default function SearchScreen() {
   const [showFilters, setShowFilters] = useState(false);
   const [selectedCategory, setSelectedCategory] = useState<string | null>(null);
   const [minCapacity, setMinCapacity] = useState<number | null>(null);
+  const [sortBy, setSortBy] = useState<'none' | 'price_low' | 'price_high' | 'rating'>('none');
   const [searchType, setSearchType] = useState<SearchType>('all');
 
   const [categories, setCategories] = useState<DbCategory[]>([]);
+  const [serviceCategories, setServiceCategories] = useState<DbServiceCategory[]>([]);
   const [venues, setVenues] = useState<DbVenue[]>([]);
+  const [services, setServices] = useState<DbServiceListing[]>([]);
   const [searchResults, setSearchResults] = useState<SearchResults | null>(null);
   const [loading, setLoading] = useState(true);
   const [isSearching, setIsSearching] = useState(false);
 
   useEffect(() => {
     fetchCategories().then(setCategories).catch(console.error);
+    fetchServiceCategories().then(setServiceCategories).catch(console.error);
     loadVenues();
   }, []);
 
@@ -58,14 +62,18 @@ export default function SearchScreen() {
   const loadVenues = async () => {
     try {
       setLoading(true);
-      const data = await fetchVenues({
-        search: undefined,
-        categoryName: selectedCategory ?? undefined,
-        minCapacity: minCapacity ?? undefined,
-      });
-      setVenues(data);
+      const [venueData, serviceData] = await Promise.all([
+        fetchVenues({
+          search: undefined,
+          categoryName: selectedCategory ?? undefined,
+          minCapacity: minCapacity ?? undefined,
+        }),
+        fetchServiceListings({ limit: 50 }),
+      ]);
+      setVenues(venueData);
+      setServices(serviceData);
     } catch (err) {
-      console.error("Failed to load venues:", err);
+      console.error("Failed to load data:", err);
     } finally {
       setLoading(false);
     }
@@ -108,22 +116,20 @@ export default function SearchScreen() {
         </TouchableOpacity>
       </View>
 
-      {/* Type filter chips (shown when searching) */}
-      {isSearching && (
-        <View style={styles.typeFilterRow}>
-          {(['all', 'venues', 'services'] as SearchType[]).map(type => (
-            <TouchableOpacity
-              key={type}
-              style={[styles.typeChip, searchType === type && styles.typeChipActive]}
-              onPress={() => setSearchType(type)}
-            >
-              <Text style={[styles.typeChipText, searchType === type && styles.typeChipTextActive]}>
-                {type === 'all' ? 'All' : type === 'venues' ? 'Venues' : 'Services'}
-              </Text>
-            </TouchableOpacity>
-          ))}
-        </View>
-      )}
+      {/* Type filter chips (always visible) */}
+      <View style={styles.typeFilterRow}>
+        {(['all', 'venues', 'services'] as SearchType[]).map(type => (
+          <TouchableOpacity
+            key={type}
+            style={[styles.typeChip, searchType === type && styles.typeChipActive]}
+            onPress={() => setSearchType(type)}
+          >
+            <Text style={[styles.typeChipText, searchType === type && styles.typeChipTextActive]}>
+              {type === 'all' ? 'All' : type === 'venues' ? 'Venues' : 'Services'}
+            </Text>
+          </TouchableOpacity>
+        ))}
+      </View>
 
       {!isSearching && showFilters && (
         <View style={styles.filtersContainer}>
@@ -132,6 +138,15 @@ export default function SearchScreen() {
             {categories.map(cat => (
               <TouchableOpacity
                 key={cat.id}
+                style={[styles.filterChip, selectedCategory === cat.name && styles.filterChipActive]}
+                onPress={() => setSelectedCategory(selectedCategory === cat.name ? null : cat.name)}
+              >
+                <Text style={[styles.filterChipText, selectedCategory === cat.name && styles.filterChipTextActive]}>{cat.name}</Text>
+              </TouchableOpacity>
+            ))}
+            {serviceCategories.map(cat => (
+              <TouchableOpacity
+                key={`svc-${cat.id}`}
                 style={[styles.filterChip, selectedCategory === cat.name && styles.filterChipActive]}
                 onPress={() => setSelectedCategory(selectedCategory === cat.name ? null : cat.name)}
               >
@@ -147,8 +162,20 @@ export default function SearchScreen() {
               </TouchableOpacity>
             ))}
           </View>
+          <Text style={styles.filterTitle}>Sort By</Text>
+          <View style={styles.capacityRow}>
+            {([
+              { key: 'price_low', label: 'Price ↑' },
+              { key: 'price_high', label: 'Price ↓' },
+              { key: 'rating', label: 'Top Rated' },
+            ] as const).map(opt => (
+              <TouchableOpacity key={opt.key} style={[styles.filterChip, sortBy === opt.key && styles.filterChipActive]} onPress={() => setSortBy(sortBy === opt.key ? 'none' : opt.key)}>
+                <Text style={[styles.filterChipText, sortBy === opt.key && styles.filterChipTextActive]}>{opt.label}</Text>
+              </TouchableOpacity>
+            ))}
+          </View>
           <View style={styles.filterActions}>
-            <TouchableOpacity style={styles.clearFilterBtn} onPress={() => { setSelectedCategory(null); setMinCapacity(null); }}>
+            <TouchableOpacity style={styles.clearFilterBtn} onPress={() => { setSelectedCategory(null); setMinCapacity(null); setSortBy('none'); }}>
               <Text style={styles.clearFilterText}>Clear All</Text>
             </TouchableOpacity>
           </View>
@@ -206,10 +233,18 @@ export default function SearchScreen() {
         </ScrollView>
       ) : (
         <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={styles.scrollContent}>
-          {venues.map((venue) => (
+          {(searchType === 'all' || searchType === 'venues') && [...venues].sort((a, b) => {
+            if (sortBy === 'price_low') return (a.price_per_day ?? 0) - (b.price_per_day ?? 0);
+            if (sortBy === 'price_high') return (b.price_per_day ?? 0) - (a.price_per_day ?? 0);
+            if (sortBy === 'rating') return (b.rating ?? 0) - (a.rating ?? 0);
+            return 0;
+          }).map((venue) => (
             <TouchableOpacity key={venue.id} style={styles.venueCard} onPress={() => router.push({ pathname: "/venue-detail", params: { id: venue.id } })} activeOpacity={0.7}>
               <Image source={{ uri: venue.image_url ?? undefined }} style={styles.venueImage} />
               <View style={styles.venueInfo}>
+                <View style={styles.typeBadgeRow}>
+                  <View style={[styles.typeBadge, { backgroundColor: '#7a331715' }]}><Text style={[styles.typeBadgeText, { color: Colors.primary }]}>Venue</Text></View>
+                </View>
                 <Text style={styles.venueTitle} numberOfLines={2}>{venue.name}</Text>
                 <View style={styles.metaRow}>
                   <MapPin size={11} color={Colors.textSecondary} /><Text style={styles.venueCity}>{venue.city}</Text>
@@ -222,7 +257,28 @@ export default function SearchScreen() {
               </TouchableOpacity>
             </TouchableOpacity>
           ))}
-          {venues.length === 0 && <Text style={styles.emptyText}>No venues found.</Text>}
+          {(searchType === 'all' || searchType === 'services') && [...services].filter(svc => !selectedCategory || svc.category?.name === selectedCategory).sort((a, b) => {
+            if (sortBy === 'price_low') return (a.price ?? 0) - (b.price ?? 0);
+            if (sortBy === 'price_high') return (b.price ?? 0) - (a.price ?? 0);
+            if (sortBy === 'rating') return (b.rating ?? 0) - (a.rating ?? 0);
+            return 0;
+          }).map((svc) => (
+            <TouchableOpacity key={svc.id} style={styles.venueCard} onPress={() => router.push({ pathname: "/service-detail" as any, params: { id: svc.id } })} activeOpacity={0.7}>
+              <Image source={{ uri: svc.images?.[0] ?? undefined }} style={styles.venueImage} />
+              <View style={styles.venueInfo}>
+                <View style={styles.typeBadgeRow}>
+                  <View style={[styles.typeBadge, { backgroundColor: '#1565C015' }]}><Text style={[styles.typeBadgeText, { color: '#1565C0' }]}>Service</Text></View>
+                  {svc.category && <Text style={styles.categoryLabel}>{svc.category.name}</Text>}
+                </View>
+                <Text style={styles.venueTitle} numberOfLines={2}>{svc.name}</Text>
+                <View style={styles.metaRow}><MapPin size={11} color={Colors.textSecondary} /><Text style={styles.venueCity}>{svc.city}</Text></View>
+                <View style={styles.ratingRow}><Star size={12} color="#FFB800" fill="#FFB800" /><Text style={styles.ratingText}>{svc.rating?.toFixed(1)}</Text><Text style={styles.priceText}>{formatPrice(svc.price)}</Text></View>
+              </View>
+            </TouchableOpacity>
+          ))}
+          {searchType === 'venues' && venues.length === 0 && <Text style={styles.emptyText}>No venues found.</Text>}
+          {searchType === 'services' && services.length === 0 && <Text style={styles.emptyText}>No services found.</Text>}
+          {searchType === 'all' && venues.length === 0 && services.length === 0 && <Text style={styles.emptyText}>No results found.</Text>}
         </ScrollView>
       )}
     </View>

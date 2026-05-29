@@ -51,7 +51,7 @@ export default function MyBookingsScreen() {
   const insets = useSafeAreaInsets();
   const { userId } = useAuth();
 
-  const [activeTab, setActiveTab] = useState<'venues' | 'services'>('venues');
+  const [activeTab, setActiveTab] = useState<'all' | 'venues' | 'services'>('all');
   const [bookings, setBookings] = useState<DbBooking[]>([]);
   const [serviceBookings, setServiceBookings] = useState<DbServiceBooking[]>([]);
   const [loading, setLoading] = useState(true);
@@ -175,7 +175,7 @@ export default function MyBookingsScreen() {
     );
   }
 
-  const currentCount = activeTab === 'venues' ? bookings.length : serviceBookings.length;
+  const currentCount = activeTab === 'all' ? bookings.length + serviceBookings.length : activeTab === 'venues' ? bookings.length : serviceBookings.length;
 
   return (
     <View style={[styles.container, { paddingTop: insets.top }]}>
@@ -186,6 +186,12 @@ export default function MyBookingsScreen() {
 
       {/* Sub-tabs */}
       <View style={styles.tabRow}>
+        <TouchableOpacity
+          style={[styles.tabButton, activeTab === 'all' && styles.tabButtonActive]}
+          onPress={() => setActiveTab('all')}
+        >
+          <Text style={[styles.tabText, activeTab === 'all' && styles.tabTextActive]}>All</Text>
+        </TouchableOpacity>
         <TouchableOpacity
           style={[styles.tabButton, activeTab === 'venues' && styles.tabButtonActive]}
           onPress={() => setActiveTab('venues')}
@@ -219,7 +225,7 @@ export default function MyBookingsScreen() {
             </View>
           }
         />
-      ) : (
+      ) : activeTab === 'services' ? (
         <FlatList
           data={serviceBookings}
           keyExtractor={(item) => item.id}
@@ -238,6 +244,25 @@ export default function MyBookingsScreen() {
             </View>
           }
         />
+      ) : (
+        <FlatList
+          data={[...bookings.map(b => ({ ...b, _type: 'venue' as const })), ...serviceBookings.map(b => ({ ...b, _type: 'service' as const }))].sort((a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime())}
+          keyExtractor={(item) => item.id}
+          renderItem={({ item }) => item._type === 'venue' ? renderVenueBooking({ item: item as any }) : renderServiceBooking({ item: item as any })}
+          contentContainerStyle={styles.listContent}
+          showsVerticalScrollIndicator={false}
+          refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor={Colors.primary} />}
+          ListEmptyComponent={
+            <View style={styles.emptyState}>
+              <CalendarCheck size={48} color={Colors.textTertiary} />
+              <Text style={styles.emptyTitle}>No bookings yet</Text>
+              <Text style={styles.emptySubtitle}>Your bookings will appear here</Text>
+              <TouchableOpacity style={styles.browseBtn} onPress={() => router.push("/(tabs)/home")}>
+                <Text style={styles.browseBtnText}>Browse</Text>
+              </TouchableOpacity>
+            </View>
+          }
+        />
       )}
     </View>
   );
@@ -249,11 +274,11 @@ const styles = StyleSheet.create({
   headerTitle: { fontSize: 24, fontWeight: "700", color: Colors.text },
   headerSubtitle: { fontSize: 13, color: Colors.textSecondary, marginTop: 4 },
   // Sub-tabs
-  tabRow: { flexDirection: "row", marginHorizontal: 20, marginBottom: 14, gap: 10 },
-  tabButton: { flex: 1, paddingVertical: 10, borderRadius: 24, backgroundColor: Colors.surface, alignItems: "center" },
-  tabButtonActive: { backgroundColor: Colors.primary, shadowColor: Colors.primary, shadowOffset: { width: 0, height: 2 }, shadowOpacity: 0.2, shadowRadius: 4, elevation: 3 },
-  tabText: { fontSize: 14, fontWeight: "600", color: Colors.textSecondary },
-  tabTextActive: { color: Colors.white },
+  tabRow: { flexDirection: "row", marginHorizontal: 20, marginBottom: 14, gap: 8 },
+  tabButton: { paddingHorizontal: 16, paddingVertical: 8, borderRadius: 20, backgroundColor: Colors.surface, borderWidth: 1, borderColor: Colors.border },
+  tabButtonActive: { backgroundColor: Colors.primary, borderColor: Colors.primary, shadowColor: undefined, shadowOffset: undefined, shadowOpacity: undefined, shadowRadius: undefined, elevation: undefined },
+  tabText: { fontSize: 13, fontWeight: "500", color: Colors.textSecondary },
+  tabTextActive: { color: Colors.white, fontWeight: "600" },
   // List
   listContent: { paddingHorizontal: 20, paddingBottom: 80 },
   bookingCard: {

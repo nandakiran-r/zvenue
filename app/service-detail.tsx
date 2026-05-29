@@ -1,6 +1,6 @@
 import { router, useLocalSearchParams, useFocusEffect } from "expo-router";
 import { safeBack } from "@/constants/navigation";
-import { ChevronLeft, ChevronRight, Heart, MapPin, Star, ShoppingBag } from "lucide-react-native";
+import { ChevronLeft, ChevronRight, Heart, MapPin, Share2, Star, ShoppingBag } from "lucide-react-native";
 import React, { useCallback, useEffect, useRef, useState } from "react";
 import {
   ActivityIndicator,
@@ -19,6 +19,7 @@ import Colors from "@/constants/colors";
 import { useAuth } from "@/context/AuthContext";
 import { useToast } from "@/context/ToastContext";
 import { fetchServiceListingById, fetchServiceReviews, addServiceFavorite, removeServiceFavorite } from "@/lib/serviceApi";
+import { shareService } from "@/lib/share";
 import type { DbServiceListing, DbServiceReview } from "@/lib/serviceTypes";
 
 const screenWidth = Dimensions.get("window").width;
@@ -154,9 +155,14 @@ export default function ServiceDetailScreen() {
             <TouchableOpacity style={styles.iconButton} onPress={() => safeBack("/(tabs)/home")}>
               <ChevronLeft size={22} color={Colors.white} />
             </TouchableOpacity>
-            <TouchableOpacity style={styles.iconButton} onPress={toggleFavorite}>
-              <Heart size={22} color={isFav ? Colors.primary : Colors.white} fill={isFav ? Colors.primary : "none"} />
-            </TouchableOpacity>
+            <View style={{ flexDirection: 'row', gap: 10 }}>
+              <TouchableOpacity style={styles.iconButton} onPress={toggleFavorite}>
+                <Heart size={22} color={isFav ? Colors.primary : Colors.white} fill={isFav ? Colors.primary : "none"} />
+              </TouchableOpacity>
+              <TouchableOpacity style={styles.iconButton} onPress={() => listing && shareService(listing.id, listing.name)}>
+                <Share2 size={20} color={Colors.white} />
+              </TouchableOpacity>
+            </View>
           </View>
         </View>
 

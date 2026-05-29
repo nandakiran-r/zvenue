@@ -1,6 +1,7 @@
 import { create } from "zustand";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import { api, fetchUser, getSubscriptionStatus } from "@/lib/api";
+import { consumePendingDeepLink } from "@/lib/deepLink";
 import type { DbUser, UserSubscriptionInfo } from "@/lib/types";
 
 interface AuthState {
@@ -10,6 +11,7 @@ interface AuthState {
   dbUser: DbUser | null;
   subscriptionInfo: UserSubscriptionInfo | null;
   isSubscribed: boolean;
+  pendingDeepLink: string | null;
 
   // Actions
   initialize: () => Promise<void>;
@@ -17,6 +19,7 @@ interface AuthState {
   signOut: () => Promise<void>;
   refreshProfile: () => Promise<void>;
   refreshSubscriptionInfo: () => Promise<void>;
+  consumeDeepLink: () => string | null;
 }
 
 export const useAuthStore = create<AuthState>((set, get) => ({
@@ -26,6 +29,7 @@ export const useAuthStore = create<AuthState>((set, get) => ({
   dbUser: null,
   subscriptionInfo: null,
   isSubscribed: false,
+  pendingDeepLink: null,
 
   initialize: async () => {
     try {
@@ -53,10 +57,13 @@ export const useAuthStore = create<AuthState>((set, get) => ({
   login: async (newToken: string, newUser: DbUser) => {
     try {
       await AsyncStorage.setItem("token", newToken);
+      // Check for pending deep link before setting state
+      const deepLink = consumePendingDeepLink();
       set({
         isSignedIn: true,
         userId: newUser.id,
         dbUser: newUser,
+        pendingDeepLink: deepLink,
       });
       // Fetch subscription info after login
       get().refreshSubscriptionInfo();
@@ -105,5 +112,13 @@ export const useAuthStore = create<AuthState>((set, get) => ({
     } catch (err) {
       console.error("Failed to refresh subscription info:", err);
     }
+  },
+
+  consumeDeepLink: () => {
+    const { pendingDeepLink } = get();
+    if (pendingDeepLink) {
+      set({ pendingDeepLink: null });
+    }
+    return pendingDeepLink;
   },
 }));

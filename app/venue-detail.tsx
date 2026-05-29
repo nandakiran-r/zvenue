@@ -1,6 +1,6 @@
 import { router, useLocalSearchParams, useFocusEffect } from "expo-router";
 import { safeBack } from "@/constants/navigation";
-import { Calendar, ChevronLeft, ChevronRight, Clock, Crown, Edit3, Heart, MapPin, MessageCircle, Star, Users, Wifi, Wind, Car, Utensils, Music, Tv } from "lucide-react-native";
+import { Calendar, ChevronLeft, ChevronRight, Clock, Crown, Edit3, Heart, MapPin, MessageCircle, Share2, Star, Users, Wifi, Wind, Car, Utensils, Music, Tv } from "lucide-react-native";
 import { MaterialIcons } from "@expo/vector-icons";
 import React, { useCallback, useEffect, useState } from "react";
 import {
@@ -25,6 +25,7 @@ import { VenueMap } from "@/components/VenueMap";
 import ReviewCard from "@/components/ReviewCard";
 import StarDisplay from "@/components/StarDisplay";
 import { useReviewStore } from "@/store/reviewStore";
+import { shareVenue } from "@/lib/share";
 import type { DbVenue, DbReview } from "@/lib/types";
 
 const AMENITY_ICONS: Record<string, any> = {
@@ -186,9 +187,14 @@ export default function VenueDetailScreen() {
                         <TouchableOpacity style={styles.iconButton} onPress={() => safeBack("/(tabs)/home")}>
                             <ChevronLeft size={22} color={Colors.white} />
                         </TouchableOpacity>
-                        <TouchableOpacity style={styles.iconButton} onPress={() => toggleFavorite(venue.id)}>
-                            <Heart size={22} color={isFav ? Colors.primary : Colors.white} fill={isFav ? Colors.primary : "none"} />
-                        </TouchableOpacity>
+                        <View style={{ flexDirection: 'row', gap: 10 }}>
+                            <TouchableOpacity style={styles.iconButton} onPress={() => toggleFavorite(venue.id)}>
+                                <Heart size={22} color={isFav ? Colors.primary : Colors.white} fill={isFav ? Colors.primary : "none"} />
+                            </TouchableOpacity>
+                            <TouchableOpacity style={styles.iconButton} onPress={() => shareVenue(venue.id, venue.name)}>
+                                <Share2 size={20} color={Colors.white} />
+                            </TouchableOpacity>
+                        </View>
                     </View>
                 </View>
 

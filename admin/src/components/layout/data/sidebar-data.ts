@@ -65,11 +65,6 @@ export const sidebarData: SidebarData = {
           icon: CalendarCheck,
         },
         {
-          title: 'Users',
-          url: '/users',
-          icon: Users,
-        },
-        {
           title: 'Categories',
           url: '/categories',
           icon: Tags,

@@ -712,8 +712,9 @@ fastify.post('/api/subscriptions/confirm', { onRequest: [fastify.authenticate] }
       const activeStatuses = ['authenticated', 'active'];
       
       if (activeStatuses.includes(subscription.status)) {
+        const nextBillingAt = subscription.current_end ? new Date(subscription.current_end * 1000).toISOString() : (subscription.charge_at ? new Date(subscription.charge_at * 1000).toISOString() : (subscription.start_at ? new Date((subscription.start_at + 30*24*60*60) * 1000).toISOString() : null));
         await db.update(users)
-          .set({ subscription_status: subscription.status })
+          .set({ subscription_status: subscription.status, ...(nextBillingAt ? { next_billing_at: nextBillingAt } : {}) })
           .where(eq(users.id, user_id));
         
         return { success: true, subscription_status: subscription.status, has_access: true };

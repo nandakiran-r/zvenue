@@ -7,6 +7,7 @@ import {
   FlatList,
   Image,
   Modal,
+  RefreshControl,
   ScrollView,
   StyleSheet,
   Text,
@@ -86,6 +87,9 @@ export default function HomeScreen() {
   const [filterType, setFilterType] = useState<'all' | 'venues' | 'services'>('all');
   const [sortBy, setSortBy] = useState<'none' | 'price_low' | 'price_high' | 'rating'>('none');
 
+  // Pull-to-refresh
+  const [refreshing, setRefreshing] = useState(false);
+
   // Initialize location on mount
   useEffect(() => {
     locationStore.initialize();
@@ -96,6 +100,15 @@ export default function HomeScreen() {
     if (dbUser?.id) {
       fetchUnreadCount(dbUser.id);
     }
+  }, [dbUser?.id]);
+
+  // Poll notification count every 30 seconds
+  useEffect(() => {
+    if (!dbUser?.id) return;
+    const interval = setInterval(() => {
+      fetchUnreadCount(dbUser.id);
+    }, 30000);
+    return () => clearInterval(interval);
   }, [dbUser?.id]);
 
   // Increment badge when a push notification arrives in foreground
@@ -154,7 +167,13 @@ export default function HomeScreen() {
       console.error("Failed to load home data:", err);
     } finally {
       setLoading(false);
+      setRefreshing(false);
     }
+  };
+
+  const onRefresh = () => {
+    setRefreshing(true);
+    loadData();
   };
 
   const filteredCities = locationSearch.trim()
@@ -317,7 +336,7 @@ export default function HomeScreen() {
 
   return (
     <View style={[styles.container, { paddingTop: insets.top }]}>
-      <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={styles.scrollContent}>
+      <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={styles.scrollContent} refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor={Colors.primary} />}>
         <View style={styles.header}>
           <TouchableOpacity onPress={() => setLocationModalVisible(true)} activeOpacity={0.7}>
             <Text style={styles.locationLabel}>Location</Text>

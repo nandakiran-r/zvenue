@@ -4,6 +4,7 @@ import React, { useCallback, useState } from "react";
 import {
   ActivityIndicator,
   Image,
+  RefreshControl,
   ScrollView,
   StyleSheet,
   Text,
@@ -26,6 +27,7 @@ export default function FavoritesScreen() {
   const [favoriteVenues, setFavoriteVenues] = useState<DbVenue[]>([]);
   const [favoriteServices, setFavoriteServices] = useState<DbServiceListing[]>([]);
   const [loading, setLoading] = useState(true);
+  const [refreshing, setRefreshing] = useState(false);
 
   useFocusEffect(
     useCallback(() => {
@@ -37,7 +39,10 @@ export default function FavoritesScreen() {
     setLoading(true);
     await Promise.all([loadVenueFavorites(), loadServiceFavorites()]);
     setLoading(false);
+    setRefreshing(false);
   };
+
+  const onRefresh = () => { setRefreshing(true); loadAll(); };
 
   const loadVenueFavorites = async () => {
     if (favorites.length === 0) { setFavoriteVenues([]); return; }
@@ -81,7 +86,7 @@ export default function FavoritesScreen() {
       {loading ? (
         <ActivityIndicator size="large" color={Colors.primary} style={{ marginTop: 40 }} />
       ) : activeTab === 'venues' ? (
-        <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={styles.scrollContent}>
+        <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={styles.scrollContent} refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor={Colors.primary} />}>
           {favoriteVenues.map((venue) => (
             <TouchableOpacity key={venue.id} style={styles.card} onPress={() => router.push({ pathname: "/venue-detail", params: { id: venue.id } })} activeOpacity={0.7}>
               <Image source={{ uri: venue.image_url ?? undefined }} style={styles.cardImage} />
@@ -100,7 +105,7 @@ export default function FavoritesScreen() {
           )}
         </ScrollView>
       ) : (
-        <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={styles.scrollContent}>
+        <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={styles.scrollContent} refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor={Colors.primary} />}>
           {favoriteServices.map((svc) => (
             <TouchableOpacity key={svc.id} style={styles.card} onPress={() => router.push({ pathname: "/service-detail" as any, params: { id: svc.id } })} activeOpacity={0.7}>
               {svc.images?.[0] ? (

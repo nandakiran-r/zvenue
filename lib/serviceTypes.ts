@@ -30,10 +30,21 @@ export interface DbServiceListing {
   pending_changes: Record<string, unknown> | null;
   owner_name: string | null;
   owner_image: string | null;
+  // Time slot configuration
+  opening_time: string | null;         // "09:00" (24hr), default "08:00"
+  closing_time: string | null;         // "18:00" (24hr), default "20:00"
+  max_booking_duration: number | null; // minutes, default 480
+  blocked_slots: BlockedSlot[] | null; // [{ date, start, end }]
   created_at: string;
   /** Joined */
   category?: DbServiceCategory;
   owner?: { id: string; full_name: string; email?: string };
+}
+
+export interface BlockedSlot {
+  date: string;   // "2026-06-16"
+  start: string;  // "12:00"
+  end: string;    // "14:00"
 }
 
 export interface DbServiceBooking {

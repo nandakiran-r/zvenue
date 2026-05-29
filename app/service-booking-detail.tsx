@@ -18,13 +18,8 @@ import Colors from "@/constants/colors";
 import { useAuth } from "@/context/AuthContext";
 import { useToast } from "@/context/ToastContext";
 import { fetchServiceListingById, fetchServiceBookedDates, createServiceOrder, verifyServicePayment } from "@/lib/serviceApi";
+import { generateSlots, handleSlotTap, getSelectionSummary, type SlotSelection, type TimeRange } from "@/lib/timeSlots";
 import type { DbServiceListing } from "@/lib/serviceTypes";
-
-const SESSIONS = [
-  { id: 'morning', label: 'Morning Session', time: '08:00 AM – 12:00 PM', start: '08:00 AM', end: '12:00 PM', hours: 4 },
-  { id: 'afternoon', label: 'Afternoon Session', time: '01:00 PM – 05:00 PM', start: '01:00 PM', end: '05:00 PM', hours: 4 },
-  { id: 'fullday', label: 'Full Day', time: '08:00 AM – 05:00 PM', start: '08:00 AM', end: '05:00 PM', hours: 9 },
-];
 
 const DAYS = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"];
 const MONTHS = ["January", "February", "March", "April", "May", "June", "July", "August", "September", "October", "November", "December"];
@@ -51,9 +46,10 @@ export default function ServiceBookingDetailScreen() {
   const [selectedDate, setSelectedDate] = useState<string | null>(null);
   const [bookedDates, setBookedDates] = useState<{ booking_date: string; start_time: string; end_time: string }[]>([]);
   const [blockedDates, setBlockedDates] = useState<string[]>([]);
+  const [blockedSlots, setBlockedSlots] = useState<{ date: string; start: string; end: string }[]>([]);
 
-  // Session state
-  const [selectedSession, setSelectedSession] = useState<string | null>(null);
+  // Slot selection state (replaces session state)
+  const [slotSelection, setSlotSelection] = useState<SlotSelection | null>(null);
 
   // Quantity
   const [quantity, setQuantity] = useState(1);
@@ -92,6 +88,7 @@ export default function ServiceBookingDetailScreen() {
       const data = await fetchServiceBookedDates(id!);
       setBookedDates(data.bookings);
       setBlockedDates(data.blocked_dates || []);
+      setBlockedSlots((data as any).blocked_slots || []);
     } catch (err) {
       console.error("Failed to load booked dates:", err);
     }
@@ -134,29 +131,40 @@ export default function ServiceBookingDetailScreen() {
 
   const handleDateSelect = (dateKey: string) => {
     setSelectedDate(dateKey);
-    setSelectedSession(null);
+    setSlotSelection(null);
   };
 
-  // Check which sessions are booked for selected date
-  const bookedSessionsForDate = useMemo(() => {
-    if (!selectedDate) return [];
-    const dateBookings = bookedDates.filter(b => b.booking_date === selectedDate);
-    const booked: string[] = [];
+  // Generate time slots for the selected date
+  const timeSlots = useMemo(() => {
+    if (!selectedDate || !listing) return [];
+    const openingTime = listing.opening_time || '00:00';
+    const closingTime = listing.closing_time || '23:30';
 
-    for (const session of SESSIONS) {
-      const isBooked = dateBookings.some(b => {
-        if (b.start_time === '08:00 AM' && b.end_time === '05:00 PM') return true;
-        if (session.id === 'fullday') return dateBookings.length > 0;
-        return b.start_time === session.start && b.end_time === session.end;
-      });
-      if (isBooked) booked.push(session.id);
-    }
-    return booked;
-  }, [selectedDate, bookedDates]);
+    // Get booked ranges for selected date
+    const bookedRanges: TimeRange[] = bookedDates
+      .filter(b => b.booking_date === selectedDate)
+      .map(b => ({ start: b.start_time, end: b.end_time }));
 
-  const isSessionBooked = (sessionId: string) => bookedSessionsForDate.includes(sessionId);
+    // Get blocked ranges for selected date
+    const blockedRanges: TimeRange[] = blockedSlots
+      .filter(b => b.date === selectedDate)
+      .map(b => ({ start: b.start, end: b.end }));
 
-  const currentSession = SESSIONS.find(s => s.id === selectedSession);
+    return generateSlots(openingTime, closingTime, bookedRanges, blockedRanges, selectedDate, slotSelection);
+  }, [selectedDate, listing, bookedDates, blockedSlots, slotSelection]);
+
+  // Max slots based on listing config
+  const maxSlots = useMemo(() => {
+    const maxDuration = listing?.max_booking_duration || 1440;
+    return Math.floor(maxDuration / 30);
+  }, [listing]);
+
+  const onSlotTap = (slotId: string) => {
+    const newSelection = handleSlotTap(slotId, slotSelection, maxSlots, timeSlots);
+    setSlotSelection(newSelection);
+  };
+
+  const selectionSummary = slotSelection ? getSelectionSummary(slotSelection) : null;
 
   // Quantity handlers
   const incrementQty = () => {
@@ -176,7 +184,7 @@ export default function ServiceBookingDetailScreen() {
   const discount = Math.round(subtotal * discountPercent / 100);
   const total = subtotal - discount;
 
-  const canBook = selectedDate && selectedSession && quantity >= 1;
+  const canBook = selectedDate && slotSelection && quantity >= 1;
 
   const formatPrice = (amount: number) => `₹${amount.toLocaleString("en-IN")}`;
 
@@ -189,8 +197,8 @@ export default function ServiceBookingDetailScreen() {
         service_listing_id: listing.id,
         quantity,
         booking_date: selectedDate!,
-        start_time: currentSession!.start,
-        end_time: currentSession!.end,
+        start_time: slotSelection!.startTime,
+        end_time: slotSelection!.endTime,
       });
       const { order, booking } = orderResponse;
       setPendingBookingId(booking.id);
@@ -256,7 +264,7 @@ export default function ServiceBookingDetailScreen() {
               quantity: String(quantity),
               total: String(response.booking.total_amount),
               bookingDate: selectedDate!,
-              session: currentSession?.label || '',
+              session: selectionSummary ? `${selectionSummary.startLabel} – ${selectionSummary.endLabel}` : '',
             },
           });
         } else {
@@ -386,44 +394,50 @@ export default function ServiceBookingDetailScreen() {
           </View>
         </View>
 
-        {/* Session Selection */}
+        {/* Time Slot Selection */}
         {selectedDate && (
           <View style={styles.sessionSection}>
             <Text style={styles.sectionTitle}>
-              <Clock size={16} color={Colors.primary} /> Select Session
+              <Clock size={16} color={Colors.primary} /> Select Time
             </Text>
-            <View style={{ gap: 10 }}>
-              {SESSIONS.map(session => {
-                const booked = isSessionBooked(session.id);
-                const isActive = selectedSession === session.id;
-                return (
-                  <TouchableOpacity
-                    key={session.id}
-                    style={[styles.sessionCard, isActive && styles.sessionCardActive, booked && styles.sessionCardBooked]}
-                    onPress={() => !booked && setSelectedSession(session.id)}
-                    disabled={booked}
-                    activeOpacity={0.7}
-                  >
-                    <View style={{ flex: 1 }}>
-                      <Text style={[styles.sessionLabel, isActive && styles.sessionLabelActive, booked && styles.sessionLabelBooked]}>
-                        {session.label}
-                      </Text>
-                      <Text style={[styles.sessionTime, booked && styles.sessionLabelBooked]}>
-                        {session.time}
-                      </Text>
-                    </View>
-                    <Text style={[styles.sessionHours, isActive && styles.sessionLabelActive, booked && styles.sessionLabelBooked]}>
-                      {booked ? 'Booked' : `${session.hours} hrs`}
-                    </Text>
-                  </TouchableOpacity>
-                );
-              })}
+            {selectionSummary && (
+              <View style={styles.selectionSummary}>
+                <Text style={styles.selectionSummaryText}>
+                  {selectionSummary.startLabel} – {selectionSummary.endLabel} ({selectionSummary.durationLabel})
+                </Text>
+              </View>
+            )}
+            <View style={styles.slotGrid}>
+              {timeSlots.map(slot => (
+                <TouchableOpacity
+                  key={slot.id}
+                  style={[
+                    styles.slotCell,
+                    slot.status === 'selected' && styles.slotCellSelected,
+                    (slot.status === 'booked' || slot.status === 'blocked' || slot.status === 'past') && styles.slotCellDisabled,
+                  ]}
+                  onPress={() => onSlotTap(slot.id)}
+                  disabled={slot.status === 'booked' || slot.status === 'blocked' || slot.status === 'past'}
+                  activeOpacity={0.7}
+                >
+                  <Text style={[
+                    styles.slotCellText,
+                    slot.status === 'selected' && styles.slotCellTextSelected,
+                    (slot.status === 'booked' || slot.status === 'blocked' || slot.status === 'past') && styles.slotCellTextDisabled,
+                  ]}>
+                    {slot.label}
+                  </Text>
+                </TouchableOpacity>
+              ))}
             </View>
+            {!slotSelection && (
+              <Text style={styles.slotHint}>Tap a slot to start, then tap adjacent slots to extend</Text>
+            )}
           </View>
         )}
 
         {/* Quantity Selector */}
-        {selectedDate && selectedSession && (
+        {selectedDate && slotSelection && (
           <View style={styles.quantitySection}>
             <Text style={styles.sectionTitle}>Quantity</Text>
             <View style={styles.qtyRow}>
@@ -440,7 +454,7 @@ export default function ServiceBookingDetailScreen() {
         )}
 
         {/* Pricing Summary */}
-        {selectedDate && selectedSession && (
+        {selectedDate && slotSelection && (
           <View style={styles.pricingCard}>
             <Text style={styles.pricingTitle}>Price Summary</Text>
             <View style={styles.pricingRow}>
@@ -537,17 +551,19 @@ const styles = StyleSheet.create({
   legendItem: { flexDirection: "row", alignItems: "center", gap: 6 },
   legendDot: { width: 8, height: 8, borderRadius: 4 },
   legendText: { fontSize: 11, color: Colors.textSecondary },
-  // Sessions
+  // Slots
   sessionSection: { marginBottom: 20 },
   sectionTitle: { fontSize: 16, fontWeight: "700", color: Colors.text, marginBottom: 12 },
-  sessionCard: { flexDirection: "row", alignItems: "center", backgroundColor: Colors.white, borderRadius: 12, padding: 16, borderWidth: 1.5, borderColor: Colors.border },
-  sessionCardActive: { borderColor: Colors.primary, backgroundColor: "#FFF5F0" },
-  sessionCardBooked: { backgroundColor: Colors.surface, borderColor: Colors.border, opacity: 0.6 },
-  sessionLabel: { fontSize: 14, fontWeight: "600", color: Colors.text },
-  sessionLabelActive: { color: Colors.primary },
-  sessionLabelBooked: { color: Colors.textTertiary },
-  sessionTime: { fontSize: 12, color: Colors.textSecondary, marginTop: 2 },
-  sessionHours: { fontSize: 13, fontWeight: "600", color: Colors.textSecondary },
+  selectionSummary: { backgroundColor: '#E8F5E9', borderRadius: 10, padding: 12, marginBottom: 12 },
+  selectionSummaryText: { fontSize: 14, fontWeight: "600", color: '#2E7D32', textAlign: 'center' },
+  slotGrid: { flexDirection: "row", flexWrap: "wrap", gap: 8 },
+  slotCell: { width: '31%', paddingVertical: 12, borderRadius: 10, borderWidth: 1.5, borderColor: Colors.border, alignItems: "center", backgroundColor: Colors.white },
+  slotCellSelected: { borderColor: Colors.primary, backgroundColor: '#FFF5F0' },
+  slotCellDisabled: { backgroundColor: Colors.surface, borderColor: Colors.border, opacity: 0.5 },
+  slotCellText: { fontSize: 13, fontWeight: "600", color: Colors.text },
+  slotCellTextSelected: { color: Colors.primary },
+  slotCellTextDisabled: { color: Colors.textTertiary },
+  slotHint: { fontSize: 12, color: Colors.textSecondary, textAlign: 'center', marginTop: 10, fontStyle: 'italic' },
   // Quantity
   quantitySection: { marginBottom: 20 },
   qtyRow: { flexDirection: "row", alignItems: "center", gap: 20 },

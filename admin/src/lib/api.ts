@@ -69,6 +69,12 @@ export const cancelUserSubscription = (id: string) =>
 export const activateUserSubscription = (id: string) =>
   api.post(`/api/subscribers/${id}/activate`).then(r => r.data)
 
+// ─── Subscription Benefits Config ──────────────────────────────────────────
+export const fetchSubscriptionBenefits = () =>
+  api.get('/api/config/subscription-benefits').then(r => r.data)
+export const updateSubscriptionBenefits = (benefits: string[]) =>
+  api.put('/api/config/subscription-benefits', { benefits }).then(r => r.data)
+
 // ─── Owners ────────────────────────────────────────────────────────────────
 export const fetchOwners = () => api.get('/api/owners').then(r => r.data)
 export const createOwner = (data: Record<string, unknown>) => api.post('/api/owners', data).then(r => r.data)

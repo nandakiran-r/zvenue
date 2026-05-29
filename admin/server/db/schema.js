@@ -245,6 +245,11 @@ export const service_listings = pgTable('service_listings', {
   pending_changes: jsonb('pending_changes'),
   owner_name: varchar('owner_name', { length: 255 }),
   owner_image: text('owner_image'),
+  // Time slot configuration
+  opening_time: varchar('opening_time', { length: 5 }).default('00:00'),
+  closing_time: varchar('closing_time', { length: 5 }).default('23:30'),
+  max_booking_duration: integer('max_booking_duration').default(1440), // minutes (24hrs)
+  blocked_slots: jsonb('blocked_slots').default('[]'), // [{ date, start, end }]
   created_at: timestamp('created_at').defaultNow(),
 });
 

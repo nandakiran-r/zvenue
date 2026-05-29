@@ -303,7 +303,7 @@ export default function VenueDetailScreen() {
                                 </View>
                             ))}
                             <Text style={{ fontSize: 11, color: Colors.textSecondary, marginTop: 10, fontStyle: 'italic' }}>
-                                Subscribe for ₹49/month to unlock these benefits with every booking
+                                Subscribe to unlock these benefits with every booking
                             </Text>
                         </View>
                     </View>
@@ -449,7 +449,7 @@ export default function VenueDetailScreen() {
                         </View>
                         <Text style={styles.subscribeTitle}>Unlock Premium Benefits!</Text>
                         <Text style={styles.subscribeSubtitle}>
-                            Subscribe for ₹49/month to get exclusive benefits with every booking:
+                            Subscribe for exclusive benefits with every booking:
                         </Text>
                         {venue?.subscriber_benefits && (venue.subscriber_benefits as string[]).length > 0 && (
                             <View style={styles.subscribeBenefits}>
@@ -465,7 +465,7 @@ export default function VenueDetailScreen() {
                                 router.push({ pathname: "/subscription", params: { returnTo: `/venue-detail?id=${venue.id}` } } as any);
                             }}
                         >
-                            <Text style={styles.subscribeButtonText}>Subscribe Now — ₹49/mo</Text>
+                            <Text style={styles.subscribeButtonText}>Subscribe Now</Text>
                         </TouchableOpacity>
                         <TouchableOpacity
                             style={styles.skipButton}

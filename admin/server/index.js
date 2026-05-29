@@ -2531,11 +2531,11 @@ fastify.get('/api/venues/:id/booked-dates', async (request, reply) => {
   try {
     const venueId = request.params.id;
     
-    // Get confirmed bookings
-    const confirmedBookings = await db.query.bookings.findMany({
+    // Get confirmed and pre-booked bookings (both block the date)
+    const activeBookings = await db.query.bookings.findMany({
       where: and(
         eq(bookings.venue_id, venueId),
-        eq(bookings.status, 'confirmed')
+        or(eq(bookings.status, 'confirmed'), eq(bookings.status, 'pre_booked'))
       ),
       columns: { booking_date: true, start_time: true, end_time: true }
     });
@@ -2547,7 +2547,7 @@ fastify.get('/api/venues/:id/booked-dates', async (request, reply) => {
     });
 
     return {
-      bookings: confirmedBookings,
+      bookings: activeBookings,
       blocked_dates: venue?.blocked_dates || [],
     };
   } catch (err) {
@@ -3709,9 +3709,16 @@ fastify.get('/api/service-listings/:id/booked-dates', async (request, reply) => 
     // Filter out bookings without a date (legacy bookings)
     const bookingsWithDates = confirmedBookings.filter(b => b.booking_date);
 
+    // Get listing's blocked_slots
+    const listing = await db.query.service_listings.findFirst({
+      where: eq(service_listings.id, listingId),
+      columns: { blocked_slots: true }
+    });
+
     return {
       bookings: bookingsWithDates,
       blocked_dates: [],
+      blocked_slots: listing?.blocked_slots || [],
     };
   } catch (err) {
     fastify.log.error(err);
@@ -4267,13 +4274,12 @@ fastify.get('/api/owners/services', { onRequest: [fastify.authenticate] }, async
 fastify.post('/api/owners/services', { onRequest: [fastify.authenticate] }, async (request, reply) => {
   try {
     if (request.user.role !== 'owner') return reply.status(403).send({ error: 'Not an owner' });
-    const body = request.body;
+    const { subscriber_benefits, subscriber_discount_percent, ...body } = request.body; // Strip admin-only fields
     const [inserted] = await db.insert(service_listings).values({
       ...body,
       owner_id: request.user.id,
       approval_status: 'pending_review',
       images: body.images || [],
-      subscriber_benefits: body.subscriber_benefits || [],
     }).returning();
     return inserted;
   } catch (err) {
@@ -4288,11 +4294,14 @@ fastify.put('/api/owners/services/:id', { onRequest: [fastify.authenticate] }, a
     const listing = await db.query.service_listings.findFirst({ where: and(eq(service_listings.id, request.params.id), eq(service_listings.owner_id, request.user.id)) });
     if (!listing) return reply.status(404).send({ error: 'Listing not found or not yours' });
 
+    // Strip admin-only fields from owner updates
+    const { subscriber_benefits, subscriber_discount_percent, ...ownerBody } = request.body;
+
     if (listing.approval_status === 'approved') {
-      await db.update(service_listings).set({ pending_changes: request.body, approval_status: 'pending_changes' }).where(eq(service_listings.id, listing.id));
+      await db.update(service_listings).set({ pending_changes: ownerBody, approval_status: 'pending_changes' }).where(eq(service_listings.id, listing.id));
       return { message: 'Changes submitted for admin approval' };
     } else {
-      await db.update(service_listings).set(request.body).where(eq(service_listings.id, listing.id));
+      await db.update(service_listings).set(ownerBody).where(eq(service_listings.id, listing.id));
       const updated = await db.query.service_listings.findFirst({ where: eq(service_listings.id, listing.id), with: { category: true } });
       return updated;
     }
@@ -4384,6 +4393,35 @@ fastify.get('/api/service-bookings/:id/invoice', { onRequest: [fastify.authentic
   } catch (err) {
     fastify.log.error(err);
     return reply.status(500).send({ error: 'Internal Server Error' });
+  }
+});
+
+// ─── APP CONFIG (subscription benefits, etc.) ──────────────────────────────
+
+// Public: get subscription benefits
+fastify.get('/api/config/subscription-benefits', async (request, reply) => {
+  try {
+    const result = await db.execute(sql`SELECT value FROM app_config WHERE key = 'subscription_benefits'`);
+    const row = result.rows?.[0];
+    return { benefits: row?.value || [] };
+  } catch (err) {
+    fastify.log.error(err);
+    return { benefits: [] };
+  }
+});
+
+// Admin: update subscription benefits
+fastify.put('/api/config/subscription-benefits', { onRequest: [fastify.authenticate] }, async (request, reply) => {
+  try {
+    const { benefits } = request.body;
+    if (!Array.isArray(benefits)) {
+      return reply.status(400).send({ error: 'Benefits must be an array of strings' });
+    }
+    await db.execute(sql`UPDATE app_config SET value = ${JSON.stringify(benefits)}, updated_at = now() WHERE key = 'subscription_benefits'`);
+    return { success: true, benefits };
+  } catch (err) {
+    fastify.log.error(err);
+    return reply.status(500).send({ error: 'Failed to update benefits' });
   }
 });
 

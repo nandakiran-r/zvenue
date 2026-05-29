@@ -224,7 +224,7 @@ export default function ServiceDetailScreen() {
               ))}
               {!isSubscribed && (
                 <TouchableOpacity style={styles.subscribePrompt} onPress={() => router.push("/subscription" as any)}>
-                  <Text style={styles.subscribePromptText}>Subscribe for ₹49/month →</Text>
+                  <Text style={styles.subscribePromptText}>Subscribe for Pro benefits →</Text>
                 </TouchableOpacity>
               )}
             </View>

@@ -212,3 +212,14 @@ export async function fetchBookingInvoice(bookingId: string): Promise<any> {
   const { data } = await api.get(`/api/bookings/${bookingId}/invoice`);
   return data;
 }
+
+// ─── App Config ────────────────────────────────────────────────────────────
+
+export async function fetchSubscriptionBenefits(): Promise<string[]> {
+  try {
+    const { data } = await api.get('/api/config/subscription-benefits');
+    return data.benefits || [];
+  } catch {
+    return [];
+  }
+}

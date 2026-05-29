@@ -8,7 +8,7 @@ import Colors from "@/constants/colors";
 const FAQ = [
     { q: "How do I book a venue?", a: "Browse venues from the home screen, select one, pick a date and time, then confirm and pay." },
     { q: "Can I cancel a booking?", a: "Contact our support team via WhatsApp or email for cancellation requests." },
-    { q: "What are subscriber benefits?", a: "Subscribers get free perks like parking, welcome drinks, and discounts at partner venues for ₹49/month." },
+    { q: "What are subscriber benefits?", a: "Subscribers get free perks like parking, welcome drinks, and discounts at partner venues. Plans start from ₹9/month." },
     { q: "How do I get a refund?", a: "Refunds are processed within 5-7 business days after cancellation approval." },
 ];
 

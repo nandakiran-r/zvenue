@@ -4,7 +4,6 @@ import { ArrowRight, Check, ChevronLeft, Crown, Shield, XCircle } from "lucide-r
 import React, { useEffect, useState } from "react";
 import {
   ActivityIndicator,
-  Modal,
   ScrollView,
   StyleSheet,
   Text,
@@ -12,99 +11,28 @@ import {
   View,
 } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
-import { WebView } from "react-native-webview";
 import Colors from "@/constants/colors";
 import { useAuth } from "@/context/AuthContext";
 import { useToast } from "@/context/ToastContext";
-import { cancelSubscription, createSubscription, getCheckoutOptions, confirmSubscription } from "@/lib/api";
-
-const BENEFITS = [
-  "Free parking & valet at partner venues",
-  "Complimentary welcome drinks & refreshments",
-  "10-15% off on catering & food packages",
-  "Free decoration & stage setup",
-  "Priority booking & dedicated coordinator",
-  "Cancel anytime",
-];
+import { cancelSubscription, fetchSubscriptionBenefits } from "@/lib/api";
 
 export default function MySubscriptionScreen() {
   const insets = useSafeAreaInsets();
   const { isSubscribed, subscriptionInfo, dbUser, refreshSubscriptionInfo } = useAuth();
   const { error: showError, success, showAlert } = useToast();
 
-  const [loading, setLoading] = useState(false);
   const [cancelling, setCancelling] = useState(false);
-  const [checkoutModalVisible, setCheckoutModalVisible] = useState(false);
-  const [checkoutHtml, setCheckoutHtml] = useState<string | null>(null);
+  const [benefits, setBenefits] = useState<string[]>([]);
 
   useEffect(() => {
     refreshSubscriptionInfo();
+    fetchSubscriptionBenefits().then(setBenefits).catch(() => {});
   }, []);
 
   const status = subscriptionInfo?.subscription_status || dbUser?.subscription_status || 'none';
   const nextBillingAt = subscriptionInfo?.next_billing_at || dbUser?.next_billing_at;
   const isActive = status === 'active' || status === 'authenticated';
   const isCancelled = status === 'cancelled';
-
-  const handleUpgrade = async () => {
-    setLoading(true);
-    try {
-      const plan_id = "plan_Sph4tfi1RrzuEK";
-      await createSubscription(plan_id, 1, 12);
-      const { checkoutOptions } = await getCheckoutOptions();
-
-      const html = `
-        <html>
-        <head><meta name="viewport" content="width=device-width, initial-scale=1">
-        <script src="https://checkout.razorpay.com/v1/checkout.js"></script></head>
-        <body style="background:#fff;display:flex;justify-content:center;align-items:center;height:100vh;margin:0;font-family:sans-serif;">
-          <div style="text-align:center;"><h3 style="color:#333;">Loading payment...</h3></div>
-          <script>
-            var options = ${JSON.stringify(checkoutOptions)};
-            options.handler = function(response) {
-              window.ReactNativeWebView.postMessage(JSON.stringify({ event: 'success', data: response }));
-            };
-            options.modal = { ondismiss: function() { window.ReactNativeWebView.postMessage(JSON.stringify({ event: 'cancel' })); } };
-            var rzp = new Razorpay(options);
-            rzp.on('payment.failed', function(response) { window.ReactNativeWebView.postMessage(JSON.stringify({ event: 'failed', data: response.error })); });
-            rzp.open();
-          </script>
-        </body></html>
-      `;
-      setCheckoutHtml(html);
-      setCheckoutModalVisible(true);
-    } catch (err: any) {
-      showError("Error", err.response?.data?.error || err.message || "Failed to initiate subscription");
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  const handleCheckoutMessage = async (event: any) => {
-    try {
-      const data = JSON.parse(event.nativeEvent.data);
-      if (data.event === 'success') {
-        setCheckoutModalVisible(false);
-        setCheckoutHtml(null);
-        try {
-          await confirmSubscription();
-          await refreshSubscriptionInfo();
-          success("Subscribed!", "You now have access to ZVenue Pro benefits.");
-        } catch {
-          await refreshSubscriptionInfo();
-        }
-      } else if (data.event === 'cancel') {
-        setCheckoutModalVisible(false);
-        setCheckoutHtml(null);
-      } else if (data.event === 'failed') {
-        setCheckoutModalVisible(false);
-        setCheckoutHtml(null);
-        showError("Payment Failed", data.data?.description || "Please try again.");
-      }
-    } catch (err) {
-      console.error(err);
-    }
-  };
 
   const handleUnsubscribe = () => {
     showAlert({
@@ -163,7 +91,7 @@ export default function MySubscriptionScreen() {
             <View style={styles.detailsGrid}>
               <View style={styles.detailItem}>
                 <Text style={styles.detailLabel}>Plan</Text>
-                <Text style={styles.detailValue}>₹49/month</Text>
+                <Text style={styles.detailValue}>Pro Plan</Text>
               </View>
               <View style={styles.detailItem}>
                 <Text style={styles.detailLabel}>Status</Text>
@@ -223,7 +151,7 @@ export default function MySubscriptionScreen() {
           <Text style={styles.benefitsTitle}>
             {isActive ? "Your Pro Benefits" : "Pro Benefits"}
           </Text>
-          {BENEFITS.map((benefit, i) => (
+          {benefits.map((benefit, i) => (
             <View key={i} style={styles.benefitRow}>
               <Check size={16} color={isActive ? Colors.primary : Colors.textSecondary} />
               <Text style={[styles.benefitText, !isActive && { color: Colors.textSecondary }]}>{benefit}</Text>
@@ -234,20 +162,13 @@ export default function MySubscriptionScreen() {
         {/* Action Buttons */}
         {!isActive && (
           <TouchableOpacity
-            style={[styles.upgradeButton, loading && { opacity: 0.6 }]}
-            onPress={handleUpgrade}
-            disabled={loading}
+            style={styles.upgradeButton}
+            onPress={() => router.push("/subscription" as any)}
             activeOpacity={0.8}
           >
-            {loading ? (
-              <ActivityIndicator color={Colors.white} />
-            ) : (
-              <>
-                <Crown size={20} color={Colors.white} />
-                <Text style={styles.upgradeButtonText}>Upgrade to Pro — ₹49/month</Text>
-                <ArrowRight size={18} color={Colors.white} />
-              </>
-            )}
+            <Crown size={20} color={Colors.white} />
+            <Text style={styles.upgradeButtonText}>Upgrade to Pro</Text>
+            <ArrowRight size={18} color={Colors.white} />
           </TouchableOpacity>
         )}
 
@@ -273,21 +194,7 @@ export default function MySubscriptionScreen() {
         <View style={{ height: 40 }} />
       </ScrollView>
 
-      {/* Payment WebView Modal */}
-      <Modal visible={checkoutModalVisible} onRequestClose={() => { setCheckoutModalVisible(false); setCheckoutHtml(null); }}>
-        <View style={{ flex: 1, backgroundColor: Colors.white }}>
-          <View style={styles.modalHeader}>
-            <TouchableOpacity onPress={() => { setCheckoutModalVisible(false); setCheckoutHtml(null); }} style={{ padding: 8 }}>
-              <ChevronLeft size={24} color={Colors.text} />
-            </TouchableOpacity>
-            <Text style={{ fontSize: 16, fontWeight: "600", color: Colors.text }}>Complete Payment</Text>
-            <View style={{ width: 40 }} />
-          </View>
-          {checkoutHtml && (
-            <WebView source={{ html: checkoutHtml }} style={{ flex: 1 }} onMessage={handleCheckoutMessage} />
-          )}
-        </View>
-      </Modal>
+      {/* End of scroll */}
     </View>
   );
 }
@@ -322,6 +229,4 @@ const styles = StyleSheet.create({
   unsubscribeButton: { borderWidth: 1.5, borderColor: Colors.border, borderRadius: 14, paddingVertical: 14, alignItems: "center", marginBottom: 8 },
   unsubscribeText: { fontSize: 15, fontWeight: "600", color: Colors.textSecondary },
   noRefundNote: { fontSize: 12, color: Colors.textTertiary, textAlign: "center", lineHeight: 18, paddingHorizontal: 20 },
-  // Modal
-  modalHeader: { flexDirection: "row", alignItems: "center", justifyContent: "space-between", paddingHorizontal: 16, paddingVertical: 12, borderBottomWidth: 1, borderBottomColor: Colors.border },
 });

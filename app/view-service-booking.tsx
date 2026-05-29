@@ -16,6 +16,7 @@ import { useFocusEffect } from "@react-navigation/native";
 import Colors from "@/constants/colors";
 import { useToast } from "@/context/ToastContext";
 import { fetchServiceBookingById, cancelServiceBooking } from "@/lib/serviceApi";
+import { formatTime24to12 } from "@/lib/timeSlots";
 import type { DbServiceBooking } from "@/lib/serviceTypes";
 
 export default function ViewServiceBookingScreen() {
@@ -157,7 +158,7 @@ export default function ViewServiceBookingScreen() {
             <View style={styles.row}><Text style={styles.label}>Booking Date</Text><Text style={styles.value}>{new Date(booking.booking_date + 'T00:00:00').toLocaleDateString('en-IN', { day: 'numeric', month: 'long', year: 'numeric' })}</Text></View>
           )}
           {booking.start_time && booking.end_time && (
-            <View style={styles.row}><Text style={styles.label}>Session</Text><Text style={styles.value}>{booking.start_time} – {booking.end_time}</Text></View>
+            <View style={styles.row}><Text style={styles.label}>Time</Text><Text style={styles.value}>{booking.start_time.includes('AM') || booking.start_time.includes('PM') ? `${booking.start_time} – ${booking.end_time}` : `${formatTime24to12(booking.start_time)} – ${formatTime24to12(booking.end_time)}`}</Text></View>
           )}
           <View style={styles.row}><Text style={styles.label}>Quantity</Text><Text style={styles.value}>{booking.quantity}</Text></View>
           <View style={styles.row}><Text style={styles.label}>Unit Price</Text><Text style={styles.value}>{formatPrice(booking.unit_price)}</Text></View>

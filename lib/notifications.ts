@@ -13,22 +13,38 @@ let Notifications: any = null;
 let Device: any = null;
 let Constants: any = null;
 
-// Lazy-load notification modules (they crash in Expo Go)
-try {
-  Notifications = require('expo-notifications');
-  Device = require('expo-device');
-  Constants = require('expo-constants');
+// Check if we're in Expo Go (notifications don't work there since SDK 53)
+const isExpoGo = (() => {
+  try {
+    const C = require('expo-constants');
+    return C?.default?.appOwnership === 'expo' || C?.appOwnership === 'expo';
+  } catch { return false; }
+})();
 
-  // Configure how notifications appear when app is in foreground
-  Notifications.setNotificationHandler({
-    handleNotification: async () => ({
-      shouldShowAlert: true,
-      shouldPlaySound: true,
-      shouldSetBadge: true,
-    }),
-  });
+// Only load notification modules in development builds (not Expo Go)
+if (!isExpoGo) {
+  try {
+    Notifications = require('expo-notifications');
+    Device = require('expo-device');
+    Constants = require('expo-constants');
+  } catch (e) {
+    console.log('Push notification modules not available.');
+  }
+}
+
+// Configure notification handler (only if modules loaded)
+try {
+  if (Notifications) {
+    Notifications.setNotificationHandler({
+      handleNotification: async () => ({
+        shouldShowAlert: true,
+        shouldPlaySound: true,
+        shouldSetBadge: true,
+      }),
+    });
+  }
 } catch (e) {
-  console.log('Push notifications not available (Expo Go). Use a development build for push.');
+  console.log('Push notifications handler setup failed.');
 }
 
 /**

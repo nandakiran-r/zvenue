@@ -22,9 +22,9 @@ import { fetchVenueById, fetchVenueBookedDates, createBookingOrder, verifyPaymen
 import type { DbVenue } from "@/lib/types";
 
 const SESSIONS = [
-    { id: 'morning', label: 'Morning Session', time: '08:00 AM – 12:00 PM', start: '08:00 AM', end: '12:00 PM', hours: 4 },
-    { id: 'afternoon', label: 'Afternoon Session', time: '01:00 PM – 05:00 PM', start: '01:00 PM', end: '05:00 PM', hours: 4 },
-    { id: 'fullday', label: 'Full Day', time: '08:00 AM – 05:00 PM', start: '08:00 AM', end: '05:00 PM', hours: 9 },
+    { id: 'morning', label: 'Morning Session', time: '08:00 AM – 04:00 PM', start: '08:00 AM', end: '04:00 PM', hours: 8 },
+    { id: 'evening', label: 'Evening Session', time: '05:00 PM – 12:00 AM', start: '05:00 PM', end: '12:00 AM', hours: 7 },
+    { id: 'fullday', label: 'Full Day', time: '08:00 AM – 12:00 AM', start: '08:00 AM', end: '12:00 AM', hours: 16 },
 ];
 
 const DAYS = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"];
@@ -144,17 +144,32 @@ export default function BookingDetailScreen() {
     const bookedSessionsForDate = useMemo(() => {
         if (!selectedDate) return [];
         const dateBookings = bookedDates.filter(b => b.booking_date === selectedDate);
+        if (dateBookings.length === 0) return [];
         const booked: string[] = [];
-        
+
+        // Helper: convert time string to minutes for comparison
+        const toMin = (t: string): number => {
+            const match = t.match(/(\d{1,2}):(\d{2})\s*(AM|PM)/i);
+            if (!match) return 0;
+            let h = parseInt(match[1]);
+            const m = parseInt(match[2]);
+            const p = match[3].toUpperCase();
+            if (p === 'PM' && h !== 12) h += 12;
+            if (p === 'AM' && h === 12) h = 0;
+            return h * 60 + m;
+        };
+
         for (const session of SESSIONS) {
-            // A session is booked if any existing booking overlaps with it
+            const sessStart = toMin(session.start);
+            const sessEnd = session.end === '12:00 AM' ? 1440 : toMin(session.end);
+
             const isBooked = dateBookings.some(b => {
-                // Full day blocks everything
-                if (b.start_time === '08:00 AM' && b.end_time === '05:00 PM') return true;
-                if (session.id === 'fullday') return dateBookings.length > 0;
-                // Morning/afternoon check
-                return b.start_time === session.start && b.end_time === session.end;
+                const bStart = toMin(b.start_time);
+                const bEnd = b.end_time === '12:00 AM' ? 1440 : toMin(b.end_time);
+                // Check overlap: two ranges overlap if start1 < end2 AND end1 > start2
+                return bStart < sessEnd && bEnd > sessStart;
             });
+
             if (isBooked) booked.push(session.id);
         }
         return booked;
@@ -593,7 +608,7 @@ export default function BookingDetailScreen() {
                         </View>
                         <Text style={styles.modalTitle}>Unlock Premium Benefits!</Text>
                         <Text style={styles.modalSubtitle}>
-                            Subscribe for ₹49/month to get exclusive benefits with every booking:
+                            Subscribe for exclusive benefits with every booking:
                         </Text>
                         {venue?.subscriber_benefits && venue.subscriber_benefits.length > 0 && (
                             <View style={{ width: '100%', backgroundColor: '#F5F5F5', borderRadius: 12, padding: 14, marginBottom: 16 }}>
@@ -606,7 +621,7 @@ export default function BookingDetailScreen() {
                             style={[styles.modalButton, { marginBottom: 10 }]}
                             onPress={() => { setShowSubscribePrompt(false); router.push("/subscription" as any); }}
                         >
-                            <Text style={styles.modalButtonText}>Subscribe Now — ₹49/mo</Text>
+                            <Text style={styles.modalButtonText}>Subscribe Now</Text>
                         </TouchableOpacity>
                         <TouchableOpacity
                             style={[styles.modalButton, { backgroundColor: Colors.surface, borderWidth: 1, borderColor: Colors.border }]}

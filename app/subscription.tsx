@@ -13,16 +13,25 @@ import {
 import { SafeAreaView } from "react-native-safe-area-context";
 import { WebView } from "react-native-webview";
 import { useAuth } from "@/context/AuthContext";
-import { createSubscription, getCheckoutOptions, confirmSubscription } from "@/lib/api";
+import { createSubscription, getCheckoutOptions, confirmSubscription, fetchSubscriptionBenefits } from "@/lib/api";
 import Colors from "@/constants/colors";
 import { useToast } from "@/context/ToastContext";
+
+// Plan configuration — swap plan IDs when Razorpay plans are created
+const PLANS = [
+  { id: 'plan_SvGo8rbDqfx0q3', key: 'monthly', label: 'Monthly', price: '₹9', period: '/month', totalCount: 12, perMonth: '₹9/mo' },
+  { id: 'plan_SvGp6d5YEO6Cch', key: 'halfyearly', label: '6 Months', price: '₹29', period: '/6 months', totalCount: 2, perMonth: '~₹5/mo', badge: 'Popular' },
+  { id: 'plan_SvGpYM5pa5FSJU', key: 'yearly', label: 'Yearly', price: '₹59', period: '/year', totalCount: 1, perMonth: '~₹5/mo', badge: 'Best Value' },
+];
 
 export default function SubscriptionScreen() {
   const { dbUser, refreshSubscriptionInfo, isSubscribed } = useAuth();
   const { returnTo, fromSignup } = useLocalSearchParams<{ returnTo?: string; fromSignup?: string }>();
   const [loading, setLoading] = useState(false);
+  const [selectedPlan, setSelectedPlan] = useState(PLANS[2]); // Default to yearly (best value)
   const [checkoutModalVisible, setCheckoutModalVisible] = useState(false);
   const [checkoutHtml, setCheckoutHtml] = useState<string | null>(null);
+  const [benefits, setBenefits] = useState<string[]>([]);
   const { error: showError, showAlert } = useToast();
 
   const isFromSignup = fromSignup === 'true';
@@ -32,6 +41,10 @@ export default function SubscriptionScreen() {
       navigateBack();
     }
   }, [isSubscribed]);
+
+  useEffect(() => {
+    fetchSubscriptionBenefits().then(setBenefits).catch(() => {});
+  }, []);
 
   const navigateBack = () => {
     if (returnTo) {
@@ -44,8 +57,7 @@ export default function SubscriptionScreen() {
   const handleSubscribe = async () => {
     setLoading(true);
     try {
-      const plan_id = "plan_Sph4tfi1RrzuEK";
-      await createSubscription(plan_id, 1, 12);
+      await createSubscription(selectedPlan.id, 1, selectedPlan.totalCount);
       const { checkoutOptions } = await getCheckoutOptions();
 
       const html = `
@@ -145,27 +157,57 @@ export default function SubscriptionScreen() {
         <View style={styles.header}>
           <Crown size={40} color="#F9A825" />
           <Text style={styles.headerTitle}>ZVenue Pro</Text>
-          <Text style={styles.headerSubtitle}>Get exclusive benefits with every venue booking</Text>
+          <Text style={styles.headerSubtitle}>Get exclusive benefits with every venue & service booking</Text>
         </View>
 
-        <View style={styles.pricingCard}>
-          <View style={styles.priceContainer}>
-            <Text style={styles.currency}>₹</Text>
-            <Text style={styles.price}>49</Text>
-            <Text style={styles.perMonth}>/month</Text>
-          </View>
+        {/* Plan Selection */}
+        <View style={styles.plansRow}>
+          {PLANS.map((plan) => {
+            const isSelected = selectedPlan.key === plan.key;
+            return (
+              <TouchableOpacity
+                key={plan.key}
+                style={[styles.planCard, isSelected && styles.planCardSelected]}
+                onPress={() => setSelectedPlan(plan)}
+                activeOpacity={0.7}
+              >
+                {plan.badge && (
+                  <View style={[styles.planBadge, isSelected && styles.planBadgeSelected]}>
+                    <Text style={styles.planBadgeText}>{plan.badge}</Text>
+                  </View>
+                )}
+                <Text style={[styles.planLabel, isSelected && styles.planLabelSelected]}>{plan.label}</Text>
+                <Text style={[styles.planPrice, isSelected && styles.planPriceSelected]}>{plan.price}</Text>
+                <Text style={[styles.planPeriod, isSelected && styles.planPeriodSelected]}>{plan.period}</Text>
+                {plan.perMonth && plan.key !== 'monthly' && (
+                  <Text style={[styles.planPerMonth, isSelected && styles.planPerMonthSelected]}>{plan.perMonth}</Text>
+                )}
+              </TouchableOpacity>
+            );
+          })}
+        </View>
 
-          <View style={styles.divider} />
-
+        {/* Benefits */}
+        <View style={styles.benefitsCard}>
           <View style={styles.featuresList}>
-            <FeatureItem text="Free parking & valet at partner venues" />
-            <FeatureItem text="Complimentary welcome drinks & refreshments" />
-            <FeatureItem text="10-15% off on catering & food packages" />
-            <FeatureItem text="Free decoration & stage setup" />
-            <FeatureItem text="Priority booking & dedicated coordinator" />
-            <FeatureItem text="Cancel anytime" />
+            {benefits.map((text, i) => (
+              <FeatureItem key={i} text={text} />
+            ))}
+            {benefits.length === 0 && (
+              <>
+                <FeatureItem text="Free parking & valet at partner venues" />
+                <FeatureItem text="Complimentary welcome drinks & refreshments" />
+                <FeatureItem text="10-15% off on catering & food packages" />
+                <FeatureItem text="Free decoration & stage setup" />
+                <FeatureItem text="Priority booking & dedicated coordinator" />
+                <FeatureItem text="Cancel anytime" />
+              </>
+            )}
           </View>
+        </View>
 
+        {/* Subscribe Button */}
+        <View style={styles.subscribeSection}>
           <TouchableOpacity
             style={[styles.subscribeButton, loading && { opacity: 0.6 }]}
             onPress={handleSubscribe}
@@ -173,14 +215,14 @@ export default function SubscriptionScreen() {
           >
             {loading ? <ActivityIndicator color={Colors.white} /> : (
               <>
-                <Text style={styles.subscribeButtonText}>Subscribe Now</Text>
+                <Text style={styles.subscribeButtonText}>Subscribe — {selectedPlan.price}</Text>
                 <ArrowRight size={20} color={Colors.white} />
               </>
             )}
           </TouchableOpacity>
-        </View>
 
-        <Text style={styles.secureBadge}>🔒 Secure payment powered by Razorpay</Text>
+          <Text style={styles.secureBadge}>🔒 Secure payment powered by Razorpay</Text>
+        </View>
 
         {isFromSignup && (
           <TouchableOpacity
@@ -207,30 +249,43 @@ function FeatureItem({ text }: { text: string }) {
 
 const styles = StyleSheet.create({
   container: { flex: 1, backgroundColor: Colors.background },
-  scrollContent: { paddingBottom: 32 },
+  scrollContent: { paddingBottom: 40 },
   backBtn: { paddingHorizontal: 24, paddingTop: 12 },
-  header: { alignItems: "center", paddingTop: 24, paddingBottom: 24 },
+  header: { alignItems: "center", paddingTop: 24, paddingBottom: 20 },
   headerTitle: { fontSize: 28, fontWeight: "700", color: Colors.text, marginTop: 12 },
   headerSubtitle: { fontSize: 14, color: Colors.textSecondary, marginTop: 8, textAlign: "center", paddingHorizontal: 40 },
-  pricingCard: {
-    backgroundColor: Colors.white, marginHorizontal: 24, borderRadius: 20, padding: 24,
-    shadowColor: "#000", shadowOffset: { width: 0, height: 4 }, shadowOpacity: 0.08, shadowRadius: 12, elevation: 4,
+  // Plan cards
+  plansRow: { flexDirection: "row", paddingHorizontal: 16, gap: 10, marginBottom: 20 },
+  planCard: {
+    flex: 1, backgroundColor: Colors.white, borderRadius: 16, padding: 14, alignItems: "center",
+    borderWidth: 2, borderColor: Colors.border, position: "relative",
   },
-  priceContainer: { flexDirection: "row", alignItems: "baseline", justifyContent: "center", marginBottom: 16 },
-  currency: { fontSize: 22, fontWeight: "600", color: Colors.text },
-  price: { fontSize: 48, fontWeight: "800", color: Colors.text },
-  perMonth: { fontSize: 16, color: Colors.textSecondary, marginLeft: 4 },
-  divider: { height: 1, backgroundColor: Colors.border, marginBottom: 20 },
-  featuresList: { gap: 14, marginBottom: 24 },
+  planCardSelected: { borderColor: Colors.primary, backgroundColor: '#FFF5F0' },
+  planBadge: { position: "absolute", top: -10, backgroundColor: '#F9A825', borderRadius: 8, paddingHorizontal: 8, paddingVertical: 3 },
+  planBadgeSelected: { backgroundColor: Colors.primary },
+  planBadgeText: { fontSize: 9, fontWeight: "800", color: Colors.white, textTransform: "uppercase" },
+  planLabel: { fontSize: 13, fontWeight: "600", color: Colors.textSecondary, marginTop: 8, marginBottom: 6 },
+  planLabelSelected: { color: Colors.primary },
+  planPrice: { fontSize: 24, fontWeight: "800", color: Colors.text },
+  planPriceSelected: { color: Colors.primary },
+  planPeriod: { fontSize: 11, color: Colors.textSecondary, marginTop: 2 },
+  planPeriodSelected: { color: Colors.primary },
+  planPerMonth: { fontSize: 10, color: Colors.textTertiary, marginTop: 4 },
+  planPerMonthSelected: { color: Colors.primary },
+  // Benefits
+  benefitsCard: { marginHorizontal: 24, backgroundColor: Colors.white, borderRadius: 16, padding: 20, marginBottom: 20 },
+  featuresList: { gap: 14 },
   featureItem: { flexDirection: "row", alignItems: "center", gap: 12 },
   featureText: { fontSize: 14, color: Colors.text, flex: 1 },
+  // Subscribe
+  subscribeSection: { paddingHorizontal: 24 },
   subscribeButton: {
     backgroundColor: Colors.primary, borderRadius: 14, paddingVertical: 16,
     flexDirection: "row", alignItems: "center", justifyContent: "center", gap: 8,
   },
   subscribeButtonText: { color: Colors.white, fontSize: 16, fontWeight: "700" },
-  secureBadge: { fontSize: 12, color: Colors.textSecondary, textAlign: "center", marginTop: 20 },
-  skipButton: { alignItems: "center", paddingVertical: 16, marginTop: 8 },
+  secureBadge: { fontSize: 12, color: Colors.textSecondary, textAlign: "center", marginTop: 12 },
+  skipButton: { alignItems: "center", paddingVertical: 16, marginTop: 4 },
   skipButtonText: { fontSize: 15, fontWeight: "600", color: Colors.textSecondary },
   // Success state
   successContainer: { flex: 1, justifyContent: "center", alignItems: "center", paddingHorizontal: 24 },

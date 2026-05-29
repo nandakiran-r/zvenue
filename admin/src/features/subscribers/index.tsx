@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import {
   Search as SearchIcon,
@@ -8,6 +8,9 @@ import {
   Mail,
   Phone,
   CalendarCheck,
+  Plus,
+  Trash2,
+  Save,
 } from 'lucide-react'
 import { toast } from 'sonner'
 import { Button } from '@/components/ui/button'
@@ -45,7 +48,7 @@ import { Main } from '@/components/layout/main'
 import { ProfileDropdown } from '@/components/profile-dropdown'
 import { Search } from '@/components/search'
 import { ThemeSwitch } from '@/components/theme-switch'
-import { fetchSubscribers, cancelUserSubscription, activateUserSubscription } from '@/lib/api'
+import { fetchSubscribers, cancelUserSubscription, activateUserSubscription, fetchSubscriptionBenefits, updateSubscriptionBenefits } from '@/lib/api'
 
 export function SubscribersPage() {
   const queryClient = useQueryClient()
@@ -54,6 +57,46 @@ export function SubscribersPage() {
   const [actionDialogOpen, setActionDialogOpen] = useState(false)
   const [selectedUser, setSelectedUser] = useState<any>(null)
   const [actionType, setActionType] = useState<'cancel' | 'activate'>('cancel')
+
+  // Subscription benefits editor state
+  const [benefits, setBenefits] = useState<string[]>([])
+  const [newBenefit, setNewBenefit] = useState('')
+  const [benefitsSaving, setBenefitsSaving] = useState(false)
+
+  const { data: benefitsData } = useQuery({
+    queryKey: ['subscription-benefits'],
+    queryFn: fetchSubscriptionBenefits,
+  })
+
+  useEffect(() => {
+    if (benefitsData?.benefits) {
+      setBenefits(benefitsData.benefits)
+    }
+  }, [benefitsData])
+
+  const saveBenefits = async () => {
+    setBenefitsSaving(true)
+    try {
+      await updateSubscriptionBenefits(benefits)
+      queryClient.invalidateQueries({ queryKey: ['subscription-benefits'] })
+      toast.success('Subscription benefits updated')
+    } catch (err: any) {
+      toast.error(err.response?.data?.error || 'Failed to save')
+    } finally {
+      setBenefitsSaving(false)
+    }
+  }
+
+  const addBenefit = () => {
+    if (newBenefit.trim()) {
+      setBenefits([...benefits, newBenefit.trim()])
+      setNewBenefit('')
+    }
+  }
+
+  const removeBenefit = (index: number) => {
+    setBenefits(benefits.filter((_, i) => i !== index))
+  }
 
   const { data: subscribers, isLoading } = useQuery({
     queryKey: ['admin-subscribers', statusFilter, search],
@@ -262,6 +305,49 @@ export function SubscribersPage() {
                 )}
               </TableBody>
             </Table>
+          </CardContent>
+        </Card>
+
+        {/* Subscription Benefits Editor */}
+        <Card>
+          <CardContent className='p-6'>
+            <div className='flex items-center justify-between mb-4'>
+              <div>
+                <h3 className='text-lg font-semibold'>Subscription Benefits</h3>
+                <p className='text-sm text-muted-foreground'>Edit the benefits shown to users on the subscription page</p>
+              </div>
+              <Button onClick={saveBenefits} disabled={benefitsSaving} size='sm'>
+                <Save className='h-4 w-4 mr-1' />
+                {benefitsSaving ? 'Saving...' : 'Save'}
+              </Button>
+            </div>
+
+            <div className='space-y-2 mb-4'>
+              {benefits.map((benefit, index) => (
+                <div key={index} className='flex items-center gap-2 p-2 rounded-lg border bg-muted/30'>
+                  <span className='text-sm flex-1'>{benefit}</span>
+                  <Button variant='ghost' size='sm' className='h-7 w-7 p-0 text-red-500 hover:text-red-700' onClick={() => removeBenefit(index)}>
+                    <Trash2 className='h-3.5 w-3.5' />
+                  </Button>
+                </div>
+              ))}
+              {benefits.length === 0 && (
+                <p className='text-sm text-muted-foreground italic py-4 text-center'>No benefits added yet</p>
+              )}
+            </div>
+
+            <div className='flex gap-2'>
+              <Input
+                placeholder='Add a new benefit...'
+                value={newBenefit}
+                onChange={(e) => setNewBenefit(e.target.value)}
+                onKeyDown={(e) => e.key === 'Enter' && addBenefit()}
+                className='flex-1'
+              />
+              <Button variant='outline' size='sm' onClick={addBenefit} disabled={!newBenefit.trim()}>
+                <Plus className='h-4 w-4 mr-1' /> Add
+              </Button>
+            </div>
           </CardContent>
         </Card>
       </Main>

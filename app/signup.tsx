@@ -91,7 +91,7 @@ export default function SignupScreen() {
       // Step 3: Navigate to OTP screen — login happens AFTER successful verification
       router.replace({
         pathname: "/enter-otp",
-        params: { phone: formattedPhone, mode: "signup" },
+        params: { phone: formattedPhone, full_name: `${firstName.trim()} ${lastName.trim()}` },
       });
     } catch (err: any) {
       const message =

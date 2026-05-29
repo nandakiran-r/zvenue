@@ -2,6 +2,7 @@ import { create } from "zustand";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import { api, fetchUser, getSubscriptionStatus } from "@/lib/api";
 import { consumePendingDeepLink } from "@/lib/deepLink";
+import { registerForPushNotifications, savePushToken } from "@/lib/notifications";
 import type { DbUser, UserSubscriptionInfo } from "@/lib/types";
 
 interface AuthState {
@@ -44,6 +45,10 @@ export const useAuthStore = create<AuthState>((set, get) => ({
         });
         // Fetch subscription info in background
         get().refreshSubscriptionInfo();
+        // Register push notifications (fire-and-forget)
+        registerForPushNotifications().then((token) => {
+          if (token) savePushToken(token);
+        }).catch(() => {});
       }
     } catch (error) {
       console.log("Failed to load session:", error);
@@ -67,6 +72,10 @@ export const useAuthStore = create<AuthState>((set, get) => ({
       });
       // Fetch subscription info after login
       get().refreshSubscriptionInfo();
+      // Register push notifications (fire-and-forget)
+      registerForPushNotifications().then((token) => {
+        if (token) savePushToken(token);
+      }).catch(() => {});
     } catch (e) {
       console.log("Failed to save token:", e);
     }

@@ -16,6 +16,9 @@ export default defineConfig({
     react(),
     tailwindcss(),
   ],
+  server: {
+    allowedHosts: ['zvenueadmin.waxon.in', 'localhost'],
+  },
   resolve: {
     alias: {
       '@': path.resolve(__dirname, './src'),

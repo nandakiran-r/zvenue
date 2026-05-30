@@ -14,7 +14,7 @@
       "distribution": "internal",
       "env": {
         "NPM_CONFIG_LEGACY_PEER_DEPS": "true",
-        "EXPO_PUBLIC_API_URL": "https://ashlie-nonnoumenal-unpompously.ngrok-free.dev",
+        "EXPO_PUBLIC_API_URL": "https://avenue.waxon.in",
         "EXPO_PUBLIC_RAZORPAY_KEY": "rzp_test_SpDyznKPQ9nviQ",
         "EXPO_PUBLIC_CLOUDINARY_CLOUD": "dxprjeaun",
         "EXPO_PUBLIC_CLOUDINARY_PRESET": "zvenue_unsigned"

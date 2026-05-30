@@ -1,0 +1,9 @@
+tunnel: fd276cb4-4411-4899-a9d3-11997fcbf882
+credentials-file: /home/jerytom33/.cloudflared/fd276cb4-4411-4899-a9d3-11997fcbf882.json
+
+ingress:
+  - hostname: avenue.waxon.in
+    service: http://localhost:3001
+  - hostname: zvenueadmin.waxon.in
+    service: http://localhost:5173
+  - service: http_status:404

@@ -4,7 +4,6 @@ import {
   CalendarCheck,
   Users,
   IndianRupee,
-  TrendingUp,
   Clock,
   CheckCircle2,
   XCircle,

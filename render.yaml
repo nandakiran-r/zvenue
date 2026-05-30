@@ -6,8 +6,7 @@ services:
   - type: web
     name: zvenue-api
     runtime: node
-    region: singapore  # Closest to India
-    plan: free
+    region: singapore
     rootDir: admin/server
     buildCommand: npm ci
     startCommand: node index.js
@@ -17,7 +16,7 @@ services:
       - key: NODE_ENV
         value: production
       - key: DATABASE_URL
-        sync: false  # Set manually in Render dashboard
+        sync: false
       - key: JWT_SECRET
         sync: false
       - key: RAZORPAY_KEY_ID
@@ -57,7 +56,6 @@ services:
   - type: web
     name: zvenue-admin
     runtime: static
-    plan: free
     rootDir: admin
     buildCommand: npm ci && npm run build
     staticPublishPath: dist
@@ -71,7 +69,7 @@ services:
         destination: /index.html
     envVars:
       - key: VITE_API_URL
-        sync: false  # Set to your zvenue-api URL after first deploy
+        sync: false
       - key: VITE_CLOUDINARY_CLOUD
         value: dxprjeaun
       - key: VITE_CLOUDINARY_PRESET

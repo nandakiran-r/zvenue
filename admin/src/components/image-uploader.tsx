@@ -1,6 +1,5 @@
 import { useState, useRef } from 'react'
-import { Upload, X, Loader2, ImagePlus } from 'lucide-react'
-import { Button } from '@/components/ui/button'
+import { X, Loader2, ImagePlus } from 'lucide-react'
 import { uploadImage } from '@/lib/cloudinary'
 import { toast } from 'sonner'
 

@@ -2,7 +2,6 @@ import {
   LayoutDashboard,
   Building2,
   CalendarCheck,
-  Users,
   Tags,
   Bell,
   Settings,

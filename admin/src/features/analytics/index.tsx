@@ -101,7 +101,7 @@ export function AnalyticsPage() {
                     <CartesianGrid strokeDasharray='3 3' className='stroke-muted' />
                     <XAxis dataKey='month' tick={{ fontSize: 12 }} />
                     <YAxis tick={{ fontSize: 12 }} tickFormatter={(v) => `₹${(v / 1000).toFixed(0)}k`} />
-                    <Tooltip formatter={(value: number) => [formatINR(value), 'Revenue']} />
+                    <Tooltip formatter={(value) => [formatINR(value as number), 'Revenue']} />
                     <Area
                       type='monotone'
                       dataKey='revenue'

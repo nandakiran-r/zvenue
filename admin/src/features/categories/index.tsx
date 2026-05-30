@@ -5,7 +5,6 @@ import {
   Pencil,
   Trash2,
   GripVertical,
-  Tags,
 } from 'lucide-react'
 import { toast } from 'sonner'
 import { Button } from '@/components/ui/button'

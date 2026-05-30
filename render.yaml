@@ -57,7 +57,6 @@ services:
   - type: web
     name: zvenue-admin
     runtime: static
-    region: singapore
     plan: free
     rootDir: admin
     buildCommand: npm ci && npm run build

@@ -41,7 +41,7 @@ const faqs = [
   {
     question: 'How do subscriptions work?',
     answer:
-      'Users can subscribe to a monthly plan (₹49/month) via Razorpay. Subscribers get special benefits at venues (discounts, priority booking, etc.). You can manage subscriptions from the Subscribers page — activate or cancel them manually if needed.',
+      'Users can subscribe to Pro plans (₹9/month, ₹29/6 months, or ₹59/year) via Razorpay. Subscribers get special benefits at venues (discounts, priority booking, etc.). You can manage subscriptions from the Subscribers page — activate or cancel them manually if needed. Subscription benefits are editable from the Subscribers page.',
   },
   {
     question: 'How do I send notifications to users?',

@@ -86,7 +86,7 @@ const defaultVenueForm = {
   name: '', description: '', location: '', city: '', category_id: '', image_url: '',
   price_per_hour: 0, price_per_day: 0, capacity: 0, registration_fee: 0, rating: 0, review_count: 0,
   area: '', amenities: [] as string[], subscriber_benefits: [] as string[], owner_name: '', owner_image: '', available_dates: [] as string[],
-  images: [] as string[], youtube_url: '',
+  images: [] as string[], youtube_url: '', blocked_dates: [] as string[],
 }
 
 export function VenuesPage() {
@@ -148,7 +148,7 @@ export function VenuesPage() {
 
   const openEdit = (venue: any) => {
     setSelectedVenue(venue); setEditMode(true)
-    setForm({ name: venue.name||'', description: venue.description||'', location: venue.location||'', city: venue.city||'', category_id: venue.category_id||'', image_url: venue.image_url||'', price_per_hour: venue.price_per_hour||0, price_per_day: venue.price_per_day||0, capacity: venue.capacity||0, registration_fee: venue.registration_fee||0, rating: venue.rating||0, review_count: venue.review_count||0, area: venue.area||'', amenities: venue.amenities||[], subscriber_benefits: venue.subscriber_benefits||[], owner_name: venue.owner_name||'', owner_image: venue.owner_image||'', available_dates: venue.available_dates||[], images: venue.images||[], youtube_url: venue.youtube_url||'' })
+    setForm({ name: venue.name||'', description: venue.description||'', location: venue.location||'', city: venue.city||'', category_id: venue.category_id||'', image_url: venue.image_url||'', price_per_hour: venue.price_per_hour||0, price_per_day: venue.price_per_day||0, capacity: venue.capacity||0, registration_fee: venue.registration_fee||0, rating: venue.rating||0, review_count: venue.review_count||0, area: venue.area||'', amenities: venue.amenities||[], subscriber_benefits: venue.subscriber_benefits||[], owner_name: venue.owner_name||'', owner_image: venue.owner_image||'', available_dates: venue.available_dates||[], images: venue.images||[], youtube_url: venue.youtube_url||'', blocked_dates: venue.blocked_dates||[] })
     setDialogOpen(true)
   }
 
@@ -352,6 +352,23 @@ export function VenuesPage() {
                 {form.subscriber_benefits.map((b, i) => (
                   <Badge key={i} variant='outline' className='gap-1 bg-amber-50 text-amber-800 border-amber-200'>★ {b}<button onClick={() => setForm(p => ({ ...p, subscriber_benefits: p.subscriber_benefits.filter((_, idx) => idx !== i) }))}><X className='h-3 w-3' /></button></Badge>
                 ))}
+              </div>
+            </div>
+            {/* Blocked Dates */}
+            <div className='space-y-2 border rounded-lg p-3'>
+              <Label className='text-sm font-semibold'>Blocked Dates</Label>
+              <p className='text-xs text-muted-foreground'>Dates when this venue is unavailable for booking</p>
+              <div className='flex flex-wrap gap-2'>
+                {form.blocked_dates.map((date, i) => (
+                  <Badge key={i} variant='secondary' className='gap-1'>{date}<button onClick={() => setForm(p => ({ ...p, blocked_dates: p.blocked_dates.filter((_, idx) => idx !== i) }))}><X className='h-3 w-3' /></button></Badge>
+                ))}
+              </div>
+              <div className='flex gap-2'>
+                <Input type='date' id='venue-blocked-date' className='w-[160px]' />
+                <Button type='button' variant='outline' size='sm' onClick={() => {
+                  const d = (document.getElementById('venue-blocked-date') as HTMLInputElement)?.value
+                  if (d && !form.blocked_dates.includes(d)) setForm(p => ({ ...p, blocked_dates: [...p.blocked_dates, d] }))
+                }}>Add Date</Button>
               </div>
             </div>
           </div>

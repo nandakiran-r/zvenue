@@ -4411,18 +4411,33 @@ fastify.get('/api/config/subscription-benefits', async (request, reply) => {
   }
 });
 
-// Admin: update subscription benefits
-fastify.put('/api/config/subscription-benefits', { onRequest: [fastify.authenticate] }, async (request, reply) => {
+// Public: get app content (terms, privacy, about)
+fastify.get('/api/config/:key', async (request, reply) => {
   try {
-    const { benefits } = request.body;
-    if (!Array.isArray(benefits)) {
-      return reply.status(400).send({ error: 'Benefits must be an array of strings' });
-    }
-    await db.execute(sql`UPDATE app_config SET value = ${JSON.stringify(benefits)}, updated_at = now() WHERE key = 'subscription_benefits'`);
-    return { success: true, benefits };
+    const { key } = request.params;
+    const allowedKeys = ['terms_and_conditions', 'privacy_policy', 'about_us', 'subscription_benefits'];
+    if (!allowedKeys.includes(key)) return reply.status(404).send({ error: 'Not found' });
+    const result = await db.execute(sql`SELECT value FROM app_config WHERE key = ${key}`);
+    const row = result.rows?.[0];
+    return { content: row?.value || '' };
   } catch (err) {
     fastify.log.error(err);
-    return reply.status(500).send({ error: 'Failed to update benefits' });
+    return { content: '' };
+  }
+});
+
+// Admin: update any app config
+fastify.put('/api/config/:key', { onRequest: [fastify.authenticate] }, async (request, reply) => {
+  try {
+    const { key } = request.params;
+    const { content, benefits } = request.body;
+    const value = benefits || content;
+    if (value === undefined) return reply.status(400).send({ error: 'Content is required' });
+    await db.execute(sql`UPDATE app_config SET value = ${JSON.stringify(value)}, updated_at = now() WHERE key = ${key}`);
+    return { success: true };
+  } catch (err) {
+    fastify.log.error(err);
+    return reply.status(500).send({ error: 'Failed to update' });
   }
 });
 

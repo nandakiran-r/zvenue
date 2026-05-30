@@ -114,6 +114,11 @@ export const sidebarData: SidebarData = {
           url: '/service-bookings',
           icon: Receipt,
         },
+        {
+          title: 'Service Reviews',
+          url: '/service-reviews',
+          icon: Star,
+        },
       ],
     },
     {
@@ -144,6 +149,11 @@ export const sidebarData: SidebarData = {
           title: 'Help Center',
           url: '/help-center',
           icon: HelpCircle,
+        },
+        {
+          title: 'App Content',
+          url: '/app-content',
+          icon: Monitor,
         },
       ],
     },

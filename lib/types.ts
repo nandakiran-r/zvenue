@@ -8,6 +8,8 @@ export interface DbUser {
   email: string | null;
   phone_number: string | null;
   avatar_url: string | null;
+  address: string | null;
+  pincode: string | null;
   subscription_id: string | null;
   subscription_status: string | null;
   next_billing_at: string | null;

@@ -44,6 +44,7 @@ function RootLayoutNav() {
       <Stack.Screen name="view-service-booking" />
       <Stack.Screen name="write-service-review" />
       <Stack.Screen name="service-reviews" />
+      <Stack.Screen name="legal-content" />
     </Stack>
   );
 }

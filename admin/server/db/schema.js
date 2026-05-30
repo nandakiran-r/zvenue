@@ -16,6 +16,8 @@ export const users = pgTable('users', {
   subscription_status: varchar('subscription_status', { length: 50 }).default('none'),
   next_billing_at: timestamp('next_billing_at'),
   push_token: varchar('push_token', { length: 255 }),
+  address: text('address'),
+  pincode: varchar('pincode', { length: 10 }),
   created_at: timestamp('created_at').defaultNow(),
 });
 

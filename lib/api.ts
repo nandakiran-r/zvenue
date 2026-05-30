@@ -218,8 +218,17 @@ export async function fetchBookingInvoice(bookingId: string): Promise<any> {
 export async function fetchSubscriptionBenefits(): Promise<string[]> {
   try {
     const { data } = await api.get('/api/config/subscription-benefits');
-    return data.benefits || [];
+    return data.benefits || data.content || [];
   } catch {
     return [];
+  }
+}
+
+export async function fetchAppContent(key: 'terms_and_conditions' | 'privacy_policy' | 'about_us'): Promise<string> {
+  try {
+    const { data } = await api.get(`/api/config/${key}`);
+    return data.content || '';
+  } catch {
+    return '';
   }
 }

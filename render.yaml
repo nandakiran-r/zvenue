@@ -1,0 +1,80 @@
+# Render Blueprint — ZVenue Test Environment
+# Deploy: Connect repo on Render dashboard, it auto-detects this file
+
+services:
+  # Backend API (Fastify)
+  - type: web
+    name: zvenue-api
+    runtime: node
+    region: singapore  # Closest to India
+    plan: free
+    rootDir: admin/server
+    buildCommand: npm ci
+    startCommand: node index.js
+    envVars:
+      - key: PORT
+        value: 3001
+      - key: NODE_ENV
+        value: production
+      - key: DATABASE_URL
+        sync: false  # Set manually in Render dashboard
+      - key: JWT_SECRET
+        sync: false
+      - key: RAZORPAY_KEY_ID
+        sync: false
+      - key: RAZORPAY_KEY_SECRET
+        sync: false
+      - key: RAZORPAY_WEBHOOK_SECRET
+        sync: false
+      - key: ALLOWED_ORIGINS
+        sync: false
+      - key: AOC_API_KEY
+        sync: false
+      - key: AOC_WHATSAPP_NUMBER
+        sync: false
+      - key: AOC_TEMPLATE_NAME
+        value: otp
+      - key: AOC_PREBOOKING_TEMPLATE_NAME
+        value: prebooking_alert
+      - key: MSG2Z_USER_ID
+        sync: false
+      - key: MSG2Z_PASSWORD
+        sync: false
+      - key: MSG2Z_SENDER_ID
+        value: ZVENUE
+      - key: MSG2Z_ENTITY_ID
+        sync: false
+      - key: MSG2Z_TEMPLATE_ID
+        sync: false
+      - key: BETTER_AUTH_SECRET
+        sync: false
+      - key: BETTER_AUTH_URL
+        sync: false
+    healthCheckPath: /health
+    autoDeploy: true
+
+  # Admin Panel (Static Site)
+  - type: web
+    name: zvenue-admin
+    runtime: static
+    region: singapore
+    plan: free
+    rootDir: admin
+    buildCommand: npm ci && npm run build
+    staticPublishPath: dist
+    headers:
+      - path: /*
+        name: Cache-Control
+        value: public, max-age=0, must-revalidate
+    routes:
+      - type: rewrite
+        source: /*
+        destination: /index.html
+    envVars:
+      - key: VITE_API_URL
+        sync: false  # Set to your zvenue-api URL after first deploy
+      - key: VITE_CLOUDINARY_CLOUD
+        value: dxprjeaun
+      - key: VITE_CLOUDINARY_PRESET
+        value: zvenue_unsigned
+    autoDeploy: true

@@ -75,6 +75,12 @@ export const fetchSubscriptionBenefits = () =>
 export const updateSubscriptionBenefits = (benefits: string[]) =>
   api.put('/api/config/subscription-benefits', { benefits }).then(r => r.data)
 
+// ─── App Content (Legal, About) ────────────────────────────────────────────
+export const fetchAppConfig = (key: string) =>
+  api.get(`/api/config/${key}`).then(r => r.data)
+export const updateAppConfig = (key: string, content: string) =>
+  api.put(`/api/config/${key}`, { content }).then(r => r.data)
+
 // ─── Owners ────────────────────────────────────────────────────────────────
 export const fetchOwners = () => api.get('/api/owners').then(r => r.data)
 export const createOwner = (data: Record<string, unknown>) => api.post('/api/owners', data).then(r => r.data)
@@ -138,6 +144,29 @@ export const fetchAdminReviews = (params?: {
 }): Promise<AdminReviewsResponse> => api.get('/api/admin/reviews', { params }).then(r => r.data)
 
 export const deleteAdminReview = (id: string) => api.delete(`/api/reviews/${id}`).then(r => r.data)
+
+// ─── Service Reviews ───────────────────────────────────────────────────────
+export interface AdminServiceReview {
+  id: string
+  service_listing_id: string
+  user_id: string
+  rating: number
+  comment: string | null
+  created_at: string
+  user?: { id: string; full_name: string | null; avatar_url: string | null }
+  listing?: { id: string; name: string; city: string | null }
+}
+
+export interface AdminServiceReviewsResponse {
+  reviews: AdminServiceReview[]
+  pagination: { page: number; limit: number; total: number; totalPages: number }
+}
+
+export const fetchAdminServiceReviews = (params?: {
+  page?: number
+}): Promise<AdminServiceReviewsResponse> => api.get('/api/admin/service-reviews', { params }).then(r => r.data)
+
+export const deleteAdminServiceReview = (id: string) => api.delete(`/api/service-reviews/${id}`).then(r => r.data)
 
 // ─── Service Marketplace ───────────────────────────────────────────────────
 

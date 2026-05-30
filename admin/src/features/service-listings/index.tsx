@@ -35,7 +35,7 @@ export function ServiceListingsPage() {
   const [editMode, setEditMode] = useState(false)
   const [selectedId, setSelectedId] = useState<string | null>(null)
   const [filterCategory, setFilterCategory] = useState<string>('all')
-  const [form, setForm] = useState({ name: '', service_category_id: '', owner_id: '', description: '', images: [] as string[], video_url: '', price: 0, quantity_available: 0, city: '', area: '', subscriber_discount_percent: 0, subscriber_benefits: [] as string[], owner_name: '', owner_image: '' })
+  const [form, setForm] = useState({ name: '', service_category_id: '', owner_id: '', description: '', images: [] as string[], video_url: '', price: 0, quantity_available: 0, city: '', area: '', subscriber_discount_percent: 0, subscriber_benefits: [] as string[], owner_name: '', owner_image: '', opening_time: '00:00', closing_time: '23:30', max_booking_duration: 1440, blocked_slots: [] as { date: string; start: string; end: string }[] })
   const [benefitInput, setBenefitInput] = useState('')
 
   const { data: listings, isLoading } = useQuery({ queryKey: ['service-listings', filterCategory], queryFn: () => fetchServiceListings(filterCategory !== 'all' ? { category_id: filterCategory } : {}) })
@@ -49,14 +49,14 @@ export function ServiceListingsPage() {
   const deleteMut = useMutation({ mutationFn: (id: string) => deleteServiceListing(id), onSuccess: () => { queryClient.invalidateQueries({ queryKey: ['service-listings'] }); toast.success('Deleted') } })
 
   const handleSubmit = () => {
-    const payload = { ...form, price: Number(form.price), quantity_available: Number(form.quantity_available), subscriber_discount_percent: Number(form.subscriber_discount_percent) }
+    const payload = { ...form, price: Number(form.price), quantity_available: Number(form.quantity_available), subscriber_discount_percent: Number(form.subscriber_discount_percent), max_booking_duration: Number(form.max_booking_duration) }
     if (editMode && selectedId) updateMut.mutate({ id: selectedId, d: payload })
     else createMut.mutate(payload)
   }
 
   const openEdit = (item: any) => {
     setSelectedId(item.id); setEditMode(true)
-    setForm({ name: item.name || '', service_category_id: item.service_category_id || '', owner_id: item.owner_id || '', description: item.description || '', images: item.images || [], video_url: item.video_url || '', price: item.price || 0, quantity_available: item.quantity_available || 0, city: item.city || '', area: item.area || '', subscriber_discount_percent: item.subscriber_discount_percent || 0, subscriber_benefits: item.subscriber_benefits || [], owner_name: item.owner_name || '', owner_image: item.owner_image || '' })
+    setForm({ name: item.name || '', service_category_id: item.service_category_id || '', owner_id: item.owner_id || '', description: item.description || '', images: item.images || [], video_url: item.video_url || '', price: item.price || 0, quantity_available: item.quantity_available || 0, city: item.city || '', area: item.area || '', subscriber_discount_percent: item.subscriber_discount_percent || 0, subscriber_benefits: item.subscriber_benefits || [], owner_name: item.owner_name || '', owner_image: item.owner_image || '', opening_time: item.opening_time || '00:00', closing_time: item.closing_time || '23:30', max_booking_duration: item.max_booking_duration || 1440, blocked_slots: item.blocked_slots || [] })
     setDialogOpen(true)
   }
 
@@ -76,7 +76,7 @@ export function ServiceListingsPage() {
                 {(categories || []).map((c: any) => <SelectItem key={c.id} value={c.id}>{c.name}</SelectItem>)}
               </SelectContent>
             </Select>
-            <Button onClick={() => { setEditMode(false); setSelectedId(null); setForm({ name: '', service_category_id: '', owner_id: '', description: '', images: [], video_url: '', price: 0, quantity_available: 0, city: '', area: '', subscriber_discount_percent: 0, subscriber_benefits: [], owner_name: '', owner_image: '' }); setDialogOpen(true) }}>
+            <Button onClick={() => { setEditMode(false); setSelectedId(null); setForm({ name: '', service_category_id: '', owner_id: '', description: '', images: [], video_url: '', price: 0, quantity_available: 0, city: '', area: '', subscriber_discount_percent: 0, subscriber_benefits: [], owner_name: '', owner_image: '', opening_time: '00:00', closing_time: '23:30', max_booking_duration: 1440, blocked_slots: [] }); setDialogOpen(true) }}>
               <Plus className='mr-2 h-4 w-4' />Add Listing
             </Button>
           </div>
@@ -145,6 +145,37 @@ export function ServiceListingsPage() {
             </div>
             <div><Label>Area</Label><Input value={form.area} onChange={e => setForm(p => ({ ...p, area: e.target.value }))} placeholder='e.g. MG Road' /></div>
             <div><Label>Video URL</Label><Input value={form.video_url} onChange={e => setForm(p => ({ ...p, video_url: e.target.value }))} placeholder='https://youtube.com/...' /></div>
+            {/* Time Slot Configuration */}
+            <div className='border rounded-lg p-3 space-y-3'>
+              <Label className='text-sm font-semibold'>Booking Time Configuration</Label>
+              <div className='grid grid-cols-3 gap-3'>
+                <div><Label className='text-xs'>Opening Time</Label><Input type='time' value={form.opening_time} onChange={e => setForm(p => ({ ...p, opening_time: e.target.value }))} /></div>
+                <div><Label className='text-xs'>Closing Time</Label><Input type='time' value={form.closing_time} onChange={e => setForm(p => ({ ...p, closing_time: e.target.value }))} /></div>
+                <div><Label className='text-xs'>Max Duration (min)</Label><Input type='number' value={form.max_booking_duration} onChange={e => setForm(p => ({ ...p, max_booking_duration: Number(e.target.value) }))} step={30} min={30} /></div>
+              </div>
+            </div>
+            {/* Blocked Slots */}
+            <div className='border rounded-lg p-3 space-y-3'>
+              <Label className='text-sm font-semibold'>Blocked Time Slots</Label>
+              {form.blocked_slots.map((slot, i) => (
+                <div key={i} className='flex items-center gap-2 text-sm'>
+                  <span>{slot.date}</span>
+                  <span>{slot.start} – {slot.end}</span>
+                  <Button variant='ghost' size='sm' className='h-6 w-6 p-0 text-destructive' onClick={() => setForm(p => ({ ...p, blocked_slots: p.blocked_slots.filter((_, idx) => idx !== i) }))}>&times;</Button>
+                </div>
+              ))}
+              <div className='flex gap-2 items-end'>
+                <div><Label className='text-xs'>Date</Label><Input type='date' id='bs-date' className='w-[130px]' /></div>
+                <div><Label className='text-xs'>From</Label><Input type='time' id='bs-start' className='w-[110px]' /></div>
+                <div><Label className='text-xs'>To</Label><Input type='time' id='bs-end' className='w-[110px]' /></div>
+                <Button variant='outline' size='sm' onClick={() => {
+                  const d = (document.getElementById('bs-date') as HTMLInputElement)?.value
+                  const s = (document.getElementById('bs-start') as HTMLInputElement)?.value
+                  const e = (document.getElementById('bs-end') as HTMLInputElement)?.value
+                  if (d && s && e) setForm(p => ({ ...p, blocked_slots: [...p.blocked_slots, { date: d, start: s, end: e }] }))
+                }}>Add</Button>
+              </div>
+            </div>
             <div><Label>Subscriber Benefits</Label>
               <div className='flex gap-2'><Input value={benefitInput} onChange={e => setBenefitInput(e.target.value)} onKeyDown={e => { if (e.key === 'Enter') { e.preventDefault(); if (benefitInput.trim()) { setForm(p => ({ ...p, subscriber_benefits: [...p.subscriber_benefits, benefitInput.trim()] })); setBenefitInput('') } } }} /><Button variant='outline' onClick={() => { if (benefitInput.trim()) { setForm(p => ({ ...p, subscriber_benefits: [...p.subscriber_benefits, benefitInput.trim()] })); setBenefitInput('') } }}>Add</Button></div>
               <div className='flex flex-wrap gap-1 mt-2'>{form.subscriber_benefits.map((b, i) => <Badge key={i} variant='secondary'>{b}<button className='ml-1' onClick={() => setForm(p => ({ ...p, subscriber_benefits: p.subscriber_benefits.filter((_, idx) => idx !== i) }))}>&times;</button></Badge>)}</div>

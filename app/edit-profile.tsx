@@ -1,6 +1,6 @@
 import { router } from "expo-router";
 import { safeBack } from "@/constants/navigation";
-import { Camera, ChevronLeft, ImageIcon, Mail, Phone, User, X } from "lucide-react-native";
+import { Camera, ChevronLeft, ImageIcon, Mail, MapPin, Phone, User, X } from "lucide-react-native";
 import React, { useCallback, useEffect, useRef, useState } from "react";
 import {
     ActivityIndicator,
@@ -23,6 +23,7 @@ import Colors from "@/constants/colors";
 import { useAuth } from "@/context/AuthContext";
 import { useToast } from "@/context/ToastContext";
 import { updateUser, fetchUser } from "@/lib/api";
+import { uploadImageToCloudinary } from "@/lib/cloudinary";
 
 export default function EditProfileScreen() {
     const insets = useSafeAreaInsets();
@@ -32,6 +33,8 @@ export default function EditProfileScreen() {
     const [lastName, setLastName] = useState("");
     const [email, setEmail] = useState("");
     const [phoneNumber, setPhoneNumber] = useState("");
+    const [address, setAddress] = useState("");
+    const [pincode, setPincode] = useState("");
     const [avatarUrl, setAvatarUrl] = useState<string | null>(null);
     const [saving, setSaving] = useState(false);
     const [loading, setLoading] = useState(true);
@@ -53,6 +56,8 @@ export default function EditProfileScreen() {
                 setLastName(freshUser.last_name ?? "");
                 setEmail(freshUser.email ?? "");
                 setPhoneNumber(freshUser.phone_number ?? "");
+                setAddress(freshUser.address ?? "");
+                setPincode(freshUser.pincode ?? "");
                 setAvatarUrl(freshUser.avatar_url ?? null);
             }
         } catch (err) {
@@ -62,6 +67,8 @@ export default function EditProfileScreen() {
                 setLastName(dbUser.last_name ?? "");
                 setEmail(dbUser.email ?? "");
                 setPhoneNumber(dbUser.phone_number ?? "");
+                setAddress(dbUser.address ?? "");
+                setPincode(dbUser.pincode ?? "");
                 setAvatarUrl(dbUser.avatar_url ?? null);
             }
         } finally {
@@ -194,12 +201,29 @@ export default function EditProfileScreen() {
 
         try {
             setSaving(true);
+
+            // Upload avatar to Cloudinary if it's a local file or base64
+            let finalAvatarUrl = avatarUrl;
+            if (avatarUrl && (avatarUrl.startsWith('file://') || avatarUrl.startsWith('data:'))) {
+                const cloudinaryUrl = await uploadImageToCloudinary(avatarUrl, 'avatars');
+                if (cloudinaryUrl) {
+                    finalAvatarUrl = cloudinaryUrl;
+                    setAvatarUrl(cloudinaryUrl);
+                } else {
+                    showError("Upload Failed", "Could not upload profile picture. Please try again.");
+                    setSaving(false);
+                    return;
+                }
+            }
+
             await updateUser(userId, {
                 first_name: firstName.trim(),
                 last_name: lastName.trim(),
                 full_name: `${firstName.trim()} ${lastName.trim()}`.trim(),
                 email: email.trim(),
-                avatar_url: avatarUrl,
+                address: address.trim() || null,
+                pincode: pincode.trim() || null,
+                avatar_url: finalAvatarUrl,
             });
             await refreshProfile();
             showAlert({
@@ -322,6 +346,37 @@ export default function EditProfileScreen() {
                                 />
                             </View>
                             <Text style={styles.hintText}>Phone number cannot be changed</Text>
+                        </View>
+
+                        <View style={styles.inputGroup}>
+                            <Text style={styles.label}>Address</Text>
+                            <View style={styles.inputContainer}>
+                                <MapPin size={20} color={Colors.textSecondary} />
+                                <TextInput
+                                    style={styles.input}
+                                    value={address}
+                                    onChangeText={setAddress}
+                                    placeholder="Your address (optional)"
+                                    placeholderTextColor={Colors.textTertiary}
+                                    multiline
+                                />
+                            </View>
+                        </View>
+
+                        <View style={styles.inputGroup}>
+                            <Text style={styles.label}>Pincode</Text>
+                            <View style={styles.inputContainer}>
+                                <MapPin size={20} color={Colors.textSecondary} />
+                                <TextInput
+                                    style={styles.input}
+                                    value={pincode}
+                                    onChangeText={(text) => setPincode(text.replace(/[^0-9]/g, '').slice(0, 6))}
+                                    placeholder="6-digit pincode (optional)"
+                                    placeholderTextColor={Colors.textTertiary}
+                                    keyboardType="numeric"
+                                    maxLength={6}
+                                />
+                            </View>
                         </View>
                     </View>
 

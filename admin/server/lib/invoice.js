@@ -11,6 +11,7 @@ export function generateVenueInvoiceData(booking, venue, user) {
     invoice_number: invoiceNumber,
     booking_id: booking.booking_id_display || booking.id.slice(0, 8),
     type: 'venue',
+    is_pre_booking: booking.status === 'pre_booked' || (booking.registration_fee_paid > 0 && booking.remaining_balance > 0),
     customer: {
       name: user?.full_name || 'Customer',
       phone: user?.phone_number || '',
@@ -87,9 +88,17 @@ export async function sendWhatsAppInvoice(phoneNumber, invoiceData, logger) {
       return false;
     }
 
-    // Format amount for display
-    const totalFormatted = `₹${(invoiceData.total || 0).toLocaleString('en-IN')}`;
-    const itemName = invoiceData.type === 'venue' ? invoiceData.venue_name : invoiceData.service_name;
+    const bookingId = invoiceData.booking_id || 'N/A';
+
+    // Choose template based on booking type
+    let templateName;
+    if (invoiceData.type === 'service') {
+      templateName = process.env.AOC_SERVICE_BOOKING_TEMPLATE_NAME || 'notification';
+    } else if (invoiceData.is_pre_booking) {
+      templateName = process.env.AOC_PREBOOKING_TEMPLATE_NAME || 'booking_notification';
+    } else {
+      templateName = process.env.AOC_VENUE_CONFIRMED_TEMPLATE_NAME || 'notification';
+    }
 
     const response = await fetch('https://api.aoc-portal.com/v1/whatsapp', {
       method: 'POST',
@@ -100,32 +109,26 @@ export async function sendWhatsAppInvoice(phoneNumber, invoiceData, logger) {
       body: JSON.stringify({
         from: process.env.AOC_WHATSAPP_NUMBER,
         to: phoneNumber,
-        templateName: 'booking_invoice',
+        templateName,
         type: 'template',
-        language: { code: 'en' },
-        params: {
-          customer_name: invoiceData.customer.name,
-          booking_id: invoiceData.booking_id,
-          item_name: itemName,
-          city: invoiceData.city,
-          total_amount: totalFormatted,
-          payment_id: invoiceData.payment_id || 'N/A',
-          status: invoiceData.status,
-          date: new Date(invoiceData.generated_at).toLocaleDateString('en-IN'),
-        },
+        components: {
+          body: {
+            params: [bookingId]
+          }
+        }
       }),
     });
 
     const result = await response.json();
     if (!response.ok || result.error) {
-      if (logger) logger.error('WhatsApp invoice error:', result);
+      if (logger) logger.error('WhatsApp booking notification error:', result);
       return false;
     }
 
-    if (logger) logger.info(`WhatsApp invoice sent to ${phoneNumber} for ${invoiceData.booking_id}`);
+    if (logger) logger.info(`WhatsApp booking notification sent to ${phoneNumber} for ${bookingId} (template: ${templateName})`);
     return true;
   } catch (err) {
-    if (logger) logger.error('WhatsApp invoice failed:', err.message);
+    if (logger) logger.error('WhatsApp booking notification failed:', err.message);
     return false;
   }
 }
@@ -135,7 +138,7 @@ export async function sendOwnerBookingAlert(ownerPhone, invoiceData, logger) {
   try {
     if (!ownerPhone || !process.env.AOC_API_KEY) return false;
 
-    const totalFormatted = `₹${(invoiceData.total || 0).toLocaleString('en-IN')}`;
+    const bookingId = invoiceData.booking_id || 'N/A';
 
     const response = await fetch('https://api.aoc-portal.com/v1/whatsapp', {
       method: 'POST',
@@ -146,16 +149,13 @@ export async function sendOwnerBookingAlert(ownerPhone, invoiceData, logger) {
       body: JSON.stringify({
         from: process.env.AOC_WHATSAPP_NUMBER,
         to: ownerPhone,
-        templateName: process.env.AOC_PREBOOKING_TEMPLATE_NAME || 'prebooking_alert',
+        templateName: process.env.AOC_PREBOOKING_TEMPLATE_NAME || 'booking_notification',
         type: 'template',
-        language: { code: 'en' },
-        params: {
-          venue_name: invoiceData.type === 'venue' ? invoiceData.venue_name : invoiceData.service_name,
-          booking_date: new Date(invoiceData.generated_at).toLocaleDateString('en-IN'),
-          user_name: invoiceData.customer.name,
-          registration_fee: totalFormatted,
-          remaining_balance: invoiceData.remaining_balance ? `₹${invoiceData.remaining_balance.toLocaleString('en-IN')}` : '₹0',
-        },
+        components: {
+          body: {
+            params: [bookingId]
+          }
+        }
       }),
     });
 

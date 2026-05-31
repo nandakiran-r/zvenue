@@ -302,9 +302,16 @@ export default function VenueDetailScreen() {
                                     <Text style={{ fontSize: 13, color: Colors.text, flex: 1 }}>{benefit}</Text>
                                 </View>
                             ))}
-                            <Text style={{ fontSize: 11, color: Colors.textSecondary, marginTop: 10, fontStyle: 'italic' }}>
-                                Subscribe to unlock these benefits with every booking
-                            </Text>
+                            {!isSubscribed && (
+                                <TouchableOpacity style={{ marginTop: 10, paddingTop: 10, borderTopWidth: 1, borderTopColor: '#FFE082' }} onPress={() => router.push("/subscription" as any)}>
+                                    <Text style={{ fontSize: 13, fontWeight: '600', color: Colors.primary }}>Subscribe for Pro benefits →</Text>
+                                </TouchableOpacity>
+                            )}
+                            {isSubscribed && (
+                                <Text style={{ fontSize: 11, color: '#2E7D32', marginTop: 10, fontWeight: '600' }}>
+                                    ✓ You have Pro access — these benefits apply to your bookings
+                                </Text>
+                            )}
                         </View>
                     </View>
                 )}

@@ -227,6 +227,11 @@ export default function ServiceDetailScreen() {
                   <Text style={styles.subscribePromptText}>Subscribe for Pro benefits →</Text>
                 </TouchableOpacity>
               )}
+              {isSubscribed && (
+                <Text style={{ fontSize: 11, color: '#2E7D32', marginTop: 10, paddingTop: 10, borderTopWidth: 1, borderTopColor: '#FFE082', fontWeight: '600' }}>
+                  ✓ You have Pro access — these benefits apply to your bookings
+                </Text>
+              )}
             </View>
           </View>
         )}

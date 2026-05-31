@@ -9,6 +9,7 @@ import {
   ScrollView,
   StyleSheet,
   Text,
+  TextInput,
   TouchableOpacity,
   View,
 } from "react-native";
@@ -444,7 +445,20 @@ export default function ServiceBookingDetailScreen() {
               <TouchableOpacity style={styles.qtyBtn} onPress={decrementQty}>
                 <Minus size={18} color={Colors.text} />
               </TouchableOpacity>
-              <Text style={styles.qtyValue}>{quantity}</Text>
+              <TextInput
+                style={styles.qtyInput}
+                value={String(quantity)}
+                onChangeText={(text) => {
+                  const num = parseInt(text.replace(/[^0-9]/g, ''), 10);
+                  if (isNaN(num) || num < 1) setQuantity(1);
+                  else if (num > (listing?.quantity_available || 999)) {
+                    setQuantity(listing?.quantity_available || 999);
+                    warning("Maximum Reached", "Maximum available quantity reached.");
+                  } else setQuantity(num);
+                }}
+                keyboardType="numeric"
+                selectTextOnFocus
+              />
               <TouchableOpacity style={styles.qtyBtn} onPress={incrementQty}>
                 <Plus size={18} color={Colors.text} />
               </TouchableOpacity>
@@ -566,9 +580,9 @@ const styles = StyleSheet.create({
   slotHint: { fontSize: 12, color: Colors.textSecondary, textAlign: 'center', marginTop: 10, fontStyle: 'italic' },
   // Quantity
   quantitySection: { marginBottom: 20 },
-  qtyRow: { flexDirection: "row", alignItems: "center", gap: 20 },
+  qtyRow: { flexDirection: "row", alignItems: "center", gap: 16 },
   qtyBtn: { width: 44, height: 44, borderRadius: 14, borderWidth: 1.5, borderColor: Colors.border, alignItems: "center", justifyContent: "center", backgroundColor: Colors.white },
-  qtyValue: { fontSize: 20, fontWeight: "700", color: Colors.text, minWidth: 40, textAlign: "center" },
+  qtyInput: { fontSize: 20, fontWeight: "700", color: Colors.text, minWidth: 60, textAlign: "center", borderWidth: 1.5, borderColor: Colors.border, borderRadius: 12, paddingVertical: 8, paddingHorizontal: 12, backgroundColor: Colors.white },
   availableText: { fontSize: 12, color: Colors.textSecondary, marginTop: 8 },
   // Pricing
   pricingCard: { backgroundColor: Colors.white, borderRadius: 16, padding: 16, marginBottom: 20, shadowColor: "#000", shadowOffset: { width: 0, height: 2 }, shadowOpacity: 0.05, shadowRadius: 8, elevation: 2 },

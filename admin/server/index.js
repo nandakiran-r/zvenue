@@ -1718,22 +1718,29 @@ async function sendWhatsAppPreBookingAlert(ownerPhone, templateParams) {
       body: JSON.stringify({
         from: process.env.AOC_WHATSAPP_NUMBER,
         to: ownerPhone,
-        templateName: process.env.AOC_PREBOOKING_TEMPLATE_NAME || 'prebooking_alert',
+        templateName: process.env.AOC_OWNER_PREBOOKING_TEMPLATE_NAME || 'pre_booking_owner_notification',
         type: 'template',
-        language: { code: 'en' },
-        params: templateParams
+        components: {
+          body: {
+            params: [
+              templateParams.venue_name || 'Venue',
+              templateParams.user_name || 'Customer',
+              `${templateParams.booking_date || 'TBD'}${templateParams.session ? ' - ' + templateParams.session : ''}`
+            ]
+          }
+        }
       })
     });
 
     const result = await response.json();
     if (!response.ok || result.error) {
-      fastify.log.error('WhatsApp Pre-Booking Alert Error:', result);
+      fastify.log.error('WhatsApp Pre-Booking Owner Alert Error:', result);
       return false;
     }
-    fastify.log.info(`WhatsApp pre-booking alert sent to ${ownerPhone}`);
+    fastify.log.info(`WhatsApp pre-booking owner alert sent to ${ownerPhone}`);
     return true;
   } catch (err) {
-    fastify.log.error('WhatsApp Pre-Booking Alert Error:', err.message);
+    fastify.log.error('WhatsApp Pre-Booking Owner Alert Error:', err.message);
     return false;
   }
 }

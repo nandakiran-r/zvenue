@@ -140,6 +140,13 @@ export function VenuesPage() {
   })
 
   const handleSubmit = () => {
+    // Validate required fields
+    if (!form.name.trim()) { toast.error('Venue name is required'); return; }
+    if (!form.city.trim()) { toast.error('City is required'); return; }
+    if (Number(form.price_per_hour) <= 0) { toast.error('Price per hour must be greater than 0'); return; }
+    if (Number(form.capacity) <= 0) { toast.error('Capacity must be greater than 0'); return; }
+    if (Number(form.registration_fee) <= 0) { toast.error('Registration fee is required'); return; }
+
     const payload = { ...form, price_per_hour: Number(form.price_per_hour), price_per_day: Number(form.price_per_day), capacity: Number(form.capacity), category_id: form.category_id || null, image_url: form.images[0] || form.image_url || null }
     if (!editMode) { delete (payload as any).rating; delete (payload as any).review_count; }
     if (editMode && selectedVenue) updateMutation.mutate({ id: selectedVenue.id, data: payload })

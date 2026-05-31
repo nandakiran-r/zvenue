@@ -1420,12 +1420,18 @@ fastify.delete('/api/owners/:id', { onRequest: [fastify.authenticate] }, async (
 // Create Razorpay order for booking
 fastify.post('/api/bookings/create-order', { onRequest: [fastify.authenticate] }, async (request, reply) => {
   try {
-    const { venue_id, booking_date, start_time, end_time, guests, subtotal, service_fee, total } = request.body;
+    const { venue_id, booking_date, start_time, end_time, guests } = request.body;
     const user_id = request.user.id;
 
     // Validate required fields
-    if (!venue_id || !booking_date || !start_time || !end_time || !guests || !total) {
+    if (!venue_id || !booking_date || !start_time || !end_time || !guests) {
       return reply.status(400).send({ error: 'Missing required booking details' });
+    }
+
+    // Validate guests is a positive number
+    const guestCount = parseInt(guests);
+    if (isNaN(guestCount) || guestCount < 1) {
+      return reply.status(400).send({ error: 'Invalid guest count' });
     }
 
     // Check for booking conflicts (confirmed and pre_booked bookings)
@@ -1460,15 +1466,36 @@ fastify.post('/api/bookings/create-order', { onRequest: [fastify.authenticate] }
       return reply.status(404).send({ error: 'User not found' });
     }
 
-    // Get venue details
+    // Get venue details (including price for server-side calculation)
     const venue = await db.query.venues.findFirst({
       where: eq(venues.id, venue_id),
-      columns: { name: true, city: true, registration_fee: true },
+      columns: { name: true, city: true, registration_fee: true, price_per_hour: true },
     });
 
     if (!venue) {
       return reply.status(404).send({ error: 'Venue not found' });
     }
+
+    // SERVER-SIDE PRICE CALCULATION (don't trust client-sent total)
+    // Calculate hours from session times
+    const toMinutes = (t) => {
+      const match = t.match(/(\d{1,2}):(\d{2})\s*(AM|PM)/i);
+      if (!match) return 0;
+      let h = parseInt(match[1]);
+      const m = parseInt(match[2]);
+      const p = match[3].toUpperCase();
+      if (p === 'PM' && h !== 12) h += 12;
+      if (p === 'AM' && h === 12) h = 0;
+      return h * 60 + m;
+    };
+    const startMin = toMinutes(start_time);
+    const endMin = end_time === '12:00 AM' ? 1440 : toMinutes(end_time);
+    const hoursBooked = Math.max(1, Math.round((endMin - startMin) / 60));
+
+    const hourlyRate = venue.price_per_hour || 0;
+    const subtotal = hourlyRate * hoursBooked;
+    const service_fee = 500;
+    const total = subtotal + service_fee;
 
     // Determine payment amount: registration_fee if set, otherwise full total
     const registrationFee = venue.registration_fee && venue.registration_fee > 0 ? venue.registration_fee : null;
@@ -1485,7 +1512,7 @@ fastify.post('/api/bookings/create-order', { onRequest: [fastify.authenticate] }
         booking_date,
         start_time,
         end_time,
-        guests,
+        guests: guestCount,
         subtotal,
         service_fee,
         registration_fee: registrationFee,
@@ -1502,7 +1529,7 @@ fastify.post('/api/bookings/create-order', { onRequest: [fastify.authenticate] }
       booking_date,
       start_time,
       end_time,
-      guests,
+      guests: guestCount,
       subtotal,
       service_fee,
       total,
@@ -2465,7 +2492,12 @@ fastify.get('/api/venues/:id', async (request, reply) => {
 
 fastify.post('/api/venues', { onRequest: [fastify.authenticate] }, async (request, reply) => {
   try {
-    const venueData = { ...request.body };
+    // Whitelist allowed fields to prevent injection of id, approval_status, etc.
+    const ALLOWED_VENUE_FIELDS = ['name', 'description', 'city', 'state', 'area', 'location', 'category_id', 'owner_id', 'image_url', 'images', 'amenities', 'capacity', 'price_per_hour', 'price_per_day', 'registration_fee', 'youtube_url', 'subscriber_benefits', 'blocked_dates'];
+    const venueData = {};
+    for (const key of ALLOWED_VENUE_FIELDS) {
+      if (request.body[key] !== undefined) venueData[key] = request.body[key];
+    }
 
     // Validate mandatory registration fee
     if (!venueData.registration_fee || venueData.registration_fee <= 0) {
@@ -2502,7 +2534,12 @@ fastify.post('/api/venues', { onRequest: [fastify.authenticate] }, async (reques
 
 fastify.put('/api/venues/:id', { onRequest: [fastify.authenticate] }, async (request, reply) => {
   try {
-    const updates = { ...request.body };
+    // Whitelist allowed fields
+    const ALLOWED_VENUE_FIELDS = ['name', 'description', 'city', 'state', 'area', 'location', 'category_id', 'owner_id', 'image_url', 'images', 'amenities', 'capacity', 'price_per_hour', 'price_per_day', 'registration_fee', 'youtube_url', 'subscriber_benefits', 'blocked_dates', 'approval_status'];
+    const updates = {};
+    for (const key of ALLOWED_VENUE_FIELDS) {
+      if (request.body[key] !== undefined) updates[key] = request.body[key];
+    }
     
     // Re-geocode if location or city changed
     if (updates.location || updates.city) {
@@ -2655,7 +2692,16 @@ fastify.get('/api/bookings/:id', { onRequest: [fastify.authenticate] }, async (r
 fastify.put('/api/bookings/:id', { onRequest: [fastify.authenticate] }, async (request, reply) => {
   try {
     const bookingId = request.params.id;
-    const updates = request.body;
+    // Whitelist allowed fields for booking updates (admin only)
+    const ALLOWED_BOOKING_FIELDS = ['status', 'booking_date', 'start_time', 'end_time', 'guests'];
+    const updates = {};
+    for (const key of ALLOWED_BOOKING_FIELDS) {
+      if (request.body[key] !== undefined) updates[key] = request.body[key];
+    }
+
+    if (Object.keys(updates).length === 0) {
+      return reply.status(400).send({ error: 'No valid fields to update' });
+    }
 
     // If confirming a booking, check for date/time conflicts
     if (updates.status === 'confirmed') {

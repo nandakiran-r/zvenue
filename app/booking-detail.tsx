@@ -197,7 +197,7 @@ export default function BookingDetailScreen() {
         return `₹${amount.toLocaleString("en-IN")}`;
     };
 
-    const canBook = selectedDate && selectedSession && hoursBooked > 0 && parseInt(guests) > 0;
+    const canBook = selectedDate && selectedSession && hoursBooked > 0 && (parseInt(guests) || 0) > 0;
 
     const handleConfirm = async () => {
         if (!dbUser) {
@@ -517,7 +517,7 @@ export default function BookingDetailScreen() {
                             <Users size={16} color={Colors.primary} /> Number of Guests
                         </Text>
                         <View style={styles.guestsRow}>
-                            <TouchableOpacity style={styles.guestBtn} onPress={() => setGuests(String(Math.max(1, parseInt(guests) - 10)))}>
+                            <TouchableOpacity style={styles.guestBtn} onPress={() => setGuests(String(Math.max(1, (parseInt(guests) || 1) - 10)))}>
                                 <Text style={styles.guestBtnText}>−</Text>
                             </TouchableOpacity>
                             <TextInput
@@ -526,7 +526,7 @@ export default function BookingDetailScreen() {
                                 onChangeText={setGuests}
                                 keyboardType="numeric"
                             />
-                            <TouchableOpacity style={styles.guestBtn} onPress={() => setGuests(String(Math.min(venue.capacity, parseInt(guests) + 10)))}>
+                            <TouchableOpacity style={styles.guestBtn} onPress={() => setGuests(String(Math.min(venue.capacity, (parseInt(guests) || 0) + 10)))}>
                                 <Text style={styles.guestBtnText}>+</Text>
                             </TouchableOpacity>
                             <Text style={styles.capacityHint}>Max: {venue.capacity}</Text>

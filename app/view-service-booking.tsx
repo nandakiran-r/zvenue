@@ -15,18 +15,17 @@ import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { useFocusEffect } from "@react-navigation/native";
 import Colors from "@/constants/colors";
 import { useToast } from "@/context/ToastContext";
-import { fetchServiceBookingById, cancelServiceBooking } from "@/lib/serviceApi";
+import { fetchServiceBookingById } from "@/lib/serviceApi";
 import { formatTime24to12 } from "@/lib/timeSlots";
 import type { DbServiceBooking } from "@/lib/serviceTypes";
 
 export default function ViewServiceBookingScreen() {
   const { id } = useLocalSearchParams<{ id: string }>();
   const insets = useSafeAreaInsets();
-  const { success, error: showError, showAlert } = useToast();
+  const { error: showError } = useToast();
 
   const [booking, setBooking] = useState<DbServiceBooking | null>(null);
   const [loading, setLoading] = useState(true);
-  const [cancelling, setCancelling] = useState(false);
 
   const loadBooking = useCallback(async () => {
     if (!id) return;
@@ -43,40 +42,6 @@ export default function ViewServiceBookingScreen() {
 
   useEffect(() => { loadBooking(); }, [loadBooking]);
   useFocusEffect(useCallback(() => { if (id) loadBooking(); }, [id, loadBooking]));
-
-  const canCancel = () => {
-    if (!booking || booking.status !== 'confirmed') return false;
-    const createdAt = new Date(booking.created_at);
-    const now = new Date();
-    const hoursSince = (now.getTime() - createdAt.getTime()) / (1000 * 60 * 60);
-    return hoursSince <= 24;
-  };
-
-  const handleCancel = () => {
-    showAlert({
-      type: "confirm",
-      title: "Cancel Booking?",
-      message: "Are you sure you want to cancel? A refund will be processed within 5-7 business days.",
-      actions: [
-        { text: "Keep Booking", style: "cancel" },
-        { text: "Cancel & Refund", style: "destructive", onPress: confirmCancel },
-      ],
-    });
-  };
-
-  const confirmCancel = async () => {
-    if (!booking) return;
-    setCancelling(true);
-    try {
-      await cancelServiceBooking(booking.id);
-      success("Booking Cancelled", "Your refund will be processed within 5-7 business days.");
-      loadBooking();
-    } catch (err: any) {
-      showError("Error", err.response?.data?.error || "Failed to cancel booking.");
-    } finally {
-      setCancelling(false);
-    }
-  };
 
   const formatPrice = (amount: number | null | undefined) => {
     if (amount == null || isNaN(amount)) return "₹0";
@@ -171,17 +136,9 @@ export default function ViewServiceBookingScreen() {
           <View style={styles.row}><Text style={styles.label}>Booked On</Text><Text style={styles.value}>{new Date(booking.created_at).toLocaleDateString('en-IN', { day: 'numeric', month: 'long', year: 'numeric' })}</Text></View>
         </View>
 
-        {/* Cancel Button */}
-        {canCancel() && (
-          <TouchableOpacity style={styles.cancelButton} onPress={handleCancel} disabled={cancelling} activeOpacity={0.8}>
-            <Text style={styles.cancelButtonText}>{cancelling ? "Cancelling..." : "Cancel Booking"}</Text>
-          </TouchableOpacity>
-        )}
-        {isConfirmed && !canCancel() && (
-          <Text style={styles.cancelExpired}>Cancellation window (24 hours) has expired.</Text>
-        )}
-        {booking.refunded_at && (
-          <Text style={styles.refundNote}>Refund processed on {new Date(booking.refunded_at).toLocaleDateString('en-IN')}</Text>
+        {/* Contact Support for changes */}
+        {isConfirmed && (
+          <Text style={styles.rescheduleNote}>Need to reschedule? Contact support at +91 7249111100</Text>
         )}
       </ScrollView>
     </View>
@@ -211,8 +168,5 @@ const styles = StyleSheet.create({
   divider: { height: 1, backgroundColor: Colors.border, marginVertical: 10 },
   totalLabel: { fontSize: 15, fontWeight: "700", color: Colors.text },
   totalValue: { fontSize: 15, fontWeight: "700", color: Colors.primary },
-  cancelButton: { marginHorizontal: 20, backgroundColor: "#FFEBEE", borderRadius: 14, paddingVertical: 16, alignItems: "center", marginTop: 8 },
-  cancelButtonText: { color: "#D32F2F", fontSize: 15, fontWeight: "700" },
-  cancelExpired: { textAlign: "center", fontSize: 13, color: Colors.textTertiary, marginTop: 16, fontStyle: "italic" },
-  refundNote: { textAlign: "center", fontSize: 13, color: "#F57C00", marginTop: 12 },
+  rescheduleNote: { textAlign: "center", fontSize: 13, color: Colors.textSecondary, marginTop: 16, marginHorizontal: 20, fontStyle: "italic" },
 });

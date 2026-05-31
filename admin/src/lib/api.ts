@@ -217,6 +217,7 @@ export const rejectServiceListing = (id: string) => api.post(`/api/service-listi
 // Service Bookings
 export const fetchAdminServiceBookings = (params?: Record<string, unknown>) => api.get('/api/admin/service-bookings', { params }).then(r => r.data)
 export const refundServiceBooking = (id: string, reason?: string) => api.post(`/api/admin/service-bookings/${id}/refund`, { reason }).then(r => r.data)
+export const cancelServiceBookingAdmin = (id: string, reason?: string) => api.post(`/api/admin/service-bookings/${id}/cancel`, { reason }).then(r => r.data)
 
 // Owner Services
 export const fetchOwnerServices = () => api.get('/api/owners/services').then(r => r.data)

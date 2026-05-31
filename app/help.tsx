@@ -1,5 +1,5 @@
 import { safeBack } from "@/constants/navigation";
-import { ChevronLeft, Mail, Phone, MessageCircle, ExternalLink } from "lucide-react-native";
+import { ChevronLeft, Mail, Phone } from "lucide-react-native";
 import React from "react";
 import { Linking, ScrollView, StyleSheet, Text, TouchableOpacity, View } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
@@ -7,9 +7,9 @@ import Colors from "@/constants/colors";
 
 const FAQ = [
     { q: "How do I book a venue?", a: "Browse venues from the home screen, select one, pick a date and time, then confirm and pay." },
-    { q: "Can I cancel a booking?", a: "Contact our support team via WhatsApp or email for cancellation requests." },
+    { q: "Can I cancel a booking?", a: "Contact our support team via phone or email for cancellation requests. We provide free rescheduling." },
     { q: "What are subscriber benefits?", a: "Subscribers get free perks like parking, welcome drinks, and discounts at partner venues. Plans start from ₹9/month." },
-    { q: "How do I get a refund?", a: "Refunds are processed within 5-7 business days after cancellation approval." },
+    { q: "How do I get a refund?", a: "We do not provide refunds. However, free rescheduling is available for all bookings." },
 ];
 
 export default function HelpScreen() {
@@ -27,21 +27,17 @@ export default function HelpScreen() {
             <ScrollView contentContainerStyle={styles.content}>
                 <Text style={styles.sectionTitle}>Contact Us</Text>
                 <View style={styles.contactRow}>
-                    <TouchableOpacity style={styles.contactCard} onPress={() => Linking.openURL('mailto:support@zvenue.com')}>
+                    <TouchableOpacity style={styles.contactCard} onPress={() => Linking.openURL('mailto:support.zvenue@gmail.com')}>
                         <Mail size={24} color={Colors.primary} />
                         <Text style={styles.contactLabel}>Email</Text>
-                        <Text style={styles.contactValue}>support@zvenue.com</Text>
+                        <Text style={styles.contactValue}>support.zvenue@gmail.com</Text>
                     </TouchableOpacity>
-                    <TouchableOpacity style={styles.contactCard} onPress={() => Linking.openURL('tel:+918547475710')}>
+                    <TouchableOpacity style={styles.contactCard} onPress={() => Linking.openURL('tel:+917249111100')}>
                         <Phone size={24} color={Colors.primary} />
                         <Text style={styles.contactLabel}>Phone</Text>
-                        <Text style={styles.contactValue}>+91 85474 75710</Text>
+                        <Text style={styles.contactValue}>+91 7249111100</Text>
                     </TouchableOpacity>
                 </View>
-                <TouchableOpacity style={styles.whatsappBtn} onPress={() => Linking.openURL('https://wa.me/918547475710?text=Hi, I need help with ZVenue')}>
-                    <MessageCircle size={20} color={Colors.white} />
-                    <Text style={styles.whatsappText}>Chat on WhatsApp</Text>
-                </TouchableOpacity>
 
                 <Text style={[styles.sectionTitle, { marginTop: 28 }]}>Frequently Asked Questions</Text>
                 {FAQ.map((item, i) => (
@@ -66,8 +62,6 @@ const styles = StyleSheet.create({
     contactCard: { flex: 1, backgroundColor: Colors.surface, borderRadius: 16, padding: 16, alignItems: "center", gap: 8, borderWidth: 1, borderColor: Colors.border },
     contactLabel: { fontSize: 12, color: Colors.textSecondary },
     contactValue: { fontSize: 13, fontWeight: "600", color: Colors.text, textAlign: "center" },
-    whatsappBtn: { backgroundColor: "#7a3317", borderRadius: 14, paddingVertical: 14, flexDirection: "row", alignItems: "center", justifyContent: "center", gap: 10 },
-    whatsappText: { color: Colors.white, fontSize: 15, fontWeight: "700" },
     faqItem: { marginBottom: 16, backgroundColor: Colors.surface, borderRadius: 12, padding: 16 },
     faqQ: { fontSize: 14, fontWeight: "600", color: Colors.text, marginBottom: 6 },
     faqA: { fontSize: 13, color: Colors.textSecondary, lineHeight: 20 },

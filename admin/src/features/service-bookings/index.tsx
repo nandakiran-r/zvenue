@@ -1,6 +1,6 @@
 import { useState } from 'react'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
-import { RefreshCw } from 'lucide-react'
+import { XCircle } from 'lucide-react'
 import { toast } from 'sonner'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
@@ -17,7 +17,7 @@ import { ProfileDropdown } from '@/components/profile-dropdown'
 import { Search } from '@/components/search'
 import { ThemeSwitch } from '@/components/theme-switch'
 import { ConfigDrawer } from '@/components/config-drawer'
-import { fetchAdminServiceBookings, refundServiceBooking, fetchServiceCategories } from '@/lib/api'
+import { fetchAdminServiceBookings, cancelServiceBookingAdmin, fetchServiceCategories } from '@/lib/api'
 
 function statusBadge(status: string) {
   if (status === 'confirmed') return <Badge className='bg-emerald-100 text-emerald-700 hover:bg-emerald-100'>Confirmed</Badge>
@@ -32,9 +32,9 @@ export function ServiceBookingsPage() {
   const queryClient = useQueryClient()
   const [statusFilter, setStatusFilter] = useState('all')
   const [page, setPage] = useState(1)
-  const [refundDialogOpen, setRefundDialogOpen] = useState(false)
+  const [cancelDialogOpen, setCancelDialogOpen] = useState(false)
   const [selectedBooking, setSelectedBooking] = useState<any>(null)
-  const [refundReason, setRefundReason] = useState('')
+  const [cancelReason, setCancelReason] = useState('')
 
   const { data: categories } = useQuery({ queryKey: ['svc-cats-filter'], queryFn: fetchServiceCategories })
   const { data, isLoading } = useQuery({
@@ -42,10 +42,10 @@ export function ServiceBookingsPage() {
     queryFn: () => fetchAdminServiceBookings({ status: statusFilter !== 'all' ? statusFilter : undefined, page }),
   })
 
-  const refundMut = useMutation({
-    mutationFn: ({ id, reason }: { id: string; reason: string }) => refundServiceBooking(id, reason),
-    onSuccess: () => { queryClient.invalidateQueries({ queryKey: ['admin-service-bookings'] }); setRefundDialogOpen(false); toast.success('Refund processed') },
-    onError: (err: any) => toast.error(err.response?.data?.error || 'Refund failed'),
+  const cancelMut = useMutation({
+    mutationFn: ({ id, reason }: { id: string; reason: string }) => cancelServiceBookingAdmin(id, reason),
+    onSuccess: () => { queryClient.invalidateQueries({ queryKey: ['admin-service-bookings'] }); setCancelDialogOpen(false); toast.success('Booking cancelled. Slot released.') },
+    onError: (err: any) => toast.error(err.response?.data?.error || 'Cancel failed'),
   })
 
   const bookings = data?.bookings || []
@@ -64,7 +64,6 @@ export function ServiceBookingsPage() {
               <SelectItem value='all'>All Status</SelectItem>
               <SelectItem value='confirmed'>Confirmed</SelectItem>
               <SelectItem value='cancelled'>Cancelled</SelectItem>
-              <SelectItem value='refunded'>Refunded</SelectItem>
               <SelectItem value='payment_failed'>Failed</SelectItem>
               <SelectItem value='pending'>Pending</SelectItem>
             </SelectContent>
@@ -86,27 +85,29 @@ export function ServiceBookingsPage() {
                   <TableCell>{statusBadge(b.status)}</TableCell>
                   <TableCell className='text-xs text-muted-foreground'>{new Date(b.created_at).toLocaleDateString()}</TableCell>
                   <TableCell className='text-right'>
-                    {b.status === 'confirmed' && (
-                      <Button variant='outline' size='sm' onClick={() => { setSelectedBooking(b); setRefundReason(''); setRefundDialogOpen(true); }}>
-                        <RefreshCw className='mr-1 h-3 w-3' />Refund
-                      </Button>
-                    )}
-                    {b.status === 'confirmed' && (
-                      <div className='flex gap-1'>
-                        <Button variant='outline' size='sm' onClick={async () => {
-                          try {
-                            const { sendServiceInvoice } = await import('@/lib/api')
-                            await sendServiceInvoice(b.id)
-                            toast.success('Confirmation + Receipt sent to customer!')
-                          } catch (err: any) { toast.error(err.response?.data?.error || 'Failed to send') }
-                        }}>
-                          📨 Send Receipt
+                    <div className='flex flex-wrap gap-1 justify-end'>
+                      {b.status === 'confirmed' && (
+                        <Button variant='outline' size='sm' className='text-red-600' onClick={() => { setSelectedBooking(b); setCancelReason(''); setCancelDialogOpen(true); }}>
+                          <XCircle className='mr-1 h-3 w-3' />Cancel
                         </Button>
-                        <Button variant='outline' size='sm' asChild>
-                          <a href={`${import.meta.env.VITE_API_URL || 'http://localhost:3001'}/api/admin/service-bookings/${b.id}/download-invoice`} target='_blank' rel='noreferrer'>📥</a>
-                        </Button>
-                      </div>
-                    )}
+                      )}
+                      {b.status === 'confirmed' && (
+                        <>
+                          <Button variant='outline' size='sm' onClick={async () => {
+                            try {
+                              const { sendServiceInvoice } = await import('@/lib/api')
+                              await sendServiceInvoice(b.id)
+                              toast.success('Confirmation + Receipt sent to customer!')
+                            } catch (err: any) { toast.error(err.response?.data?.error || 'Failed to send') }
+                          }}>
+                            📨 Send Receipt
+                          </Button>
+                          <Button variant='outline' size='sm' asChild>
+                            <a href={`${import.meta.env.VITE_API_URL || 'http://localhost:3001'}/api/admin/service-bookings/${b.id}/download-invoice`} target='_blank' rel='noreferrer'>📥</a>
+                          </Button>
+                        </>
+                      )}
+                    </div>
                   </TableCell>
                 </TableRow>
               ))}
@@ -126,16 +127,19 @@ export function ServiceBookingsPage() {
         )}
       </Main>
 
-      <Dialog open={refundDialogOpen} onOpenChange={setRefundDialogOpen}>
+      {/* Cancel Booking Dialog */}
+      <Dialog open={cancelDialogOpen} onOpenChange={setCancelDialogOpen}>
         <DialogContent>
           <DialogHeader>
-            <DialogTitle>Refund Booking</DialogTitle>
-            <DialogDescription>Refund {selectedBooking?.booking_id_display} — {formatINR(selectedBooking?.total_amount)} to {selectedBooking?.user?.full_name}</DialogDescription>
+            <DialogTitle>Cancel Booking</DialogTitle>
+            <DialogDescription>
+              Cancel {selectedBooking?.booking_id_display} for {selectedBooking?.user?.full_name}. No refund will be issued. The slot will be released for other customers.
+            </DialogDescription>
           </DialogHeader>
-          <div className='py-4'><Label>Reason (optional)</Label><Textarea value={refundReason} onChange={e => setRefundReason(e.target.value)} placeholder='Reason for refund...' /></div>
+          <div className='py-4'><Label>Reason (optional)</Label><Textarea value={cancelReason} onChange={e => setCancelReason(e.target.value)} placeholder='Reason for cancellation...' /></div>
           <DialogFooter>
-            <Button variant='outline' onClick={() => setRefundDialogOpen(false)}>Cancel</Button>
-            <Button variant='destructive' onClick={() => selectedBooking && refundMut.mutate({ id: selectedBooking.id, reason: refundReason })} disabled={refundMut.isPending}>{refundMut.isPending ? 'Processing...' : 'Confirm Refund'}</Button>
+            <Button variant='outline' onClick={() => setCancelDialogOpen(false)}>Keep Booking</Button>
+            <Button variant='destructive' onClick={() => selectedBooking && cancelMut.mutate({ id: selectedBooking.id, reason: cancelReason })} disabled={cancelMut.isPending}>{cancelMut.isPending ? 'Cancelling...' : 'Cancel Booking'}</Button>
           </DialogFooter>
         </DialogContent>
       </Dialog>

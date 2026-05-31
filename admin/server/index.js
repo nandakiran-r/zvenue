@@ -4049,6 +4049,47 @@ fastify.post('/api/admin/service-bookings/:id/refund', { onRequest: [fastify.aut
   }
 });
 
+// Admin: cancel service booking (no refund, releases slot)
+fastify.post('/api/admin/service-bookings/:id/cancel', { onRequest: [fastify.authenticate] }, async (request, reply) => {
+  try {
+    const booking = await db.query.service_bookings.findFirst({ where: eq(service_bookings.id, request.params.id) });
+    if (!booking) return reply.status(404).send({ error: 'Booking not found' });
+    if (booking.status !== 'confirmed' && booking.status !== 'pending') {
+      return reply.status(400).send({ error: 'Only confirmed or pending bookings can be cancelled' });
+    }
+
+    // Cancel booking and restore stock (no refund)
+    await db.update(service_bookings).set({
+      status: 'cancelled',
+      cancellation_reason: request.body?.reason || 'Cancelled by admin',
+    }).where(eq(service_bookings.id, booking.id));
+
+    // Restore quantity
+    if (booking.status === 'confirmed') {
+      await db.update(service_listings).set({
+        quantity_available: sql`${service_listings.quantity_available} + ${booking.quantity}`
+      }).where(eq(service_listings.id, booking.service_listing_id));
+    }
+
+    // Notify user
+    if (booking.user_id) {
+      await db.insert(notifications).values({
+        user_id: booking.user_id,
+        title: 'Service Booking Cancelled',
+        body: `Your booking ${booking.booking_id_display || booking.id.slice(0, 8)} has been cancelled. Contact support for rescheduling.`,
+        type: 'service_booking',
+        is_read: false,
+        data: { booking_id: booking.id },
+      });
+    }
+
+    return { success: true, message: 'Booking cancelled. Slot released.' };
+  } catch (err) {
+    fastify.log.error('Cancel service booking error:', err);
+    return reply.status(500).send({ error: 'Failed to cancel booking' });
+  }
+});
+
 // ─── SERVICE REVIEWS ────────────────────────────────────────────────────────
 
 // Helper: recalculate service listing rating

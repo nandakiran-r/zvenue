@@ -26,6 +26,8 @@
       },
       "env": {
         "NPM_CONFIG_LEGACY_PEER_DEPS": "true",
+        "EXPO_PUBLIC_API_URL": "https://your-backend-domain.com",
+        "EXPO_PUBLIC_RAZORPAY_KEY": "rzp_live_YOUR_LIVE_KEY_ID",
         "EXPO_PUBLIC_CLOUDINARY_CLOUD": "dxprjeaun",
         "EXPO_PUBLIC_CLOUDINARY_PRESET": "zvenue_unsigned"
       }

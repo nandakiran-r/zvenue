@@ -70,6 +70,9 @@ Items to implement before production launch. Skipped for now during active devel
 - [x] Subscription management (My Subscription page, signup prompt)
 - [x] Mark all notifications read (backend endpoint)
 - [x] Consistent toggle UI across tabs
+- [x] PDF Receipt generation (venue + service)
+- [x] Invoice download endpoint (direct PDF serve)
+- [x] Invoice send via WhatsApp (requires Cloudinary "Auto" preset or document template)
 
 ---
 

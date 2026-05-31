@@ -91,6 +91,22 @@ export function ServiceBookingsPage() {
                         <RefreshCw className='mr-1 h-3 w-3' />Refund
                       </Button>
                     )}
+                    {b.status === 'confirmed' && (
+                      <div className='flex gap-1'>
+                        <Button variant='outline' size='sm' onClick={async () => {
+                          try {
+                            const { sendServiceInvoice } = await import('@/lib/api')
+                            await sendServiceInvoice(b.id)
+                            toast.success('Confirmation + Receipt sent to customer!')
+                          } catch (err: any) { toast.error(err.response?.data?.error || 'Failed to send') }
+                        }}>
+                          📨 Send Receipt
+                        </Button>
+                        <Button variant='outline' size='sm' asChild>
+                          <a href={`${import.meta.env.VITE_API_URL || 'http://localhost:3001'}/api/admin/service-bookings/${b.id}/download-invoice`} target='_blank' rel='noreferrer'>📥</a>
+                        </Button>
+                      </div>
+                    )}
                   </TableCell>
                 </TableRow>
               ))}

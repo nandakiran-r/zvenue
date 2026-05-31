@@ -81,6 +81,20 @@ export const fetchAppConfig = (key: string) =>
 export const updateAppConfig = (key: string, content: string) =>
   api.put(`/api/config/${key}`, { content }).then(r => r.data)
 
+// ─── Invoice Generation ────────────────────────────────────────────────────
+export const generateVenueInvoice = (bookingId: string) =>
+  api.post(`/api/admin/bookings/${bookingId}/generate-invoice`).then(r => r.data)
+export const sendVenueInvoice = (bookingId: string) =>
+  api.post(`/api/admin/bookings/${bookingId}/send-invoice`).then(r => r.data)
+export const downloadVenueInvoiceUrl = (bookingId: string) =>
+  `${API_URL}/api/admin/bookings/${bookingId}/download-invoice`
+export const generateServiceInvoice = (bookingId: string) =>
+  api.post(`/api/admin/service-bookings/${bookingId}/generate-invoice`).then(r => r.data)
+export const sendServiceInvoice = (bookingId: string) =>
+  api.post(`/api/admin/service-bookings/${bookingId}/send-invoice`).then(r => r.data)
+export const downloadServiceInvoiceUrl = (bookingId: string) =>
+  `${API_URL}/api/admin/service-bookings/${bookingId}/download-invoice`
+
 // ─── Owners ────────────────────────────────────────────────────────────────
 export const fetchOwners = () => api.get('/api/owners').then(r => r.data)
 export const createOwner = (data: Record<string, unknown>) => api.post('/api/owners', data).then(r => r.data)

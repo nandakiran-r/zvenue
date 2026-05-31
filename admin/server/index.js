@@ -9,6 +9,7 @@ import { users, venues, categories, bookings, notifications, otps, owners, suppo
 import { eq, and, ilike, or, desc, asc, count, sum, sql, gte, lte, ne, avg } from 'drizzle-orm';
 import { geocodeAddress, buildAddress } from './lib/geocode.js';
 import { generateVenueInvoiceData, generateServiceInvoiceData, sendWhatsAppInvoice, sendOwnerBookingAlert } from './lib/invoice.js';
+import { generateVenueReceipt, generateServiceReceipt, uploadReceiptToCloudinary } from './lib/receipt.js';
 
 // Simple XSS sanitization — strip HTML tags from user input
 function sanitizeText(text) {
@@ -4401,6 +4402,263 @@ fastify.get('/api/service-bookings/:id/invoice', { onRequest: [fastify.authentic
   } catch (err) {
     fastify.log.error(err);
     return reply.status(500).send({ error: 'Internal Server Error' });
+  }
+});
+
+// ─── RECEIPT GENERATION ─────────────────────────────────────────────────────
+
+// Admin: generate venue booking receipt PDF
+fastify.post('/api/admin/bookings/:id/generate-invoice', { onRequest: [fastify.authenticate] }, async (request, reply) => {
+  try {
+    const booking = await db.query.bookings.findFirst({
+      where: eq(bookings.id, request.params.id),
+      with: { venue: true, user: true },
+    });
+    if (!booking) return reply.status(404).send({ error: 'Booking not found' });
+
+    const pdfBuffer = await generateVenueReceipt(booking, booking.venue, booking.user);
+    const filename = `venue-receipt-${booking.booking_id_display || booking.id.slice(0, 8)}`;
+
+    try {
+      const pdfUrl = await uploadReceiptToCloudinary(pdfBuffer, filename);
+      return { success: true, pdf_url: pdfUrl, booking_id: booking.booking_id_display };
+    } catch (uploadErr) {
+      // Fallback: return PDF as base64 data URL for direct download
+      fastify.log.warn('Cloudinary upload failed, returning base64:', uploadErr.message);
+      const base64 = pdfBuffer.toString('base64');
+      const dataUrl = `data:application/pdf;base64,${base64}`;
+      return { success: true, pdf_url: dataUrl, booking_id: booking.booking_id_display, fallback: true, upload_error: uploadErr.message };
+    }
+  } catch (err) {
+    fastify.log.error('Generate venue invoice error:', err);
+    return reply.status(500).send({ error: 'Failed to generate invoice' });
+  }
+});
+
+// Admin: generate service booking receipt PDF
+fastify.post('/api/admin/service-bookings/:id/generate-invoice', { onRequest: [fastify.authenticate] }, async (request, reply) => {
+  try {
+    const booking = await db.query.service_bookings.findFirst({
+      where: eq(service_bookings.id, request.params.id),
+      with: { listing: true, user: true },
+    });
+    if (!booking) return reply.status(404).send({ error: 'Booking not found' });
+
+    const pdfBuffer = await generateServiceReceipt(booking, booking.listing, booking.user);
+    const filename = `service-receipt-${booking.booking_id_display || booking.id.slice(0, 8)}`;
+
+    try {
+      const pdfUrl = await uploadReceiptToCloudinary(pdfBuffer, filename);
+      return { success: true, pdf_url: pdfUrl, booking_id: booking.booking_id_display };
+    } catch (uploadErr) {
+      fastify.log.warn('Cloudinary upload failed, returning base64:', uploadErr.message);
+      const base64 = pdfBuffer.toString('base64');
+      const dataUrl = `data:application/pdf;base64,${base64}`;
+      return { success: true, pdf_url: dataUrl, booking_id: booking.booking_id_display, fallback: true, upload_error: uploadErr.message };
+    }
+  } catch (err) {
+    fastify.log.error('Generate service invoice error:', err);
+    return reply.status(500).send({ error: 'Failed to generate invoice' });
+  }
+});
+
+// Admin: send invoice via WhatsApp (booking_confirmation_invoice template)
+// Generates PDF, uploads to Cloudinary for storage, sends via backend URL for correct Content-Type
+fastify.post('/api/admin/bookings/:id/send-invoice', { onRequest: [fastify.authenticate] }, async (request, reply) => {
+  try {
+    const booking = await db.query.bookings.findFirst({
+      where: eq(bookings.id, request.params.id),
+      with: { venue: true, user: true },
+    });
+    if (!booking) return reply.status(404).send({ error: 'Booking not found' });
+    if (!booking.user?.phone_number) return reply.status(400).send({ error: 'Customer phone number not found' });
+
+    // Generate PDF and upload to Cloudinary for storage
+    const pdfBuffer = await generateVenueReceipt(booking, booking.venue, booking.user);
+    const pdfFilename = `venue-receipt-${booking.booking_id_display || booking.id.slice(0, 8)}`;
+    try {
+      await uploadReceiptToCloudinary(pdfBuffer, pdfFilename);
+    } catch (uploadErr) {
+      fastify.log.warn('Cloudinary storage upload failed (non-critical):', uploadErr.message);
+    }
+
+    // Use backend public URL for WhatsApp (serves with correct application/pdf Content-Type)
+    const baseUrl = process.env.BETTER_AUTH_URL || 'https://avenue.waxon.in';
+    const pdfUrl = `${baseUrl}/api/receipts/venue/${booking.id}`;
+    const filename = `ZVenue-Receipt-${booking.booking_id_display || booking.id.slice(0, 8)}.pdf`;
+
+    // Send via WhatsApp document template (booking_confirmation_invoice)
+    const templateName = process.env.AOC_INVOICE_TEMPLATE_NAME || 'booking_confirmation_invoice';
+    const response = await fetch('https://api.aoc-portal.com/v1/whatsapp', {
+      method: 'POST',
+      headers: { 'apikey': process.env.AOC_API_KEY, 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        from: process.env.AOC_WHATSAPP_NUMBER,
+        to: booking.user.phone_number,
+        templateName,
+        type: 'template',
+        components: {
+          header: { type: 'document', document: { link: pdfUrl, filename } },
+          body: { params: [booking.booking_id_display || booking.id.slice(0, 8)] }
+        }
+      }),
+    });
+
+    const result = await response.json();
+    if (!response.ok || result.error) {
+      fastify.log.error('WhatsApp invoice send error:', result);
+      return reply.status(500).send({ error: result.message || 'Failed to send invoice via WhatsApp' });
+    }
+
+    return { success: true, message: 'Confirmation + Receipt sent to customer via WhatsApp', pdf_url: pdfUrl };
+  } catch (err) {
+    fastify.log.error('Send invoice error:', err);
+    return reply.status(500).send({ error: 'Failed to send invoice' });
+  }
+});
+
+// Admin: send service invoice via WhatsApp (booking_confirmation_invoice template)
+fastify.post('/api/admin/service-bookings/:id/send-invoice', { onRequest: [fastify.authenticate] }, async (request, reply) => {
+  try {
+    const booking = await db.query.service_bookings.findFirst({
+      where: eq(service_bookings.id, request.params.id),
+      with: { listing: true, user: true },
+    });
+    if (!booking) return reply.status(404).send({ error: 'Booking not found' });
+    if (!booking.user?.phone_number) return reply.status(400).send({ error: 'Customer phone number not found' });
+
+    // Generate PDF and upload to Cloudinary for storage
+    const pdfBuffer = await generateServiceReceipt(booking, booking.listing, booking.user);
+    const pdfFilename = `service-receipt-${booking.booking_id_display || booking.id.slice(0, 8)}`;
+    try {
+      await uploadReceiptToCloudinary(pdfBuffer, pdfFilename);
+    } catch (uploadErr) {
+      fastify.log.warn('Cloudinary storage upload failed (non-critical):', uploadErr.message);
+    }
+
+    // Use backend public URL for WhatsApp
+    const baseUrl = process.env.BETTER_AUTH_URL || 'https://avenue.waxon.in';
+    const pdfUrl = `${baseUrl}/api/receipts/service/${booking.id}`;
+    const filename = `ZVenue-Receipt-${booking.booking_id_display || booking.id.slice(0, 8)}.pdf`;
+
+    const templateName = process.env.AOC_INVOICE_TEMPLATE_NAME || 'booking_confirmation_invoice';
+    const response = await fetch('https://api.aoc-portal.com/v1/whatsapp', {
+      method: 'POST',
+      headers: { 'apikey': process.env.AOC_API_KEY, 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        from: process.env.AOC_WHATSAPP_NUMBER,
+        to: booking.user.phone_number,
+        templateName,
+        type: 'template',
+        components: {
+          header: { type: 'document', document: { link: pdfUrl, filename } },
+          body: { params: [booking.booking_id_display || booking.id.slice(0, 8)] }
+        }
+      }),
+    });
+
+    const result = await response.json();
+    if (!response.ok || result.error) {
+      fastify.log.error('WhatsApp service invoice send error:', result);
+      return reply.status(500).send({ error: result.message || 'Failed to send invoice via WhatsApp' });
+    }
+
+    return { success: true, message: 'Confirmation + Receipt sent to customer via WhatsApp', pdf_url: pdfUrl };
+  } catch (err) {
+    fastify.log.error('Send service invoice error:', err);
+    return reply.status(500).send({ error: 'Failed to send invoice' });
+  }
+});
+
+// Admin: download venue receipt as PDF file directly
+fastify.get('/api/admin/bookings/:id/download-invoice', { onRequest: [fastify.authenticate] }, async (request, reply) => {
+  try {
+    const booking = await db.query.bookings.findFirst({
+      where: eq(bookings.id, request.params.id),
+      with: { venue: true, user: true },
+    });
+    if (!booking) return reply.status(404).send({ error: 'Booking not found' });
+
+    const pdfBuffer = await generateVenueReceipt(booking, booking.venue, booking.user);
+    const filename = `ZVenue-Receipt-${booking.booking_id_display || booking.id.slice(0, 8)}.pdf`;
+
+    reply.header('Content-Type', 'application/pdf');
+    reply.header('Content-Disposition', `attachment; filename="${filename}"`);
+    return reply.send(pdfBuffer);
+  } catch (err) {
+    fastify.log.error('Download venue invoice error:', err);
+    return reply.status(500).send({ error: 'Failed to generate invoice' });
+  }
+});
+
+// Admin: download service receipt as PDF file directly
+fastify.get('/api/admin/service-bookings/:id/download-invoice', { onRequest: [fastify.authenticate] }, async (request, reply) => {
+  try {
+    const booking = await db.query.service_bookings.findFirst({
+      where: eq(service_bookings.id, request.params.id),
+      with: { listing: true, user: true },
+    });
+    if (!booking) return reply.status(404).send({ error: 'Booking not found' });
+
+    const pdfBuffer = await generateServiceReceipt(booking, booking.listing, booking.user);
+    const filename = `ZVenue-Receipt-${booking.booking_id_display || booking.id.slice(0, 8)}.pdf`;
+
+    reply.header('Content-Type', 'application/pdf');
+    reply.header('Content-Disposition', `attachment; filename="${filename}"`);
+    return reply.send(pdfBuffer);
+  } catch (err) {
+    fastify.log.error('Download service invoice error:', err);
+    return reply.status(500).send({ error: 'Failed to generate invoice' });
+  }
+});
+
+// ─── PUBLIC RECEIPT ENDPOINTS (for WhatsApp document delivery) ──────────────
+// These are publicly accessible (no auth) so WhatsApp can download the PDF
+// Security: uses booking ID which is a UUID (hard to guess)
+
+const UUID_REGEX = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+
+fastify.get('/api/receipts/venue/:id', async (request, reply) => {
+  try {
+    if (!UUID_REGEX.test(request.params.id)) return reply.status(404).send({ error: 'Not found' });
+
+    const booking = await db.query.bookings.findFirst({
+      where: eq(bookings.id, request.params.id),
+      with: { venue: true, user: true },
+    });
+    if (!booking) return reply.status(404).send({ error: 'Not found' });
+
+    const pdfBuffer = await generateVenueReceipt(booking, booking.venue, booking.user);
+    const filename = `ZVenue-Receipt-${booking.booking_id_display || booking.id.slice(0, 8)}.pdf`;
+
+    reply.header('Content-Type', 'application/pdf');
+    reply.header('Content-Disposition', `inline; filename="${filename}"`);
+    return reply.send(pdfBuffer);
+  } catch (err) {
+    fastify.log.error('Public venue receipt error:', err);
+    return reply.status(404).send({ error: 'Not found' });
+  }
+});
+
+fastify.get('/api/receipts/service/:id', async (request, reply) => {
+  try {
+    if (!UUID_REGEX.test(request.params.id)) return reply.status(404).send({ error: 'Not found' });
+
+    const booking = await db.query.service_bookings.findFirst({
+      where: eq(service_bookings.id, request.params.id),
+      with: { listing: true, user: true },
+    });
+    if (!booking) return reply.status(404).send({ error: 'Not found' });
+
+    const pdfBuffer = await generateServiceReceipt(booking, booking.listing, booking.user);
+    const filename = `ZVenue-Receipt-${booking.booking_id_display || booking.id.slice(0, 8)}.pdf`;
+
+    reply.header('Content-Type', 'application/pdf');
+    reply.header('Content-Disposition', `inline; filename="${filename}"`);
+    return reply.send(pdfBuffer);
+  } catch (err) {
+    fastify.log.error('Public service receipt error:', err);
+    return reply.status(404).send({ error: 'Not found' });
   }
 });
 

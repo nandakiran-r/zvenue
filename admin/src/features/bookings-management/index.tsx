@@ -540,6 +540,36 @@ export function BookingsPage() {
                   </Button>
                 </div>
               )}
+
+              {/* Invoice Generation & Sending */}
+              {(selectedBooking.status === 'confirmed' || selectedBooking.status === 'pre_booked') && (
+                <div className='border-t pt-4 mt-4'>
+                  <p className='text-sm font-semibold mb-2'>Receipt & Confirmation</p>
+                  <div className='flex flex-wrap gap-2'>
+                    <Button
+                      variant='outline'
+                      size='sm'
+                      asChild
+                    >
+                      <a href={`${import.meta.env.VITE_API_URL || 'http://localhost:3001'}/api/admin/bookings/${selectedBooking.id}/download-invoice`} target='_blank' rel='noreferrer'>📥 Download Receipt</a>
+                    </Button>
+                    <Button
+                      size='sm'
+                      onClick={async () => {
+                        try {
+                          const { sendVenueInvoice } = await import('@/lib/api')
+                          await sendVenueInvoice(selectedBooking.id)
+                          toast.success('Confirmation + Receipt sent to customer via WhatsApp!')
+                        } catch (err: any) {
+                          toast.error(err.response?.data?.error || 'Failed to send')
+                        }
+                      }}
+                    >
+                      📨 Send Confirmation + Receipt
+                    </Button>
+                  </div>
+                </div>
+              )}
             </div>
           )}
         </DialogContent>

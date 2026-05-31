@@ -1,7 +1,26 @@
 /**
  * Invoice generation and WhatsApp delivery for ZVenue
- * Sends invoices to both customers and owners via AOC WhatsApp API
- * Fallback: digital invoice available in-app
+ * 
+ * NOTIFICATION FLOW:
+ * ─────────────────────────────────────────────────────────────────────
+ * 1. VENUE PRE-BOOKING (customer pays registration fee):
+ *    - Customer gets: "booking_notification" template (auto, on payment)
+ *    - Owner gets: "pre_booking_owner_notification" template (auto, on payment)
+ * 
+ * 2. VENUE FULL CONFIRMATION (admin confirms full payment):
+ *    - Customer gets: "booking_confirmation_invoice" template (manual, from admin panel with PDF receipt)
+ *    - This is the ONLY confirmation message — sent with the receipt PDF
+ * 
+ * 3. SERVICE BOOKING (customer pays full amount):
+ *    - Customer gets: "notification" template (auto, on payment)
+ *    - Confirmation with receipt: "booking_confirmation_invoice" (manual, from admin panel)
+ * 
+ * TEMPLATES USED:
+ *    - booking_notification → venue pre-booking (customer)
+ *    - pre_booking_owner_notification → venue pre-booking (owner, 3 vars: venue, customer, date)
+ *    - notification → service booking (customer)
+ *    - booking_confirmation_invoice → confirmation with receipt (both venue & service, manual from admin)
+ * ─────────────────────────────────────────────────────────────────────
  */
 
 // Generate invoice data from a venue booking
@@ -19,7 +38,7 @@ export function generateVenueInvoiceData(booking, venue, user) {
     },
     owner: {
       name: venue?.owner_name || 'Venue Owner',
-      phone: '', // filled by caller if available
+      phone: '',
     },
     items: [
       {
@@ -80,7 +99,16 @@ export function generateServiceInvoiceData(booking, listing, user) {
   };
 }
 
-// Send invoice via WhatsApp (AOC API)
+/**
+ * Send WhatsApp notification to customer on booking/pre-booking
+ * This is the AUTO notification sent immediately when payment is made.
+ * 
+ * For VENUE pre-booking: uses "booking_notification" template
+ * For SERVICE booking: uses "notification" template
+ * 
+ * NOTE: Venue full confirmation is NOT sent here — it's sent manually
+ * from admin panel using "booking_confirmation_invoice" with the PDF receipt.
+ */
 export async function sendWhatsAppInvoice(phoneNumber, invoiceData, logger) {
   try {
     if (!phoneNumber || !process.env.AOC_API_KEY) {
@@ -93,11 +121,15 @@ export async function sendWhatsAppInvoice(phoneNumber, invoiceData, logger) {
     // Choose template based on booking type
     let templateName;
     if (invoiceData.type === 'service') {
+      // Service booking → "notification" template
       templateName = process.env.AOC_SERVICE_BOOKING_TEMPLATE_NAME || 'notification';
     } else if (invoiceData.is_pre_booking) {
+      // Venue pre-booking → "booking_notification" template
       templateName = process.env.AOC_PREBOOKING_TEMPLATE_NAME || 'booking_notification';
     } else {
-      templateName = process.env.AOC_VENUE_CONFIRMED_TEMPLATE_NAME || 'notification';
+      // Venue direct full payment (rare case) → also use pre-booking template
+      // Full confirmation with receipt is sent manually from admin panel
+      templateName = process.env.AOC_PREBOOKING_TEMPLATE_NAME || 'booking_notification';
     }
 
     const response = await fetch('https://api.aoc-portal.com/v1/whatsapp', {
@@ -133,7 +165,13 @@ export async function sendWhatsAppInvoice(phoneNumber, invoiceData, logger) {
   }
 }
 
-// Send owner notification about new booking (WhatsApp)
+/**
+ * Send owner notification about new pre-booking (WhatsApp)
+ * Uses "pre_booking_owner_notification" template with 3 variables:
+ *   1. venue_name
+ *   2. customer_name  
+ *   3. booking_date + session
+ */
 export async function sendOwnerBookingAlert(ownerPhone, invoiceData, logger) {
   try {
     if (!ownerPhone || !process.env.AOC_API_KEY) return false;
@@ -149,7 +187,7 @@ export async function sendOwnerBookingAlert(ownerPhone, invoiceData, logger) {
       body: JSON.stringify({
         from: process.env.AOC_WHATSAPP_NUMBER,
         to: ownerPhone,
-        templateName: process.env.AOC_PREBOOKING_TEMPLATE_NAME || 'booking_notification',
+        templateName: process.env.AOC_OWNER_PREBOOKING_TEMPLATE_NAME || 'pre_booking_owner_notification',
         type: 'template',
         components: {
           body: {

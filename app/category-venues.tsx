@@ -108,7 +108,7 @@ export default function CategoryVenuesScreen() {
                 <View style={styles.detailsRow}>
                   <View style={styles.ratingRow}>
                     <Star size={14} color="#FFB800" fill="#FFB800" />
-                    <Text style={styles.ratingText}>{venue.rating} ({venue.review_count})</Text>
+                    <Text style={styles.ratingText}>{venue.review_count > 0 ? `${venue.rating} (${venue.review_count})` : 'No reviews yet'}</Text>
                   </View>
                   {venue.capacity > 0 && (
                     <View style={styles.capacityRow}>

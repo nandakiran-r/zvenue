@@ -194,7 +194,7 @@ export default function SignupScreen() {
                 <View style={styles.inputContainer}>
                   <TextInput
                     style={styles.input}
-                    placeholder="John"
+                    placeholder="First name"
                     placeholderTextColor={Colors.textTertiary}
                     value={firstName}
                     onChangeText={setFirstName}
@@ -206,7 +206,7 @@ export default function SignupScreen() {
                 <View style={styles.inputContainer}>
                   <TextInput
                     style={styles.input}
-                    placeholder="Doe"
+                    placeholder="Last name"
                     placeholderTextColor={Colors.textTertiary}
                     value={lastName}
                     onChangeText={setLastName}

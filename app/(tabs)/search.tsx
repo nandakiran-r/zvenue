@@ -199,7 +199,7 @@ export default function SearchScreen() {
                     </View>
                     <Text style={styles.venueTitle} numberOfLines={1}>{venue.name}</Text>
                     <View style={styles.metaRow}><MapPin size={11} color={Colors.textSecondary} /><Text style={styles.venueCity}>{venue.city}</Text></View>
-                    <View style={styles.ratingRow}><Star size={12} color="#FFB800" fill="#FFB800" /><Text style={styles.ratingText}>{venue.rating}</Text><Text style={styles.priceText}>{formatPrice(venue.price_per_day)}/day</Text></View>
+                    <View style={styles.ratingRow}><Star size={12} color="#FFB800" fill="#FFB800" /><Text style={styles.ratingText}>{venue.review_count > 0 ? venue.rating : 'No reviews yet'}</Text><Text style={styles.priceText}>{formatPrice(venue.price_per_day)}/day</Text></View>
                   </View>
                 </TouchableOpacity>
               ))}
@@ -220,7 +220,7 @@ export default function SearchScreen() {
                     </View>
                     <Text style={styles.venueTitle} numberOfLines={1}>{svc.name}</Text>
                     <View style={styles.metaRow}><MapPin size={11} color={Colors.textSecondary} /><Text style={styles.venueCity}>{svc.city}</Text></View>
-                    <View style={styles.ratingRow}><Star size={12} color="#FFB800" fill="#FFB800" /><Text style={styles.ratingText}>{svc.rating}</Text><Text style={styles.priceText}>{formatPrice(svc.price)}</Text></View>
+                    <View style={styles.ratingRow}><Star size={12} color="#FFB800" fill="#FFB800" /><Text style={styles.ratingText}>{svc.review_count > 0 ? svc.rating : 'No reviews yet'}</Text><Text style={styles.priceText}>{formatPrice(svc.price)}</Text></View>
                   </View>
                 </TouchableOpacity>
               ))}
@@ -250,7 +250,7 @@ export default function SearchScreen() {
                   <MapPin size={11} color={Colors.textSecondary} /><Text style={styles.venueCity}>{venue.city}</Text>
                   <Users size={11} color={Colors.textSecondary} /><Text style={styles.venueCapacity}>Up to {venue.capacity}</Text>
                 </View>
-                <View style={styles.ratingRow}><Star size={12} color="#FFB800" fill="#FFB800" /><Text style={styles.ratingText}>{venue.rating}</Text><Text style={styles.priceText}>{formatPrice(venue.price_per_day)}/day</Text></View>
+                <View style={styles.ratingRow}><Star size={12} color="#FFB800" fill="#FFB800" /><Text style={styles.ratingText}>{venue.review_count > 0 ? venue.rating : 'No reviews yet'}</Text><Text style={styles.priceText}>{formatPrice(venue.price_per_day)}/day</Text></View>
               </View>
               <TouchableOpacity onPress={() => toggleFav(venue.id)} style={styles.heartButton}>
                 <Heart size={20} color={favorites.includes(venue.id) ? Colors.primary : Colors.textTertiary} fill={favorites.includes(venue.id) ? Colors.primary : "none"} />
@@ -272,7 +272,7 @@ export default function SearchScreen() {
                 </View>
                 <Text style={styles.venueTitle} numberOfLines={2}>{svc.name}</Text>
                 <View style={styles.metaRow}><MapPin size={11} color={Colors.textSecondary} /><Text style={styles.venueCity}>{svc.city}</Text></View>
-                <View style={styles.ratingRow}><Star size={12} color="#FFB800" fill="#FFB800" /><Text style={styles.ratingText}>{svc.rating?.toFixed(1)}</Text><Text style={styles.priceText}>{formatPrice(svc.price)}</Text></View>
+                <View style={styles.ratingRow}><Star size={12} color="#FFB800" fill="#FFB800" /><Text style={styles.ratingText}>{svc.review_count > 0 ? svc.rating?.toFixed(1) : 'No reviews yet'}</Text><Text style={styles.priceText}>{formatPrice(svc.price)}</Text></View>
               </View>
             </TouchableOpacity>
           ))}

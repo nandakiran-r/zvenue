@@ -208,7 +208,7 @@ export default function VenueDetailScreen() {
                             </View>
                             <View style={styles.metaRow}>
                                 <Star size={14} color="#FFB800" fill="#FFB800" />
-                                <Text style={styles.metaText}>{venue.rating ?? 0} ({venue.review_count ?? 0} reviews)</Text>
+                                <Text style={styles.metaText}>{(venue.review_count ?? 0) > 0 ? `${venue.rating} (${venue.review_count} reviews)` : 'No reviews yet'}</Text>
                             </View>
                         </View>
                         <View style={styles.pricingBlock}>

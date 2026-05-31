@@ -254,7 +254,7 @@ export default function BookingDetailScreen() {
                     </div>
                     <script>
                         var options = {
-                            key: "${process.env.EXPO_PUBLIC_RAZORPAY_KEY || 'rzp_test_SpDyznKPQ9nviQ'}",
+                            key: "${process.env.EXPO_PUBLIC_RAZORPAY_KEY}",
                             amount: ${order.amount},
                             currency: "INR",
                             name: "Zvenue",

@@ -54,6 +54,7 @@ export default function ServiceBookingDetailScreen() {
 
   // Quantity
   const [quantity, setQuantity] = useState(1);
+  const [qtyText, setQtyText] = useState('1');
 
   // Payment
   const [paymentModalVisible, setPaymentModalVisible] = useState(false);
@@ -174,9 +175,15 @@ export default function ServiceBookingDetailScreen() {
       warning("Maximum Reached", "Maximum available quantity reached.");
       return;
     }
-    setQuantity(q => q + 1);
+    const newQty = quantity + 1;
+    setQuantity(newQty);
+    setQtyText(String(newQty));
   };
-  const decrementQty = () => setQuantity(q => Math.max(1, q - 1));
+  const decrementQty = () => {
+    const newQty = Math.max(1, quantity - 1);
+    setQuantity(newQty);
+    setQtyText(String(newQty));
+  };
 
   // Pricing (quantity-based, not session-based)
   const unitPrice = listing?.price ?? 0;
@@ -212,7 +219,7 @@ export default function ServiceBookingDetailScreen() {
           <div style="text-align:center;"><h3 style="color:#333;">Loading payment...</h3><p style="color:#666;font-size:14px;">Please do not close this window.</p></div>
           <script>
             var options = {
-              key: "${process.env.EXPO_PUBLIC_RAZORPAY_KEY || 'rzp_test_SpDyznKPQ9nviQ'}",
+              key: "${process.env.EXPO_PUBLIC_RAZORPAY_KEY}",
               amount: ${order.amount},
               currency: "INR",
               name: "Zvenue",
@@ -447,14 +454,32 @@ export default function ServiceBookingDetailScreen() {
               </TouchableOpacity>
               <TextInput
                 style={styles.qtyInput}
-                value={String(quantity)}
+                value={qtyText}
                 onChangeText={(text) => {
-                  const num = parseInt(text.replace(/[^0-9]/g, ''), 10);
-                  if (isNaN(num) || num < 1) setQuantity(1);
-                  else if (num > (listing?.quantity_available || 999)) {
-                    setQuantity(listing?.quantity_available || 999);
-                    warning("Maximum Reached", "Maximum available quantity reached.");
-                  } else setQuantity(num);
+                  // Allow empty field while typing
+                  const cleaned = text.replace(/[^0-9]/g, '');
+                  setQtyText(cleaned);
+                  const num = parseInt(cleaned, 10);
+                  if (!isNaN(num) && num > 0) {
+                    if (num > (listing?.quantity_available || 999)) {
+                      setQuantity(listing?.quantity_available || 999);
+                      setQtyText(String(listing?.quantity_available || 999));
+                      warning("Maximum Reached", "Maximum available quantity reached.");
+                    } else {
+                      setQuantity(num);
+                    }
+                  } else {
+                    setQuantity(0);
+                  }
+                }}
+                onBlur={() => {
+                  // On blur, ensure at least 1
+                  if (quantity < 1) {
+                    setQuantity(1);
+                    setQtyText('1');
+                  } else {
+                    setQtyText(String(quantity));
+                  }
                 }}
                 keyboardType="numeric"
                 selectTextOnFocus

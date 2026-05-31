@@ -175,7 +175,7 @@ export default function ServiceDetailScreen() {
           </View>
           <View style={styles.metaRow}>
             <Star size={14} color="#FFB800" fill="#FFB800" />
-            <Text style={styles.metaText}>{listing.rating.toFixed(1)} ({listing.review_count} reviews)</Text>
+            <Text style={styles.metaText}>{listing.review_count > 0 ? `${listing.rating.toFixed(1)} (${listing.review_count} reviews)` : 'No reviews yet'}</Text>
           </View>
           <View style={styles.priceRow}>
             <Text style={styles.price}>{formatPrice(unitPrice)}</Text>

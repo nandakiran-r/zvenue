@@ -200,7 +200,7 @@ export default function SubscriptionScreen() {
                 <FeatureItem text="10-15% off on catering & food packages" />
                 <FeatureItem text="Free decoration & stage setup" />
                 <FeatureItem text="Priority booking & dedicated coordinator" />
-                <FeatureItem text="Cancel anytime" />
+                <FeatureItem text="Cancel renewal anytime" />
               </>
             )}
           </View>

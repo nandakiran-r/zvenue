@@ -63,6 +63,7 @@ export default function HomeScreen() {
   const [categories, setCategories] = useState<DbCategory[]>([]);
   const [venuesByCategory, setVenuesByCategory] = useState<Record<string, DbVenue[]>>({});
   const [loading, setLoading] = useState(true);
+  const [loadError, setLoadError] = useState(false);
 
   const [selectedCategory, setSelectedCategory] = useState<string>("all");
   const [locationModalVisible, setLocationModalVisible] = useState(false);
@@ -138,6 +139,7 @@ export default function HomeScreen() {
   const loadData = async () => {
     try {
       setLoading(true);
+      setLoadError(false);
       const filters: any = {};
 
       // Pass GPS coordinates if available for distance sorting
@@ -165,6 +167,7 @@ export default function HomeScreen() {
       setVenuesByCategory(grouped);
     } catch (err) {
       console.error("Failed to load home data:", err);
+      setLoadError(true);
     } finally {
       setLoading(false);
       setRefreshing(false);
@@ -225,7 +228,6 @@ export default function HomeScreen() {
         setSearchLoading(true);
         setIsSearching(true);
         const results = await searchAll(text.trim(), filterType);
-        console.log('Search results:', JSON.stringify({ venues: results.venues.length, services: results.services.length }));
         setSearchResults(sortResults(results));
       } catch (err) {
         console.error("Search failed:", err);
@@ -640,7 +642,7 @@ export default function HomeScreen() {
                         <View style={styles.searchResultFooter}>
                           <View style={styles.ratingRow}>
                             <Star size={12} color="#FFB800" fill="#FFB800" />
-                            <Text style={styles.ratingText}>{venue.rating}</Text>
+                            <Text style={styles.ratingText}>{venue.review_count > 0 ? venue.rating : 'No reviews yet'}</Text>
                           </View>
                           <Text style={styles.searchResultPrice}>{formatPrice(venue.price_per_day)}/day</Text>
                         </View>
@@ -679,7 +681,7 @@ export default function HomeScreen() {
                         <View style={styles.searchResultFooter}>
                           <View style={styles.ratingRow}>
                             <Star size={12} color="#FFB800" fill="#FFB800" />
-                            <Text style={styles.ratingText}>{service.rating}</Text>
+                            <Text style={styles.ratingText}>{service.review_count > 0 ? service.rating : 'No reviews yet'}</Text>
                           </View>
                           <Text style={styles.searchResultPrice}>{formatPrice(service.price)}</Text>
                         </View>
@@ -767,13 +769,27 @@ export default function HomeScreen() {
 
         {loading ? (
           <ActivityIndicator size="large" color={Colors.primary} style={{ marginTop: 40 }} />
+        ) : loadError ? (
+          <View style={{ alignItems: 'center', paddingTop: 60, paddingHorizontal: 40, gap: 12 }}>
+            <MaterialIcons name="wifi-off" size={56} color={Colors.textTertiary} />
+            <Text style={{ fontSize: 18, fontWeight: '600', color: Colors.text, textAlign: 'center' }}>Something went wrong</Text>
+            <Text style={{ fontSize: 14, color: Colors.textSecondary, textAlign: 'center', lineHeight: 20 }}>Check your internet connection and try again</Text>
+            <TouchableOpacity
+              style={{ backgroundColor: Colors.primary, borderRadius: 12, paddingVertical: 12, paddingHorizontal: 28, marginTop: 8 }}
+              onPress={loadData}
+              activeOpacity={0.8}
+            >
+              <Text style={{ color: Colors.white, fontSize: 15, fontWeight: '600' }}>Retry</Text>
+            </TouchableOpacity>
+          </View>
         ) : activeTab === 'venues' ? (
-          categories.map((category) => {
-            const categoryVenues = venuesByCategory[category.name] ?? [];
-            if (categoryVenues.length === 0) return null;
+          <>
+            {categories.map((category) => {
+              const categoryVenues = venuesByCategory[category.name] ?? [];
+              if (categoryVenues.length === 0) return null;
 
-            return (
-              <View key={category.id}>
+              return (
+                <View key={category.id}>
                 <View style={styles.sectionHeader}>
                   <Text style={styles.sectionTitle}>{category.name}</Text>
                   <TouchableOpacity style={styles.seeMoreButton} onPress={() => router.push({ pathname: "/category-venues" as any, params: { category: category.name } })}>
@@ -813,7 +829,7 @@ export default function HomeScreen() {
                         <View style={styles.popularFooter}>
                           <View style={styles.ratingRow}>
                             <Star size={12} color="#FFB800" fill="#FFB800" />
-                            <Text style={styles.ratingText}>{venue.rating} ({venue.review_count})</Text>
+                            <Text style={styles.ratingText}>{venue.review_count > 0 ? `${venue.rating} (${venue.review_count})` : 'No reviews yet'}</Text>
                           </View>
                           <Text style={styles.popularPrice}>{formatPrice(venue.price_per_day)}</Text>
                         </View>
@@ -823,7 +839,15 @@ export default function HomeScreen() {
                 </ScrollView>
               </View>
             );
-          })
+            })}
+            {Object.values(venuesByCategory).every(v => v.length === 0) && (
+              <View style={{ alignItems: 'center', paddingTop: 60, gap: 12 }}>
+                <MapPin size={48} color={Colors.textTertiary} />
+                <Text style={{ fontSize: 16, fontWeight: '600', color: Colors.text }}>No venues available</Text>
+                <Text style={{ fontSize: 14, color: Colors.textSecondary, textAlign: 'center', paddingHorizontal: 40 }}>Venues will appear here once they are added to your area</Text>
+              </View>
+            )}
+          </>
         ) : (
           /* Services Tab Content */
           <View style={styles.servicesContent}>

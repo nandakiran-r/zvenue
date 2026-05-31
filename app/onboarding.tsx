@@ -34,7 +34,7 @@ const SLIDES = [
   {
     id: "3",
     title: "Book your dream\nvenue in minutes",
-    subtitle: "Instant booking confirmation with secure payments. Start with a 7-day free trial!",
+    subtitle: "Instant booking confirmation with secure payments. Subscribe for exclusive benefits!",
     images: ONBOARDING_IMAGES[2],
   },
 ];
@@ -64,11 +64,6 @@ export default function OnboardingScreen() {
 
   const handleGetStarted = async () => {
     // Mark onboarding as seen
-    await AsyncStorage.setItem(ONBOARDING_SEEN_KEY, "true");
-    router.replace("/login");
-  };
-
-  const handleSkip = async () => {
     await AsyncStorage.setItem(ONBOARDING_SEEN_KEY, "true");
     router.replace("/login");
   };
@@ -104,11 +99,6 @@ export default function OnboardingScreen() {
 
   return (
     <View style={[styles.container, { paddingBottom: insets.bottom }]} testID="onboarding-screen">
-      {/* Skip button */}
-      <TouchableOpacity style={[styles.skipButton, { top: insets.top + 12 }]} onPress={handleSkip} testID="onboarding-skip">
-        <Text style={styles.skipText}>Skip</Text>
-      </TouchableOpacity>
-
       <FlatList
         ref={flatListRef}
         data={SLIDES}
@@ -152,18 +142,6 @@ const styles = StyleSheet.create({
   container: {
     flex: 1,
     backgroundColor: Colors.background,
-  },
-  skipButton: {
-    position: "absolute",
-    right: 24,
-    zIndex: 10,
-    paddingHorizontal: 16,
-    paddingVertical: 8,
-  },
-  skipText: {
-    fontSize: 15,
-    fontWeight: "600",
-    color: Colors.textSecondary,
   },
   slide: {
     flex: 1,

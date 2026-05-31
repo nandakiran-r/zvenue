@@ -238,6 +238,13 @@ export default function ViewBookingScreen() {
                     </View>
                 </View>
             </ScrollView>
+
+            {/* Reschedule note */}
+            {(isConfirmed || isPreBooked) && (
+                <Text style={{ textAlign: "center", fontSize: 12, color: Colors.textSecondary, paddingHorizontal: 20, paddingBottom: 16, fontStyle: "italic" }}>
+                    Need to reschedule? Contact support at +91 7249111100 (at least 3 days before booking date)
+                </Text>
+            )}
         </View>
     );
 }

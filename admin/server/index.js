@@ -4570,7 +4570,7 @@ fastify.post('/api/admin/bookings/:id/send-invoice', { onRequest: [fastify.authe
     }
 
     // Use backend public URL for WhatsApp (serves with correct application/pdf Content-Type)
-    const baseUrl = process.env.BETTER_AUTH_URL || 'https://avenue.waxon.in';
+    const baseUrl = process.env.BACKEND_PUBLIC_URL || 'https://avenue.waxon.in';
     const pdfUrl = `${baseUrl}/api/receipts/venue/${booking.id}`;
     const filename = `ZVenue-Receipt-${booking.booking_id_display || booking.id.slice(0, 8)}.pdf`;
 
@@ -4624,7 +4624,7 @@ fastify.post('/api/admin/service-bookings/:id/send-invoice', { onRequest: [fasti
     }
 
     // Use backend public URL for WhatsApp
-    const baseUrl = process.env.BETTER_AUTH_URL || 'https://avenue.waxon.in';
+    const baseUrl = process.env.BACKEND_PUBLIC_URL || 'https://avenue.waxon.in';
     const pdfUrl = `${baseUrl}/api/receipts/service/${booking.id}`;
     const filename = `ZVenue-Receipt-${booking.booking_id_display || booking.id.slice(0, 8)}.pdf`;
 

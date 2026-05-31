@@ -92,22 +92,30 @@ Paste your production `.env` content:
 ```env
 PORT=3001
 DATABASE_URL="postgresql://neondb_owner:YOUR_PASSWORD@YOUR_NEON_HOST/neondb?sslmode=require"
-ALLOWED_ORIGINS=https://yourdomain.com,https://www.yourdomain.com
+ALLOWED_ORIGINS=https://yourdomain.com,https://admin.yourdomain.com
 JWT_SECRET=your_production_jwt_secret_here
+BACKEND_PUBLIC_URL=https://yourdomain.com
+
+# Razorpay (LIVE keys)
 RAZORPAY_KEY_ID=rzp_live_XXXXX
 RAZORPAY_KEY_SECRET=your_live_secret
 RAZORPAY_WEBHOOK_SECRET=your_webhook_secret
+
+# AOC WhatsApp
 AOC_API_KEY=your_aoc_key
-AOC_WHATSAPP_NUMBER=+91XXXXXXXXXX
+AOC_WHATSAPP_NUMBER=+917249111100
 AOC_TEMPLATE_NAME=otp
-AOC_PREBOOKING_TEMPLATE_NAME=prebooking_alert
+AOC_PREBOOKING_TEMPLATE_NAME=booking_notification
+AOC_SERVICE_BOOKING_TEMPLATE_NAME=notification
+AOC_OWNER_PREBOOKING_TEMPLATE_NAME=pre_booking_owner_notification
+AOC_INVOICE_TEMPLATE_NAME=booking_confirmation_invoice
+
+# MSG2Z SMS
 MSG2Z_USER_ID=zvenue
 MSG2Z_PASSWORD=your_password
 MSG2Z_SENDER_ID=ZVENUE
-MSG2Z_ENTITY_ID=your_entity_id
-MSG2Z_TEMPLATE_ID=your_template_id
-BETTER_AUTH_SECRET=your_auth_secret
-BETTER_AUTH_URL=https://yourdomain.com
+MSG2Z_ENTITY_ID=1701177875328026717
+MSG2Z_TEMPLATE_ID=1707177882344538316
 ```
 
 Save and exit (`Ctrl+X`, `Y`, `Enter`).

@@ -138,7 +138,7 @@ export default function ViewServiceBookingScreen() {
 
         {/* Contact Support for changes */}
         {isConfirmed && (
-          <Text style={styles.rescheduleNote}>Need to reschedule? Contact support at +91 7249111100</Text>
+          <Text style={styles.rescheduleNote}>Need to reschedule? Contact support at +91 7249111100 (at least 3 days before booking date)</Text>
         )}
       </ScrollView>
     </View>

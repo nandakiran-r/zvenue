@@ -7,9 +7,9 @@ import Colors from "@/constants/colors";
 
 const FAQ = [
     { q: "How do I book a venue?", a: "Browse venues from the home screen, select one, pick a date and time, then confirm and pay." },
-    { q: "Can I cancel a booking?", a: "Contact our support team via phone or email for cancellation requests. We provide free rescheduling." },
+    { q: "Can I cancel a booking?", a: "Cancellations are not available. Free rescheduling is provided up to 3 days before the booking date. Contact support at +91 7249111100." },
     { q: "What are subscriber benefits?", a: "Subscribers get free perks like parking, welcome drinks, and discounts at partner venues. Plans start from ₹9/month." },
-    { q: "How do I get a refund?", a: "We do not provide refunds. However, free rescheduling is available for all bookings." },
+    { q: "How do I get a refund?", a: "We do not provide refunds. Free rescheduling is available up to 3 days before the booking date." },
 ];
 
 export default function HelpScreen() {

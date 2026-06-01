@@ -103,7 +103,7 @@ export function ServiceBookingsPage() {
                             📨 Send Receipt
                           </Button>
                           <Button variant='outline' size='sm' asChild>
-                            <a href={`${import.meta.env.VITE_API_URL || 'http://localhost:3001'}/api/admin/service-bookings/${b.id}/download-invoice`} target='_blank' rel='noreferrer'>📥</a>
+                            <a href={`${import.meta.env.VITE_API_URL || 'http://localhost:3001'}/api/admin/service-bookings/${b.id}/download-invoice?token=${localStorage.getItem('token') || ''}`} target='_blank' rel='noreferrer'>📥</a>
                           </Button>
                         </>
                       )}

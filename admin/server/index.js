@@ -4717,7 +4717,14 @@ fastify.post('/api/admin/service-bookings/:id/send-invoice', { onRequest: [fasti
 });
 
 // Admin: download venue receipt as PDF file directly
-fastify.get('/api/admin/bookings/:id/download-invoice', { onRequest: [fastify.authenticate] }, async (request, reply) => {
+// Supports token via query param (?token=...) for browser tab downloads
+fastify.get('/api/admin/bookings/:id/download-invoice', { onRequest: [async function (request, reply) {
+  // Allow token from query string (for <a href> downloads in new tab)
+  if (!request.headers.authorization && request.query.token) {
+    request.headers.authorization = `Bearer ${request.query.token}`;
+  }
+  await fastify.authenticate(request, reply);
+}] }, async (request, reply) => {
   try {
     const booking = await db.query.bookings.findFirst({
       where: eq(bookings.id, request.params.id),
@@ -4738,7 +4745,13 @@ fastify.get('/api/admin/bookings/:id/download-invoice', { onRequest: [fastify.au
 });
 
 // Admin: download service receipt as PDF file directly
-fastify.get('/api/admin/service-bookings/:id/download-invoice', { onRequest: [fastify.authenticate] }, async (request, reply) => {
+// Supports token via query param (?token=...) for browser tab downloads
+fastify.get('/api/admin/service-bookings/:id/download-invoice', { onRequest: [async function (request, reply) {
+  if (!request.headers.authorization && request.query.token) {
+    request.headers.authorization = `Bearer ${request.query.token}`;
+  }
+  await fastify.authenticate(request, reply);
+}] }, async (request, reply) => {
   try {
     const booking = await db.query.service_bookings.findFirst({
       where: eq(service_bookings.id, request.params.id),

@@ -551,7 +551,7 @@ export function BookingsPage() {
                       size='sm'
                       asChild
                     >
-                      <a href={`${import.meta.env.VITE_API_URL || 'http://localhost:3001'}/api/admin/bookings/${selectedBooking.id}/download-invoice`} target='_blank' rel='noreferrer'>📥 Download Receipt</a>
+                      <a href={`${import.meta.env.VITE_API_URL || 'http://localhost:3001'}/api/admin/bookings/${selectedBooking.id}/download-invoice?token=${localStorage.getItem('token') || ''}`} target='_blank' rel='noreferrer'>📥 Download Receipt</a>
                     </Button>
                     <Button
                       size='sm'

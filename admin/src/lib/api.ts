@@ -86,14 +86,18 @@ export const generateVenueInvoice = (bookingId: string) =>
   api.post(`/api/admin/bookings/${bookingId}/generate-invoice`).then(r => r.data)
 export const sendVenueInvoice = (bookingId: string) =>
   api.post(`/api/admin/bookings/${bookingId}/send-invoice`).then(r => r.data)
-export const downloadVenueInvoiceUrl = (bookingId: string) =>
-  `${API_URL}/api/admin/bookings/${bookingId}/download-invoice`
+export const downloadVenueInvoiceUrl = (bookingId: string) => {
+  const token = localStorage.getItem('token')
+  return `${API_URL}/api/admin/bookings/${bookingId}/download-invoice${token ? `?token=${token}` : ''}`
+}
 export const generateServiceInvoice = (bookingId: string) =>
   api.post(`/api/admin/service-bookings/${bookingId}/generate-invoice`).then(r => r.data)
 export const sendServiceInvoice = (bookingId: string) =>
   api.post(`/api/admin/service-bookings/${bookingId}/send-invoice`).then(r => r.data)
-export const downloadServiceInvoiceUrl = (bookingId: string) =>
-  `${API_URL}/api/admin/service-bookings/${bookingId}/download-invoice`
+export const downloadServiceInvoiceUrl = (bookingId: string) => {
+  const token = localStorage.getItem('token')
+  return `${API_URL}/api/admin/service-bookings/${bookingId}/download-invoice${token ? `?token=${token}` : ''}`
+}
 
 // ─── Owners ────────────────────────────────────────────────────────────────
 export const fetchOwners = () => api.get('/api/owners').then(r => r.data)

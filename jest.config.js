@@ -6,4 +6,7 @@ module.exports = {
   setupFiles: ['<rootDir>/__mocks__/setup.ts'],
   moduleFileExtensions: ['ts', 'tsx', 'js', 'jsx'],
   testPathIgnorePatterns: ['/node_modules/', '/admin/', '/.maestro/'],
+  moduleNameMapper: {
+    '^@/(.*)$': '<rootDir>/$1',
+  },
 };

@@ -96,7 +96,7 @@ export default function FavoritesScreen() {
               <View style={styles.cardInfo}>
                 <Text style={styles.cardTitle} numberOfLines={2}>{venue.name}</Text>
                 <View style={styles.metaRow}><MapPin size={12} color={Colors.textSecondary} /><Text style={styles.metaText}>{venue.city}</Text></View>
-                <View style={styles.metaRow}><Star size={12} color="#FFB800" fill="#FFB800" /><Text style={styles.ratingText}>{venue.review_count > 0 ? venue.rating : 'No reviews yet'}</Text><Text style={styles.priceText}>{formatPrice(venue.price_per_day)}/day</Text></View>
+                <View style={styles.metaRow}><Star size={12} color="#FFB800" fill="#FFB800" /><Text style={styles.ratingText}>{venue.review_count > 0 ? venue.rating : 'No reviews yet'}</Text><Text style={styles.priceText}>{formatPrice(venue.price_full_day)}/full day</Text></View>
               </View>
               <TouchableOpacity style={styles.heartButton} onPress={() => toggleFavorite(venue.id)}>
                 <Heart size={20} color={Colors.primary} fill={Colors.primary} />
@@ -135,7 +135,7 @@ export default function FavoritesScreen() {
               <View style={styles.cardInfo}>
                 <Text style={styles.cardTitle} numberOfLines={2}>{venue.name}</Text>
                 <View style={styles.metaRow}><MapPin size={12} color={Colors.textSecondary} /><Text style={styles.metaText}>{venue.city}</Text></View>
-                <View style={styles.metaRow}><Star size={12} color="#FFB800" fill="#FFB800" /><Text style={styles.ratingText}>{venue.review_count > 0 ? venue.rating : 'No reviews yet'}</Text><Text style={styles.priceText}>{formatPrice(venue.price_per_day)}/day</Text></View>
+                <View style={styles.metaRow}><Star size={12} color="#FFB800" fill="#FFB800" /><Text style={styles.ratingText}>{venue.review_count > 0 ? venue.rating : 'No reviews yet'}</Text><Text style={styles.priceText}>{formatPrice(venue.price_full_day)}/full day</Text></View>
               </View>
               <TouchableOpacity style={styles.heartButton} onPress={() => toggleFavorite(venue.id)}>
                 <Heart size={20} color={Colors.primary} fill={Colors.primary} />

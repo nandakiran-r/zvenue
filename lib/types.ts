@@ -36,6 +36,9 @@ export interface DbVenue {
   youtube_url: string | null;
   price_per_hour: number;
   price_per_day: number;
+  price_morning: number;
+  price_evening: number;
+  price_full_day: number;
   capacity: number;
   registration_fee: number;
   rating: number;

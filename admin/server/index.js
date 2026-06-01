@@ -1065,6 +1065,18 @@ fastify.post('/api/owners/venues', { onRequest: [fastify.authenticate] }, async 
   try {
     if (request.user.role !== 'owner') return reply.status(403).send({ error: 'Not an owner' });
     const { subscriber_benefits, registration_fee, ...body } = request.body; // Strip admin-only fields
+
+    // Validate session prices if provided
+    if (body.price_morning !== undefined && (isNaN(body.price_morning) || body.price_morning < 0)) {
+      return reply.status(400).send({ error: 'Morning session price must be a valid positive number' });
+    }
+    if (body.price_evening !== undefined && (isNaN(body.price_evening) || body.price_evening < 0)) {
+      return reply.status(400).send({ error: 'Evening session price must be a valid positive number' });
+    }
+    if (body.price_full_day !== undefined && (isNaN(body.price_full_day) || body.price_full_day < 0)) {
+      return reply.status(400).send({ error: 'Full day price must be a valid positive number' });
+    }
+
     const venueData = {
       ...body,
       owner_id: request.user.id,
@@ -1107,6 +1119,17 @@ fastify.put('/api/owners/venues/:id', { onRequest: [fastify.authenticate] }, asy
     if (!venue) return reply.status(404).send({ error: 'Venue not found or not yours' });
 
     const { subscriber_benefits, registration_fee, ...ownerBody } = request.body; // Strip admin-only fields
+
+    // Validate session prices if provided
+    if (ownerBody.price_morning !== undefined && (isNaN(ownerBody.price_morning) || ownerBody.price_morning < 0)) {
+      return reply.status(400).send({ error: 'Morning session price must be a valid positive number' });
+    }
+    if (ownerBody.price_evening !== undefined && (isNaN(ownerBody.price_evening) || ownerBody.price_evening < 0)) {
+      return reply.status(400).send({ error: 'Evening session price must be a valid positive number' });
+    }
+    if (ownerBody.price_full_day !== undefined && (isNaN(ownerBody.price_full_day) || ownerBody.price_full_day < 0)) {
+      return reply.status(400).send({ error: 'Full day price must be a valid positive number' });
+    }
 
     if (venue.approval_status === 'approved') {
       // Store changes as pending, don't apply directly
@@ -1469,7 +1492,7 @@ fastify.post('/api/bookings/create-order', { onRequest: [fastify.authenticate] }
     // Get venue details (including price for server-side calculation)
     const venue = await db.query.venues.findFirst({
       where: eq(venues.id, venue_id),
-      columns: { name: true, city: true, registration_fee: true, price_per_hour: true },
+      columns: { name: true, city: true, registration_fee: true, price_per_hour: true, price_morning: true, price_evening: true, price_full_day: true },
     });
 
     if (!venue) {
@@ -1492,8 +1515,22 @@ fastify.post('/api/bookings/create-order', { onRequest: [fastify.authenticate] }
     const endMin = end_time === '12:00 AM' ? 1440 : toMinutes(end_time);
     const hoursBooked = Math.max(1, Math.round((endMin - startMin) / 60));
 
-    const hourlyRate = venue.price_per_hour || 0;
-    const subtotal = hourlyRate * hoursBooked;
+    // Determine session type from time range and use direct session price
+    let subtotal;
+    if (startMin === 480 && endMin === 1440) {
+      // Full day: 8:00 AM to 12:00 AM (16 hours)
+      subtotal = venue.price_full_day || (venue.price_per_hour || 0) * 16;
+    } else if (startMin === 480 && endMin === 960) {
+      // Morning: 8:00 AM to 4:00 PM (8 hours)
+      subtotal = venue.price_morning || (venue.price_per_hour || 0) * 8;
+    } else if (startMin === 1020 && endMin === 1440) {
+      // Evening: 5:00 PM to 12:00 AM (7 hours)
+      subtotal = venue.price_evening || (venue.price_per_hour || 0) * 7;
+    } else {
+      // Fallback for non-standard time ranges: use hourly rate
+      const hourlyRate = venue.price_per_hour || 0;
+      subtotal = hourlyRate * hoursBooked;
+    }
     const service_fee = 500;
     const total = subtotal + service_fee;
 
@@ -2493,7 +2530,7 @@ fastify.get('/api/venues/:id', async (request, reply) => {
 fastify.post('/api/venues', { onRequest: [fastify.authenticate] }, async (request, reply) => {
   try {
     // Whitelist allowed fields to prevent injection of id, approval_status, etc.
-    const ALLOWED_VENUE_FIELDS = ['name', 'description', 'city', 'state', 'area', 'location', 'category_id', 'owner_id', 'image_url', 'images', 'amenities', 'capacity', 'price_per_hour', 'price_per_day', 'registration_fee', 'youtube_url', 'subscriber_benefits', 'blocked_dates'];
+    const ALLOWED_VENUE_FIELDS = ['name', 'description', 'city', 'state', 'area', 'location', 'category_id', 'owner_id', 'image_url', 'images', 'amenities', 'capacity', 'price_per_hour', 'price_per_day', 'price_morning', 'price_evening', 'price_full_day', 'registration_fee', 'youtube_url', 'subscriber_benefits', 'blocked_dates'];
     const venueData = {};
     for (const key of ALLOWED_VENUE_FIELDS) {
       if (request.body[key] !== undefined) venueData[key] = request.body[key];
@@ -2505,6 +2542,17 @@ fastify.post('/api/venues', { onRequest: [fastify.authenticate] }, async (reques
         error: 'Registration fee is required',
         message: 'A registration fee greater than zero must be set before the venue can be published.'
       });
+    }
+
+    // Validate session prices if provided
+    if (venueData.price_morning !== undefined && (isNaN(venueData.price_morning) || venueData.price_morning < 0)) {
+      return reply.status(400).send({ error: 'Morning session price must be a valid positive number' });
+    }
+    if (venueData.price_evening !== undefined && (isNaN(venueData.price_evening) || venueData.price_evening < 0)) {
+      return reply.status(400).send({ error: 'Evening session price must be a valid positive number' });
+    }
+    if (venueData.price_full_day !== undefined && (isNaN(venueData.price_full_day) || venueData.price_full_day < 0)) {
+      return reply.status(400).send({ error: 'Full day price must be a valid positive number' });
     }
     
     // Geocode the address if location/city provided
@@ -2535,10 +2583,21 @@ fastify.post('/api/venues', { onRequest: [fastify.authenticate] }, async (reques
 fastify.put('/api/venues/:id', { onRequest: [fastify.authenticate] }, async (request, reply) => {
   try {
     // Whitelist allowed fields
-    const ALLOWED_VENUE_FIELDS = ['name', 'description', 'city', 'state', 'area', 'location', 'category_id', 'owner_id', 'image_url', 'images', 'amenities', 'capacity', 'price_per_hour', 'price_per_day', 'registration_fee', 'youtube_url', 'subscriber_benefits', 'blocked_dates', 'approval_status'];
+    const ALLOWED_VENUE_FIELDS = ['name', 'description', 'city', 'state', 'area', 'location', 'category_id', 'owner_id', 'image_url', 'images', 'amenities', 'capacity', 'price_per_hour', 'price_per_day', 'price_morning', 'price_evening', 'price_full_day', 'registration_fee', 'youtube_url', 'subscriber_benefits', 'blocked_dates', 'approval_status'];
     const updates = {};
     for (const key of ALLOWED_VENUE_FIELDS) {
       if (request.body[key] !== undefined) updates[key] = request.body[key];
+    }
+
+    // Validate session prices if provided
+    if (updates.price_morning !== undefined && (isNaN(updates.price_morning) || updates.price_morning < 0)) {
+      return reply.status(400).send({ error: 'Morning session price must be a valid positive number' });
+    }
+    if (updates.price_evening !== undefined && (isNaN(updates.price_evening) || updates.price_evening < 0)) {
+      return reply.status(400).send({ error: 'Evening session price must be a valid positive number' });
+    }
+    if (updates.price_full_day !== undefined && (isNaN(updates.price_full_day) || updates.price_full_day < 0)) {
+      return reply.status(400).send({ error: 'Full day price must be a valid positive number' });
     }
     
     // Re-geocode if location or city changed
@@ -4324,7 +4383,7 @@ fastify.get('/api/search', async (request, reply) => {
     if (type === 'all' || type === 'venues') {
       venueResults = await db.query.venues.findMany({
         where: and(eq(venues.approval_status, 'approved'), sql`${venues.registration_fee} > 0`, sql`(${venues.name} ILIKE ${searchTerm} OR ${venues.city} ILIKE ${searchTerm})`),
-        columns: { id: true, name: true, city: true, image_url: true, rating: true, price_per_day: true },
+        columns: { id: true, name: true, city: true, image_url: true, rating: true, price_per_day: true, price_full_day: true },
         limit: 20,
         orderBy: [desc(venues.rating)],
       });

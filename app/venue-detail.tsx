@@ -212,8 +212,8 @@ export default function VenueDetailScreen() {
                             </View>
                         </View>
                         <View style={styles.pricingBlock}>
-                            <Text style={styles.price}>{formatPrice(venue.price_per_hour)}</Text>
-                            <Text style={styles.priceLabel}>/hour</Text>
+                            <Text style={styles.price}>{formatPrice(venue.price_morning)}</Text>
+                            <Text style={styles.priceLabel}>Morning</Text>
                         </View>
                     </View>
 
@@ -232,8 +232,8 @@ export default function VenueDetailScreen() {
                         <View style={styles.statDivider} />
                         <View style={styles.statItem}>
                             <Clock size={18} color={Colors.primary} />
-                            <Text style={styles.statValue}>{formatPrice(venue.price_per_day)}</Text>
-                            <Text style={styles.statLabel}>Per Day</Text>
+                            <Text style={styles.statValue}>{formatPrice(venue.price_full_day)}</Text>
+                            <Text style={styles.statLabel}>Full Day</Text>
                         </View>
                     </View>
                 </View>

@@ -118,8 +118,8 @@ export default function CategoryVenuesScreen() {
                   )}
                 </View>
                 <View style={styles.priceRow}>
-                  <Text style={styles.priceText}>{formatPrice(venue.price_per_day)}</Text>
-                  <Text style={styles.priceUnit}> / day</Text>
+                  <Text style={styles.priceText}>{formatPrice(venue.price_full_day)}</Text>
+                  <Text style={styles.priceUnit}> / full day</Text>
                 </View>
               </View>
             </TouchableOpacity>

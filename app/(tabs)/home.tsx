@@ -260,10 +260,10 @@ export default function HomeScreen() {
     let services = [...results.services];
 
     if (sortBy === 'price_low') {
-      venues.sort((a, b) => a.price_per_day - b.price_per_day);
+      venues.sort((a, b) => a.price_full_day - b.price_full_day);
       services.sort((a, b) => a.price - b.price);
     } else if (sortBy === 'price_high') {
-      venues.sort((a, b) => b.price_per_day - a.price_per_day);
+      venues.sort((a, b) => b.price_full_day - a.price_full_day);
       services.sort((a, b) => b.price - a.price);
     } else if (sortBy === 'rating') {
       venues.sort((a, b) => b.rating - a.rating);
@@ -311,9 +311,9 @@ export default function HomeScreen() {
     for (const [catName, venues] of Object.entries(venuesByCategory)) {
       const copy = [...venues];
       if (sortBy === 'price_low') {
-        copy.sort((a, b) => (a.price_per_day ?? 0) - (b.price_per_day ?? 0));
+        copy.sort((a, b) => (a.price_full_day ?? 0) - (b.price_full_day ?? 0));
       } else if (sortBy === 'price_high') {
-        copy.sort((a, b) => (b.price_per_day ?? 0) - (a.price_per_day ?? 0));
+        copy.sort((a, b) => (b.price_full_day ?? 0) - (a.price_full_day ?? 0));
       } else if (sortBy === 'rating') {
         copy.sort((a, b) => (b.rating ?? 0) - (a.rating ?? 0));
       }
@@ -644,7 +644,7 @@ export default function HomeScreen() {
                             <Star size={12} color="#FFB800" fill="#FFB800" />
                             <Text style={styles.ratingText}>{venue.review_count > 0 ? venue.rating : 'No reviews yet'}</Text>
                           </View>
-                          <Text style={styles.searchResultPrice}>{formatPrice(venue.price_per_day)}/day</Text>
+                          <Text style={styles.searchResultPrice}>{formatPrice(venue.price_full_day)}/full day</Text>
                         </View>
                       </View>
                     </TouchableOpacity>
@@ -831,7 +831,7 @@ export default function HomeScreen() {
                             <Star size={12} color="#FFB800" fill="#FFB800" />
                             <Text style={styles.ratingText}>{venue.review_count > 0 ? `${venue.rating} (${venue.review_count})` : 'No reviews yet'}</Text>
                           </View>
-                          <Text style={styles.popularPrice}>{formatPrice(venue.price_per_day)}</Text>
+                          <Text style={styles.popularPrice}>{formatPrice(venue.price_full_day)}</Text>
                         </View>
                       </View>
                     </TouchableOpacity>

@@ -84,7 +84,7 @@ function approvalBadge(status: string) {
 
 const defaultVenueForm = {
   name: '', description: '', location: '', city: '', category_id: '', image_url: '',
-  price_per_hour: 0, price_per_day: 0, capacity: 0, registration_fee: 0, rating: 0, review_count: 0,
+  price_morning: 0, price_evening: 0, price_full_day: 0, capacity: 0, registration_fee: 0, rating: 0, review_count: 0,
   area: '', amenities: [] as string[], subscriber_benefits: [] as string[], owner_name: '', owner_image: '', available_dates: [] as string[],
   images: [] as string[], youtube_url: '', blocked_dates: [] as string[],
 }
@@ -143,11 +143,11 @@ export function VenuesPage() {
     // Validate required fields
     if (!form.name.trim()) { toast.error('Venue name is required'); return; }
     if (!form.city.trim()) { toast.error('City is required'); return; }
-    if (Number(form.price_per_hour) <= 0) { toast.error('Price per hour must be greater than 0'); return; }
+    if (Number(form.price_morning) <= 0 || Number(form.price_evening) <= 0 || Number(form.price_full_day) <= 0) { toast.error('All session prices must be greater than 0'); return; }
     if (Number(form.capacity) <= 0) { toast.error('Capacity must be greater than 0'); return; }
     if (Number(form.registration_fee) <= 0) { toast.error('Registration fee is required'); return; }
 
-    const payload = { ...form, price_per_hour: Number(form.price_per_hour), price_per_day: Number(form.price_per_day), capacity: Number(form.capacity), category_id: form.category_id || null, image_url: form.images[0] || form.image_url || null }
+    const payload = { ...form, price_morning: Number(form.price_morning), price_evening: Number(form.price_evening), price_full_day: Number(form.price_full_day), capacity: Number(form.capacity), category_id: form.category_id || null, image_url: form.images[0] || form.image_url || null }
     if (!editMode) { delete (payload as any).rating; delete (payload as any).review_count; }
     if (editMode && selectedVenue) updateMutation.mutate({ id: selectedVenue.id, data: payload })
     else createMutation.mutate(payload)
@@ -155,7 +155,7 @@ export function VenuesPage() {
 
   const openEdit = (venue: any) => {
     setSelectedVenue(venue); setEditMode(true)
-    setForm({ name: venue.name||'', description: venue.description||'', location: venue.location||'', city: venue.city||'', category_id: venue.category_id||'', image_url: venue.image_url||'', price_per_hour: venue.price_per_hour||0, price_per_day: venue.price_per_day||0, capacity: venue.capacity||0, registration_fee: venue.registration_fee||0, rating: venue.rating||0, review_count: venue.review_count||0, area: venue.area||'', amenities: venue.amenities||[], subscriber_benefits: venue.subscriber_benefits||[], owner_name: venue.owner_name||'', owner_image: venue.owner_image||'', available_dates: venue.available_dates||[], images: venue.images||[], youtube_url: venue.youtube_url||'', blocked_dates: venue.blocked_dates||[] })
+    setForm({ name: venue.name||'', description: venue.description||'', location: venue.location||'', city: venue.city||'', category_id: venue.category_id||'', image_url: venue.image_url||'', price_morning: venue.price_morning||0, price_evening: venue.price_evening||0, price_full_day: venue.price_full_day||0, capacity: venue.capacity||0, registration_fee: venue.registration_fee||0, rating: venue.rating||0, review_count: venue.review_count||0, area: venue.area||'', amenities: venue.amenities||[], subscriber_benefits: venue.subscriber_benefits||[], owner_name: venue.owner_name||'', owner_image: venue.owner_image||'', available_dates: venue.available_dates||[], images: venue.images||[], youtube_url: venue.youtube_url||'', blocked_dates: venue.blocked_dates||[] })
     setDialogOpen(true)
   }
 
@@ -212,7 +212,7 @@ export function VenuesPage() {
                   <TableHead>City</TableHead>
                   <TableHead>Owner</TableHead>
                   <TableHead className='text-center'>Status</TableHead>
-                  <TableHead className='text-right'>Price/hr</TableHead>
+                  <TableHead className='text-right'>Full Day</TableHead>
                   <TableHead className='text-center'>Capacity</TableHead>
                   <TableHead className='text-right'>Actions</TableHead>
                 </TableRow>
@@ -235,7 +235,7 @@ export function VenuesPage() {
                     <TableCell><div className='flex items-center gap-1'><MapPin className='h-3 w-3 text-muted-foreground' /><span className='text-sm'>{venue.city}</span></div></TableCell>
                     <TableCell><span className='text-sm text-muted-foreground'>{venue.owner?.full_name || '—'}</span></TableCell>
                     <TableCell className='text-center'>{approvalBadge(venue.approval_status)}</TableCell>
-                    <TableCell className='text-right font-medium'>{formatINR(venue.price_per_hour)}</TableCell>
+                    <TableCell className='text-right font-medium'>{formatINR(venue.price_full_day)}</TableCell>
                     <TableCell className='text-center'><div className='flex items-center justify-center gap-1'><Users className='h-3 w-3 text-muted-foreground' />{venue.capacity}</div></TableCell>
                     <TableCell>
                       <div className='flex items-center justify-end gap-1'>
@@ -323,8 +323,11 @@ export function VenuesPage() {
             </div>
             <div className='space-y-2'><Label>YouTube Video URL</Label><Input value={form.youtube_url} onChange={e => setForm(p => ({ ...p, youtube_url: e.target.value }))} placeholder='https://youtube.com/watch?v=...' /></div>
             <div className='grid grid-cols-3 gap-4'>
-              <div className='space-y-2'><Label>Price/Hour (₹)</Label><Input type='number' value={form.price_per_hour} onChange={e => setForm(p => ({ ...p, price_per_hour: Number(e.target.value) }))} /></div>
-              <div className='space-y-2'><Label>Price/Day (₹)</Label><Input type='number' value={form.price_per_day} onChange={e => setForm(p => ({ ...p, price_per_day: Number(e.target.value) }))} /></div>
+              <div className='space-y-2'><Label>Morning Session (₹)</Label><Input type='number' value={form.price_morning} onChange={e => setForm(p => ({ ...p, price_morning: Number(e.target.value) }))} placeholder='8AM-4PM' /></div>
+              <div className='space-y-2'><Label>Evening Session (₹)</Label><Input type='number' value={form.price_evening} onChange={e => setForm(p => ({ ...p, price_evening: Number(e.target.value) }))} placeholder='5PM-12AM' /></div>
+              <div className='space-y-2'><Label>Full Day (₹)</Label><Input type='number' value={form.price_full_day} onChange={e => setForm(p => ({ ...p, price_full_day: Number(e.target.value) }))} placeholder='8AM-12AM' /></div>
+            </div>
+            <div className='grid grid-cols-2 gap-4'>
               <div className='space-y-2'><Label>Capacity</Label><Input type='number' value={form.capacity} onChange={e => setForm(p => ({ ...p, capacity: Number(e.target.value) }))} /></div>
             </div>
             <div className='space-y-2'>
@@ -422,9 +425,9 @@ export function VenuesPage() {
                 </div>
               )}
               <div className='grid grid-cols-3 gap-4 text-center'>
-                <div className='rounded-lg bg-muted p-3'><p className='text-xs text-muted-foreground'>Price/hr</p><p className='font-bold'>{formatINR(selectedVenue.price_per_hour)}</p></div>
-                <div className='rounded-lg bg-muted p-3'><p className='text-xs text-muted-foreground'>Price/day</p><p className='font-bold'>{formatINR(selectedVenue.price_per_day)}</p></div>
-                <div className='rounded-lg bg-muted p-3'><p className='text-xs text-muted-foreground'>Capacity</p><p className='font-bold'>{selectedVenue.capacity}</p></div>
+                <div className='rounded-lg bg-muted p-3'><p className='text-xs text-muted-foreground'>Morning</p><p className='font-bold'>{formatINR(selectedVenue.price_morning)}</p></div>
+                <div className='rounded-lg bg-muted p-3'><p className='text-xs text-muted-foreground'>Evening</p><p className='font-bold'>{formatINR(selectedVenue.price_evening)}</p></div>
+                <div className='rounded-lg bg-muted p-3'><p className='text-xs text-muted-foreground'>Full Day</p><p className='font-bold'>{formatINR(selectedVenue.price_full_day)}</p></div>
               </div>
               {(selectedVenue.amenities || []).length > 0 && (
                 <div><p className='text-sm font-medium mb-2'>Amenities</p><div className='flex flex-wrap gap-2'>{selectedVenue.amenities.map((a: string, i: number) => <Badge key={i} variant='outline'>{a}</Badge>)}</div></div>

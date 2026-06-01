@@ -199,7 +199,7 @@ export default function SearchScreen() {
                     </View>
                     <Text style={styles.venueTitle} numberOfLines={1}>{venue.name}</Text>
                     <View style={styles.metaRow}><MapPin size={11} color={Colors.textSecondary} /><Text style={styles.venueCity}>{venue.city}</Text></View>
-                    <View style={styles.ratingRow}><Star size={12} color="#FFB800" fill="#FFB800" /><Text style={styles.ratingText}>{venue.review_count > 0 ? venue.rating : 'No reviews yet'}</Text><Text style={styles.priceText}>{formatPrice(venue.price_per_day)}/day</Text></View>
+                    <View style={styles.ratingRow}><Star size={12} color="#FFB800" fill="#FFB800" /><Text style={styles.ratingText}>{venue.review_count > 0 ? venue.rating : 'No reviews yet'}</Text><Text style={styles.priceText}>{formatPrice(venue.price_full_day)}/full day</Text></View>
                   </View>
                 </TouchableOpacity>
               ))}
@@ -234,8 +234,8 @@ export default function SearchScreen() {
       ) : (
         <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={styles.scrollContent}>
           {(searchType === 'all' || searchType === 'venues') && [...venues].sort((a, b) => {
-            if (sortBy === 'price_low') return (a.price_per_day ?? 0) - (b.price_per_day ?? 0);
-            if (sortBy === 'price_high') return (b.price_per_day ?? 0) - (a.price_per_day ?? 0);
+            if (sortBy === 'price_low') return (a.price_full_day ?? 0) - (b.price_full_day ?? 0);
+            if (sortBy === 'price_high') return (b.price_full_day ?? 0) - (a.price_full_day ?? 0);
             if (sortBy === 'rating') return (b.rating ?? 0) - (a.rating ?? 0);
             return 0;
           }).map((venue) => (
@@ -250,7 +250,7 @@ export default function SearchScreen() {
                   <MapPin size={11} color={Colors.textSecondary} /><Text style={styles.venueCity}>{venue.city}</Text>
                   <Users size={11} color={Colors.textSecondary} /><Text style={styles.venueCapacity}>Up to {venue.capacity}</Text>
                 </View>
-                <View style={styles.ratingRow}><Star size={12} color="#FFB800" fill="#FFB800" /><Text style={styles.ratingText}>{venue.review_count > 0 ? venue.rating : 'No reviews yet'}</Text><Text style={styles.priceText}>{formatPrice(venue.price_per_day)}/day</Text></View>
+                <View style={styles.ratingRow}><Star size={12} color="#FFB800" fill="#FFB800" /><Text style={styles.ratingText}>{venue.review_count > 0 ? venue.rating : 'No reviews yet'}</Text><Text style={styles.priceText}>{formatPrice(venue.price_full_day)}/full day</Text></View>
               </View>
               <TouchableOpacity onPress={() => toggleFav(venue.id)} style={styles.heartButton}>
                 <Heart size={20} color={favorites.includes(venue.id) ? Colors.primary : Colors.textTertiary} fill={favorites.includes(venue.id) ? Colors.primary : "none"} />

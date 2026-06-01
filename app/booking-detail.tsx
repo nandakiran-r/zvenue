@@ -180,15 +180,18 @@ export default function BookingDetailScreen() {
     // Get selected session details
     const currentSession = SESSIONS.find(s => s.id === selectedSession);
 
-    // Pricing calculation
-    const hoursBooked = currentSession?.hours ?? 0;
-    const hourlyRate = venue?.price_per_hour ?? 0;
-    const subtotal = hourlyRate * hoursBooked;
-    const serviceFee = hoursBooked > 0 ? 500 : 0;
+    // Pricing calculation - direct session price lookup
+    const sessionPriceMap: Record<string, number | undefined> = {
+      morning: venue?.price_morning,
+      evening: venue?.price_evening,
+      fullday: venue?.price_full_day,
+    };
+    const subtotal = (currentSession?.id ? sessionPriceMap[currentSession.id] : undefined) ?? 0;
+    const serviceFee = subtotal > 0 ? 500 : 0;
     const total = subtotal + serviceFee;
-    
+
     // Registration fee: what customer pays now (if set by admin)
-    const registrationFee = (venue as any)?.registration_fee || 0;
+    const registrationFee = venue?.registration_fee || 0;
     const payNow = registrationFee > 0 ? registrationFee : total;
     const balanceAtVenue = registrationFee > 0 ? total - registrationFee : 0;
 
@@ -197,7 +200,7 @@ export default function BookingDetailScreen() {
         return `₹${amount.toLocaleString("en-IN")}`;
     };
 
-    const canBook = selectedDate && selectedSession && hoursBooked > 0 && (parseInt(guests) || 0) > 0;
+    const canBook = selectedDate && selectedSession && subtotal > 0 && (parseInt(guests) || 0) > 0;
 
     const handleConfirm = async () => {
         if (!dbUser) {
@@ -397,7 +400,9 @@ export default function BookingDetailScreen() {
                             <MapPin size={12} color={Colors.textSecondary} />
                             <Text style={styles.metaText}>{venue.city}</Text>
                         </View>
-                        <Text style={styles.venuePrice}>{formatPrice(venue.price_per_hour)}/hr</Text>
+                        <Text style={styles.venuePrice}>
+                            {formatPrice(venue.price_morning ?? venue.price_per_hour)}/session
+                        </Text>
                     </View>
                 </View>
 
@@ -551,7 +556,7 @@ export default function BookingDetailScreen() {
                             <Text style={styles.summaryValue}>{currentSession?.time}</Text>
                         </View>
                         <View style={styles.summaryRow}>
-                            <Text style={styles.summaryLabel}>{hoursBooked} hrs × {formatPrice(hourlyRate)}</Text>
+                            <Text style={styles.summaryLabel}>{currentSession?.label}</Text>
                             <Text style={styles.summaryValue}>{formatPrice(subtotal)}</Text>
                         </View>
                         <View style={styles.summaryRow}>

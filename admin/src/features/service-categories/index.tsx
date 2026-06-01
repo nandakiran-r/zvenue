@@ -1,6 +1,7 @@
 import { useState } from 'react'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { Plus, Pencil, Trash2 } from 'lucide-react'
+import { icons } from 'lucide-react'
 import { toast } from 'sonner'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
@@ -17,6 +18,7 @@ import { ProfileDropdown } from '@/components/profile-dropdown'
 import { Search } from '@/components/search'
 import { ThemeSwitch } from '@/components/theme-switch'
 import { ConfigDrawer } from '@/components/config-drawer'
+import { IconPicker } from '@/components/icon-picker'
 import { fetchAdminServiceCategories, createServiceCategory, updateServiceCategory, deleteServiceCategory } from '@/lib/api'
 
 export function ServiceCategoriesPage() {
@@ -80,7 +82,11 @@ export function ServiceCategoriesPage() {
               (categories || []).map((cat: any) => (
                 <TableRow key={cat.id}>
                   <TableCell className='font-medium'>{cat.name}</TableCell>
-                  <TableCell><Badge variant='outline'>{cat.icon}</Badge></TableCell>
+                  <TableCell>
+                    <div className='flex h-8 w-8 items-center justify-center rounded-md bg-primary/10 text-primary'>
+                      {(() => { const Icon = icons[cat.icon as keyof typeof icons]; return Icon ? <Icon size={16} /> : <span className='text-xs'>{cat.icon}</span> })()}
+                    </div>
+                  </TableCell>
                   <TableCell>{cat.sort_order}</TableCell>
                   <TableCell>{cat.listing_count || 0}</TableCell>
                   <TableCell><Switch checked={cat.is_active} onCheckedChange={() => toggleActive(cat)} /></TableCell>
@@ -102,7 +108,7 @@ export function ServiceCategoriesPage() {
           <DialogHeader><DialogTitle>{editMode ? 'Edit Category' : 'New Service Category'}</DialogTitle></DialogHeader>
           <div className='grid gap-4 py-4'>
             <div><Label>Name</Label><Input value={form.name} onChange={e => setForm(p => ({ ...p, name: e.target.value }))} placeholder='e.g. Saloons' /></div>
-            <div><Label>Icon (Lucide name)</Label><Input value={form.icon} onChange={e => setForm(p => ({ ...p, icon: e.target.value }))} placeholder='scissors' /></div>
+            <IconPicker value={form.icon} onChange={icon => setForm(p => ({ ...p, icon }))} label='Icon' />
             <div><Label>Sort Order</Label><Input type='number' value={form.sort_order} onChange={e => setForm(p => ({ ...p, sort_order: Number(e.target.value) }))} /></div>
           </div>
           <DialogFooter>

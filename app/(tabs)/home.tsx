@@ -1,6 +1,7 @@
 import { router } from "expo-router";
 import { MaterialIcons } from "@expo/vector-icons";
 import { Bell, ChevronDown, ChevronRight, Heart, MapPin, Navigation, Search, SlidersHorizontal, Star, Users, X } from "lucide-react-native";
+import LucideIcon from "@/components/LucideIcon";
 import React, { useCallback, useEffect, useRef, useState } from "react";
 import {
   ActivityIndicator,
@@ -737,8 +738,8 @@ export default function HomeScreen() {
                   }
                 }}
               >
-                <MaterialIcons
-                  name={cat.icon as any}
+                <LucideIcon
+                  name={cat.icon}
                   size={16}
                   color={selectedCategory === cat.id ? "#FFFFFF" : Colors.textSecondary}
                 />
@@ -864,9 +865,7 @@ export default function HomeScreen() {
                   activeOpacity={0.7}
                 >
                   <View style={styles.serviceCategoryIcon}>
-                    <Text style={styles.serviceCategoryEmoji}>
-                      {cat.icon === 'scissors' ? '✂️' : cat.icon === 'palette' ? '🎨' : cat.icon === 'utensils' ? '🍽️' : cat.icon === 'hand-metal' ? '🤚' : cat.icon === 'car' ? '🚗' : cat.icon === 'droplets' ? '💧' : cat.icon === 'shirt' ? '👔' : cat.icon === 'gem' ? '💎' : cat.icon === 'package' ? '📦' : '⭐'}
-                    </Text>
+                    <LucideIcon name={cat.icon} size={22} color={Colors.primary} />
                   </View>
                   <Text style={styles.serviceCategoryName}>{cat.name}</Text>
                   <ChevronRight size={18} color={Colors.textTertiary} />

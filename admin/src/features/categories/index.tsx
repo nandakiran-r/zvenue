@@ -6,6 +6,7 @@ import {
   Trash2,
   GripVertical,
 } from 'lucide-react'
+import { icons } from 'lucide-react'
 import { toast } from 'sonner'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
@@ -38,6 +39,7 @@ import { Main } from '@/components/layout/main'
 import { ProfileDropdown } from '@/components/profile-dropdown'
 import { Search } from '@/components/search'
 import { ThemeSwitch } from '@/components/theme-switch'
+import { IconPicker } from '@/components/icon-picker'
 import {
   fetchCategories,
   createCategory,
@@ -45,20 +47,13 @@ import {
   deleteCategory,
 } from '@/lib/api'
 
-const MATERIAL_ICONS = [
-  'celebration', 'business_center', 'restaurant', 'sports_soccer',
-  'music_note', 'school', 'church', 'park', 'pool', 'spa',
-  'theater_comedy', 'camera_alt', 'brush', 'fitness_center',
-  'local_bar', 'meeting_room', 'stadium', 'nightlife',
-]
-
 export function CategoriesPage() {
   const queryClient = useQueryClient()
   const [dialogOpen, setDialogOpen] = useState(false)
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false)
   const [editMode, setEditMode] = useState(false)
   const [selectedCategory, setSelectedCategory] = useState<any>(null)
-  const [form, setForm] = useState({ name: '', icon: 'celebration', sort_order: 0 })
+  const [form, setForm] = useState({ name: '', icon: 'party-popper', sort_order: 0 })
 
   const { data: categories, isLoading } = useQuery({
     queryKey: ['admin-categories'],
@@ -70,7 +65,7 @@ export function CategoriesPage() {
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['admin-categories'] })
       setDialogOpen(false)
-      setForm({ name: '', icon: 'celebration', sort_order: 0 })
+      setForm({ name: '', icon: 'party-popper', sort_order: 0 })
       toast.success('Category created successfully!')
     },
     onError: (err: any) => toast.error(err.response?.data?.error || 'Failed to create category'),
@@ -144,7 +139,7 @@ export function CategoriesPage() {
             onClick={() => {
               setEditMode(false)
               setSelectedCategory(null)
-              setForm({ name: '', icon: 'celebration', sort_order: (categories || []).length })
+              setForm({ name: '', icon: 'party-popper', sort_order: (categories || []).length })
               setDialogOpen(true)
             }}
           >
@@ -184,8 +179,8 @@ export function CategoriesPage() {
                           </div>
                         </TableCell>
                         <TableCell>
-                          <div className='flex h-10 w-10 items-center justify-center rounded-lg bg-primary/10'>
-                            <span className='material-icons text-primary text-lg'>{cat.icon}</span>
+                          <div className='flex h-10 w-10 items-center justify-center rounded-lg bg-primary/10 text-primary'>
+                            {(() => { const Icon = icons[cat.icon as keyof typeof icons]; return Icon ? <Icon size={18} /> : <span className='text-xs'>{cat.icon}</span> })()}
                           </div>
                         </TableCell>
                         <TableCell>
@@ -246,30 +241,7 @@ export function CategoriesPage() {
                 placeholder='Wedding Halls'
               />
             </div>
-            <div className='space-y-2'>
-              <Label>Material Icon Name</Label>
-              <Input
-                value={form.icon}
-                onChange={(e) => setForm((p) => ({ ...p, icon: e.target.value }))}
-                placeholder='celebration'
-              />
-              <div className='flex flex-wrap gap-2 mt-2'>
-                {MATERIAL_ICONS.map((icon) => (
-                  <button
-                    key={icon}
-                    onClick={() => setForm((p) => ({ ...p, icon }))}
-                    className={`h-10 w-10 rounded-lg flex items-center justify-center border text-sm transition-colors ${
-                      form.icon === icon
-                        ? 'border-primary bg-primary/10 text-primary'
-                        : 'border-border hover:bg-muted'
-                    }`}
-                    title={icon}
-                  >
-                    <span className='material-icons text-lg'>{icon}</span>
-                  </button>
-                ))}
-              </div>
-            </div>
+            <IconPicker value={form.icon} onChange={icon => setForm(p => ({ ...p, icon }))} label='Icon' />
             <div className='space-y-2'>
               <Label>Sort Order</Label>
               <Input

@@ -337,6 +337,19 @@ export function VenuesPage() {
               <div className='space-y-2'><Label>Owner Name</Label><Input value={form.owner_name} onChange={e => setForm(p => ({ ...p, owner_name: e.target.value }))} /></div>
             </div>
             <div className='space-y-2'>
+              <Label>Owner Photo</Label>
+              <div className='flex items-center gap-3'>
+                {form.owner_image && (
+                  <img src={form.owner_image} alt='Owner' className='w-12 h-12 rounded-full object-cover border' />
+                )}
+                <ImageUploader
+                  images={form.owner_image ? [form.owner_image] : []}
+                  onChange={(imgs) => setForm(p => ({ ...p, owner_image: imgs[0] || '' }))}
+                  maxImages={1}
+                />
+              </div>
+            </div>
+            <div className='space-y-2'>
               <Label>Amenities</Label>
               <div className='flex gap-2'>
                 <Input value={amenityInput} onChange={e => setAmenityInput(e.target.value)} placeholder='AC, Parking...' onKeyDown={e => e.key === 'Enter' && (e.preventDefault(), addAmenity())} />

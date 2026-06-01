@@ -316,16 +316,24 @@ export default function VenueDetailScreen() {
                     </View>
                 )}
 
+                {venue.owner_name && (
                 <View style={styles.section}>
                     <Text style={styles.sectionTitle}>Venue Owner</Text>
                     <View style={styles.ownerRow}>
-                        <Image source={{ uri: venue.owner_image ?? undefined }} style={styles.ownerAvatar} />
+                        {venue.owner_image ? (
+                            <Image source={{ uri: venue.owner_image }} style={styles.ownerAvatar} />
+                        ) : (
+                            <View style={[styles.ownerAvatar, { backgroundColor: Colors.surface, justifyContent: "center", alignItems: "center" }]}>
+                                <Users size={20} color={Colors.textSecondary} />
+                            </View>
+                        )}
                         <View style={styles.ownerInfo}>
                             <Text style={styles.ownerLabel}>Owner / Manager</Text>
                             <Text style={styles.ownerName}>{venue.owner_name}</Text>
                         </View>
                     </View>
                 </View>
+                )}
 
                 {availableDates.length > 0 && (
                     <View style={styles.section}>

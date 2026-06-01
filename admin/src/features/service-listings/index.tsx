@@ -19,6 +19,7 @@ import { ProfileDropdown } from '@/components/profile-dropdown'
 import { Search } from '@/components/search'
 import { ThemeSwitch } from '@/components/theme-switch'
 import { ConfigDrawer } from '@/components/config-drawer'
+import { ImageUploader } from '@/components/image-uploader'
 import { fetchServiceListings, fetchServiceCategories, fetchOwners, createServiceListing, updateServiceListing, approveServiceListing, rejectServiceListing, deleteServiceListing } from '@/lib/api'
 
 function approvalBadge(status: string) {
@@ -130,14 +131,29 @@ export function ServiceListingsPage() {
                   <SelectContent>{(categories || []).map((c: any) => <SelectItem key={c.id} value={c.id}>{c.name}</SelectItem>)}</SelectContent>
                 </Select>
               </div>
-              <div><Label>Owner</Label>
-                <Select value={form.owner_id} onValueChange={v => { const o = (owners || []).find((x: any) => x.id === v); setForm(p => ({ ...p, owner_id: v, owner_name: o?.full_name || '', owner_image: o?.avatar_url || '' })); }}>
+              <div><Label>Owner (optional)</Label>
+                <Select value={form.owner_id} onValueChange={v => { const o = (owners || []).find((x: any) => x.id === v); setForm(p => ({ ...p, owner_id: v, owner_name: o?.full_name || p.owner_name, owner_image: o?.avatar_url || p.owner_image })); }}>
                   <SelectTrigger><SelectValue placeholder='Select owner' /></SelectTrigger>
                   <SelectContent>{(owners || []).map((o: any) => <SelectItem key={o.id} value={o.id}>{o.full_name}</SelectItem>)}</SelectContent>
                 </Select>
               </div>
             </div>
+            <div className='grid grid-cols-2 gap-3'>
+              <div><Label>Provider Name *</Label><Input value={form.owner_name} onChange={e => setForm(p => ({ ...p, owner_name: e.target.value }))} placeholder='Name shown on app' /></div>
+              <div>
+                <Label>Provider Photo</Label>
+                <ImageUploader images={form.owner_image ? [form.owner_image] : []} onChange={(imgs) => setForm(p => ({ ...p, owner_image: imgs[0] || '' }))} maxImages={1} />
+              </div>
+            </div>
             <div><Label>Description</Label><Textarea value={form.description} onChange={e => setForm(p => ({ ...p, description: e.target.value }))} rows={3} /></div>
+            <div className='space-y-2'>
+              <Label>Service Images (up to 6)</Label>
+              <ImageUploader
+                images={form.images}
+                onChange={(imgs) => setForm(p => ({ ...p, images: imgs }))}
+                maxImages={6}
+              />
+            </div>
             <div className='grid grid-cols-3 gap-3'>
               <div><Label>Price (₹) *</Label><Input type='number' value={form.price} onChange={e => setForm(p => ({ ...p, price: Number(e.target.value) }))} /></div>
               <div><Label>Quantity *</Label><Input type='number' value={form.quantity_available} onChange={e => setForm(p => ({ ...p, quantity_available: Number(e.target.value) }))} /></div>

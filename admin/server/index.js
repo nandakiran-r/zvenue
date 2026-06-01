@@ -1084,8 +1084,10 @@ fastify.post('/api/owners/venues', { onRequest: [fastify.authenticate] }, async 
       image_url: body.images?.[0] || body.image_url || null,
     };
 
-    // Geocode the address
-    if (venueData.location || venueData.city) {
+    // Skip geocoding if coordinates are already provided from the map picker
+    if (venueData.latitude && venueData.longitude && !isNaN(venueData.latitude) && !isNaN(venueData.longitude)) {
+      fastify.log.info(`Using provided coordinates: ${venueData.latitude}, ${venueData.longitude}`);
+    } else if (venueData.location || venueData.city) {
       const address = buildAddress(venueData.location, venueData.city);
       const coords = await geocodeAddress(address);
       if (coords) {
@@ -2530,7 +2532,7 @@ fastify.get('/api/venues/:id', async (request, reply) => {
 fastify.post('/api/venues', { onRequest: [fastify.authenticate] }, async (request, reply) => {
   try {
     // Whitelist allowed fields to prevent injection of id, approval_status, etc.
-    const ALLOWED_VENUE_FIELDS = ['name', 'description', 'city', 'state', 'area', 'location', 'category_id', 'owner_id', 'image_url', 'images', 'amenities', 'capacity', 'price_per_hour', 'price_per_day', 'price_morning', 'price_evening', 'price_full_day', 'registration_fee', 'youtube_url', 'subscriber_benefits', 'blocked_dates'];
+    const ALLOWED_VENUE_FIELDS = ['name', 'description', 'city', 'state', 'area', 'location', 'category_id', 'owner_id', 'image_url', 'images', 'amenities', 'capacity', 'price_per_hour', 'price_per_day', 'price_morning', 'price_evening', 'price_full_day', 'registration_fee', 'youtube_url', 'subscriber_benefits', 'blocked_dates', 'latitude', 'longitude'];
     const venueData = {};
     for (const key of ALLOWED_VENUE_FIELDS) {
       if (request.body[key] !== undefined) venueData[key] = request.body[key];
@@ -2555,8 +2557,10 @@ fastify.post('/api/venues', { onRequest: [fastify.authenticate] }, async (reques
       return reply.status(400).send({ error: 'Full day price must be a valid positive number' });
     }
     
-    // Geocode the address if location/city provided
-    if (venueData.location || venueData.city) {
+    // Skip geocoding if coordinates are already provided from the map picker
+    if (venueData.latitude && venueData.longitude && !isNaN(venueData.latitude) && !isNaN(venueData.longitude)) {
+      fastify.log.info(`Using provided coordinates: ${venueData.latitude}, ${venueData.longitude}`);
+    } else if (venueData.location || venueData.city) {
       const address = buildAddress(venueData.location, venueData.city);
       const coords = await geocodeAddress(address);
       if (coords) {
@@ -2583,7 +2587,7 @@ fastify.post('/api/venues', { onRequest: [fastify.authenticate] }, async (reques
 fastify.put('/api/venues/:id', { onRequest: [fastify.authenticate] }, async (request, reply) => {
   try {
     // Whitelist allowed fields
-    const ALLOWED_VENUE_FIELDS = ['name', 'description', 'city', 'state', 'area', 'location', 'category_id', 'owner_id', 'image_url', 'images', 'amenities', 'capacity', 'price_per_hour', 'price_per_day', 'price_morning', 'price_evening', 'price_full_day', 'registration_fee', 'youtube_url', 'subscriber_benefits', 'blocked_dates', 'approval_status'];
+    const ALLOWED_VENUE_FIELDS = ['name', 'description', 'city', 'state', 'area', 'location', 'category_id', 'owner_id', 'image_url', 'images', 'amenities', 'capacity', 'price_per_hour', 'price_per_day', 'price_morning', 'price_evening', 'price_full_day', 'registration_fee', 'youtube_url', 'subscriber_benefits', 'blocked_dates', 'approval_status', 'latitude', 'longitude'];
     const updates = {};
     for (const key of ALLOWED_VENUE_FIELDS) {
       if (request.body[key] !== undefined) updates[key] = request.body[key];
@@ -2600,8 +2604,10 @@ fastify.put('/api/venues/:id', { onRequest: [fastify.authenticate] }, async (req
       return reply.status(400).send({ error: 'Full day price must be a valid positive number' });
     }
     
-    // Re-geocode if location or city changed
-    if (updates.location || updates.city) {
+    // Skip geocoding if coordinates are already provided from the map picker
+    if (updates.latitude && updates.longitude && !isNaN(updates.latitude) && !isNaN(updates.longitude)) {
+      fastify.log.info(`Using provided coordinates: ${updates.latitude}, ${updates.longitude}`);
+    } else if (updates.location || updates.city) {
       const address = buildAddress(updates.location, updates.city);
       const coords = await geocodeAddress(address);
       if (coords) {
@@ -3728,12 +3734,27 @@ fastify.post('/api/service-listings', { onRequest: [fastify.authenticate] }, asy
     if (body.subscriber_discount_percent && (body.subscriber_discount_percent < 0 || body.subscriber_discount_percent > 50)) {
       return reply.status(400).send({ error: 'Subscriber discount must be between 0 and 50%' });
     }
-    const [inserted] = await db.insert(service_listings).values({
+
+    const listingData = {
       ...body,
       approval_status: 'approved',
       images: body.images || [],
       subscriber_benefits: body.subscriber_benefits || [],
-    }).returning();
+    };
+
+    // Skip geocoding if coordinates are already provided from the map picker
+    if (listingData.latitude && listingData.longitude && !isNaN(listingData.latitude) && !isNaN(listingData.longitude)) {
+      fastify.log.info(`Using provided coordinates for service listing: ${listingData.latitude}, ${listingData.longitude}`);
+    } else if (listingData.location || listingData.city) {
+      const address = buildAddress(listingData.location || '', listingData.city);
+      const coords = await geocodeAddress(address);
+      if (coords) {
+        listingData.latitude = coords.latitude;
+        listingData.longitude = coords.longitude;
+      }
+    }
+
+    const [inserted] = await db.insert(service_listings).values(listingData).returning();
     const data = await db.query.service_listings.findFirst({
       where: eq(service_listings.id, inserted.id),
       with: { category: true },
@@ -3752,7 +3773,22 @@ fastify.put('/api/service-listings/:id', { onRequest: [fastify.authenticate] }, 
     if (body.images && body.images.length > 5) {
       return reply.status(400).send({ error: 'Maximum 5 images allowed' });
     }
-    await db.update(service_listings).set(body).where(eq(service_listings.id, request.params.id));
+
+    const updates = { ...body };
+
+    // Skip geocoding if coordinates are already provided from the map picker
+    if (updates.latitude && updates.longitude && !isNaN(updates.latitude) && !isNaN(updates.longitude)) {
+      fastify.log.info(`Using provided coordinates for service listing update: ${updates.latitude}, ${updates.longitude}`);
+    } else if (updates.location || updates.city) {
+      const address = buildAddress(updates.location || '', updates.city);
+      const coords = await geocodeAddress(address);
+      if (coords) {
+        updates.latitude = coords.latitude;
+        updates.longitude = coords.longitude;
+      }
+    }
+
+    await db.update(service_listings).set(updates).where(eq(service_listings.id, request.params.id));
     const data = await db.query.service_listings.findFirst({
       where: eq(service_listings.id, request.params.id),
       with: { category: true },

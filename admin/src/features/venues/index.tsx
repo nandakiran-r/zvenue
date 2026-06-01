@@ -67,6 +67,7 @@ import {
   rejectVenue,
 } from '@/lib/api'
 import { ImageUploader } from '@/components/image-uploader'
+import MapLocationPicker from '@/components/map-location-picker'
 
 function formatINR(amount: number) {
   return `₹${(amount || 0).toLocaleString('en-IN')}`
@@ -87,6 +88,7 @@ const defaultVenueForm = {
   price_morning: 0, price_evening: 0, price_full_day: 0, capacity: 0, registration_fee: 0, rating: 0, review_count: 0,
   area: '', amenities: [] as string[], subscriber_benefits: [] as string[], owner_name: '', owner_image: '', available_dates: [] as string[],
   images: [] as string[], youtube_url: '', blocked_dates: [] as string[],
+  latitude: null as number | null, longitude: null as number | null,
 }
 
 export function VenuesPage() {
@@ -147,7 +149,7 @@ export function VenuesPage() {
     if (Number(form.capacity) <= 0) { toast.error('Capacity must be greater than 0'); return; }
     if (Number(form.registration_fee) <= 0) { toast.error('Registration fee is required'); return; }
 
-    const payload = { ...form, price_morning: Number(form.price_morning), price_evening: Number(form.price_evening), price_full_day: Number(form.price_full_day), capacity: Number(form.capacity), category_id: form.category_id || null, image_url: form.images[0] || form.image_url || null }
+    const payload = { ...form, price_morning: Number(form.price_morning), price_evening: Number(form.price_evening), price_full_day: Number(form.price_full_day), capacity: Number(form.capacity), category_id: form.category_id || null, image_url: form.images[0] || form.image_url || null, latitude: form.latitude, longitude: form.longitude }
     if (!editMode) { delete (payload as any).rating; delete (payload as any).review_count; }
     if (editMode && selectedVenue) updateMutation.mutate({ id: selectedVenue.id, data: payload })
     else createMutation.mutate(payload)
@@ -155,7 +157,9 @@ export function VenuesPage() {
 
   const openEdit = (venue: any) => {
     setSelectedVenue(venue); setEditMode(true)
-    setForm({ name: venue.name||'', description: venue.description||'', location: venue.location||'', city: venue.city||'', category_id: venue.category_id||'', image_url: venue.image_url||'', price_morning: venue.price_morning||0, price_evening: venue.price_evening||0, price_full_day: venue.price_full_day||0, capacity: venue.capacity||0, registration_fee: venue.registration_fee||0, rating: venue.rating||0, review_count: venue.review_count||0, area: venue.area||'', amenities: venue.amenities||[], subscriber_benefits: venue.subscriber_benefits||[], owner_name: venue.owner_name||'', owner_image: venue.owner_image||'', available_dates: venue.available_dates||[], images: venue.images||[], youtube_url: venue.youtube_url||'', blocked_dates: venue.blocked_dates||[] })
+    // If venue has pending_changes, merge them into the form so admin sees the proposed values
+    const data = venue.pending_changes ? { ...venue, ...venue.pending_changes } : venue
+    setForm({ name: data.name||'', description: data.description||'', location: data.location||'', city: data.city||'', category_id: data.category_id||'', image_url: data.image_url||'', price_morning: data.price_morning||0, price_evening: data.price_evening||0, price_full_day: data.price_full_day||0, capacity: data.capacity||0, registration_fee: data.registration_fee||venue.registration_fee||0, rating: data.rating||0, review_count: data.review_count||0, area: data.area||'', amenities: data.amenities||[], subscriber_benefits: data.subscriber_benefits||venue.subscriber_benefits||[], owner_name: data.owner_name||'', owner_image: data.owner_image||'', available_dates: data.available_dates||venue.available_dates||[], images: data.images||[], youtube_url: data.youtube_url||'', blocked_dates: data.blocked_dates||venue.blocked_dates||[], latitude: data.latitude || null, longitude: data.longitude || null })
     setDialogOpen(true)
   }
 
@@ -309,6 +313,17 @@ export function VenuesPage() {
               <div className='space-y-2'><Label>City</Label><Input value={form.city} onChange={e => setForm(p => ({ ...p, city: e.target.value }))} /></div>
             </div>
             <div className='space-y-2'><Label>Location</Label><Input value={form.location} onChange={e => setForm(p => ({ ...p, location: e.target.value }))} /></div>
+            <div className='space-y-2'>
+              <MapLocationPicker
+                latitude={form.latitude}
+                longitude={form.longitude}
+                location={form.location}
+                city={form.city}
+                onCoordinatesChange={(lat, lng) => setForm(p => ({ ...p, latitude: lat, longitude: lng }))}
+                onLocationChange={(loc) => setForm(p => ({ ...p, location: loc }))}
+                onCityChange={(c) => setForm(p => ({ ...p, city: c }))}
+              />
+            </div>
             <div className='space-y-2'><Label>Description</Label><Textarea value={form.description} onChange={e => setForm(p => ({ ...p, description: e.target.value }))} rows={3} /></div>
             <div className='grid grid-cols-2 gap-4'>
               <div className='space-y-2'><Label>Category</Label>

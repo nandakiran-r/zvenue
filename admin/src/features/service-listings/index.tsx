@@ -20,6 +20,7 @@ import { Search } from '@/components/search'
 import { ThemeSwitch } from '@/components/theme-switch'
 import { ConfigDrawer } from '@/components/config-drawer'
 import { ImageUploader } from '@/components/image-uploader'
+import MapLocationPicker from '@/components/map-location-picker'
 import { fetchServiceListings, fetchServiceCategories, fetchOwners, createServiceListing, updateServiceListing, approveServiceListing, rejectServiceListing, deleteServiceListing } from '@/lib/api'
 
 function approvalBadge(status: string) {
@@ -36,7 +37,7 @@ export function ServiceListingsPage() {
   const [editMode, setEditMode] = useState(false)
   const [selectedId, setSelectedId] = useState<string | null>(null)
   const [filterCategory, setFilterCategory] = useState<string>('all')
-  const [form, setForm] = useState({ name: '', service_category_id: '', owner_id: '', description: '', images: [] as string[], video_url: '', price: 0, quantity_available: 0, city: '', area: '', subscriber_discount_percent: 0, subscriber_benefits: [] as string[], owner_name: '', owner_image: '', opening_time: '00:00', closing_time: '23:30', max_booking_duration: 1440, blocked_slots: [] as { date: string; start: string; end: string }[] })
+  const [form, setForm] = useState({ name: '', service_category_id: '', owner_id: '', description: '', images: [] as string[], video_url: '', price: 0, quantity_available: 0, city: '', area: '', subscriber_discount_percent: 0, subscriber_benefits: [] as string[], owner_name: '', owner_image: '', opening_time: '00:00', closing_time: '23:30', max_booking_duration: 1440, blocked_slots: [] as { date: string; start: string; end: string }[], latitude: null as number | null, longitude: null as number | null })
   const [benefitInput, setBenefitInput] = useState('')
 
   const { data: listings, isLoading } = useQuery({ queryKey: ['service-listings', filterCategory], queryFn: () => fetchServiceListings(filterCategory !== 'all' ? { category_id: filterCategory } : {}) })
@@ -50,14 +51,16 @@ export function ServiceListingsPage() {
   const deleteMut = useMutation({ mutationFn: (id: string) => deleteServiceListing(id), onSuccess: () => { queryClient.invalidateQueries({ queryKey: ['service-listings'] }); toast.success('Deleted') } })
 
   const handleSubmit = () => {
-    const payload = { ...form, price: Number(form.price), quantity_available: Number(form.quantity_available), subscriber_discount_percent: Number(form.subscriber_discount_percent), max_booking_duration: Number(form.max_booking_duration) }
+    const payload = { ...form, price: Number(form.price), quantity_available: Number(form.quantity_available), subscriber_discount_percent: Number(form.subscriber_discount_percent), max_booking_duration: Number(form.max_booking_duration), latitude: form.latitude, longitude: form.longitude }
     if (editMode && selectedId) updateMut.mutate({ id: selectedId, d: payload })
     else createMut.mutate(payload)
   }
 
   const openEdit = (item: any) => {
     setSelectedId(item.id); setEditMode(true)
-    setForm({ name: item.name || '', service_category_id: item.service_category_id || '', owner_id: item.owner_id || '', description: item.description || '', images: item.images || [], video_url: item.video_url || '', price: item.price || 0, quantity_available: item.quantity_available || 0, city: item.city || '', area: item.area || '', subscriber_discount_percent: item.subscriber_discount_percent || 0, subscriber_benefits: item.subscriber_benefits || [], owner_name: item.owner_name || '', owner_image: item.owner_image || '', opening_time: item.opening_time || '00:00', closing_time: item.closing_time || '23:30', max_booking_duration: item.max_booking_duration || 1440, blocked_slots: item.blocked_slots || [] })
+    // If listing has pending_changes, merge them into the form so admin sees the proposed values
+    const data = item.pending_changes ? { ...item, ...item.pending_changes } : item
+    setForm({ name: data.name || '', service_category_id: data.service_category_id || item.service_category_id || '', owner_id: data.owner_id || item.owner_id || '', description: data.description || '', images: data.images || [], video_url: data.video_url || '', price: data.price || 0, quantity_available: data.quantity_available || item.quantity_available || 0, city: data.city || '', area: data.area || '', subscriber_discount_percent: data.subscriber_discount_percent || 0, subscriber_benefits: data.subscriber_benefits || item.subscriber_benefits || [], owner_name: data.owner_name || '', owner_image: data.owner_image || '', opening_time: data.opening_time || item.opening_time || '00:00', closing_time: data.closing_time || item.closing_time || '23:30', max_booking_duration: data.max_booking_duration || item.max_booking_duration || 1440, blocked_slots: data.blocked_slots || item.blocked_slots || [], latitude: data.latitude || null, longitude: data.longitude || null })
     setDialogOpen(true)
   }
 
@@ -77,7 +80,7 @@ export function ServiceListingsPage() {
                 {(categories || []).map((c: any) => <SelectItem key={c.id} value={c.id}>{c.name}</SelectItem>)}
               </SelectContent>
             </Select>
-            <Button onClick={() => { setEditMode(false); setSelectedId(null); setForm({ name: '', service_category_id: '', owner_id: '', description: '', images: [], video_url: '', price: 0, quantity_available: 0, city: '', area: '', subscriber_discount_percent: 0, subscriber_benefits: [], owner_name: '', owner_image: '', opening_time: '00:00', closing_time: '23:30', max_booking_duration: 1440, blocked_slots: [] }); setDialogOpen(true) }}>
+            <Button onClick={() => { setEditMode(false); setSelectedId(null); setForm({ name: '', service_category_id: '', owner_id: '', description: '', images: [], video_url: '', price: 0, quantity_available: 0, city: '', area: '', subscriber_discount_percent: 0, subscriber_benefits: [], owner_name: '', owner_image: '', opening_time: '00:00', closing_time: '23:30', max_booking_duration: 1440, blocked_slots: [], latitude: null, longitude: null }); setDialogOpen(true) }}>
               <Plus className='mr-2 h-4 w-4' />Add Listing
             </Button>
           </div>
@@ -160,6 +163,17 @@ export function ServiceListingsPage() {
               <div><Label>Discount %</Label><Input type='number' value={form.subscriber_discount_percent} onChange={e => setForm(p => ({ ...p, subscriber_discount_percent: Math.min(50, Math.max(0, Number(e.target.value))) }))} /></div>
             </div>
             <div><Label>Area</Label><Input value={form.area} onChange={e => setForm(p => ({ ...p, area: e.target.value }))} placeholder='e.g. MG Road' /></div>
+            <div>
+              <MapLocationPicker
+                latitude={form.latitude}
+                longitude={form.longitude}
+                location={form.area}
+                city={form.city}
+                onCoordinatesChange={(lat, lng) => setForm(p => ({ ...p, latitude: lat, longitude: lng }))}
+                onLocationChange={(loc) => setForm(p => ({ ...p, area: loc }))}
+                onCityChange={(c) => setForm(p => ({ ...p, city: c }))}
+              />
+            </div>
             <div><Label>Video URL</Label><Input value={form.video_url} onChange={e => setForm(p => ({ ...p, video_url: e.target.value }))} placeholder='https://youtube.com/...' /></div>
             {/* Time Slot Configuration */}
             <div className='border rounded-lg p-3 space-y-3'>

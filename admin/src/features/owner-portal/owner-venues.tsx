@@ -19,6 +19,7 @@ import { ProfileDropdown } from '@/components/profile-dropdown'
 import { ThemeSwitch } from '@/components/theme-switch'
 import { fetchOwnerVenues, createOwnerVenue, updateOwnerVenue, updateOwnerVenueBlockedDates, fetchCategories } from '@/lib/api'
 import { ImageUploader } from '@/components/image-uploader'
+import MapLocationPicker from '@/components/map-location-picker'
 
 export function OwnerVenuesPage() {
   const queryClient = useQueryClient()
@@ -27,7 +28,7 @@ export function OwnerVenuesPage() {
   const [editMode, setEditMode] = useState(false)
   const [selectedVenue, setSelectedVenue] = useState<any>(null)
   const [blockDateInput, setBlockDateInput] = useState('')
-  const [form, setForm] = useState({ name: '', description: '', location: '', city: '', category_id: '', image_url: '', price_morning: 0, price_evening: 0, price_full_day: 0, capacity: 0, area: '', amenities: [] as string[], images: [] as string[], youtube_url: '' })
+  const [form, setForm] = useState({ name: '', description: '', location: '', city: '', category_id: '', image_url: '', price_morning: 0, price_evening: 0, price_full_day: 0, capacity: 0, area: '', amenities: [] as string[], images: [] as string[], youtube_url: '', latitude: null as number | null, longitude: null as number | null })
   const [amenityInput, setAmenityInput] = useState('')
 
   const { data: venues, isLoading } = useQuery({ queryKey: ['owner-venues'], queryFn: fetchOwnerVenues })
@@ -49,14 +50,14 @@ export function OwnerVenuesPage() {
   })
 
   const handleSubmit = () => {
-    const payload = { ...form, price_morning: Number(form.price_morning), price_evening: Number(form.price_evening), price_full_day: Number(form.price_full_day), capacity: Number(form.capacity), category_id: form.category_id || null }
+    const payload = { ...form, price_morning: Number(form.price_morning), price_evening: Number(form.price_evening), price_full_day: Number(form.price_full_day), capacity: Number(form.capacity), category_id: form.category_id || null, latitude: form.latitude, longitude: form.longitude }
     if (editMode && selectedVenue) updateMutation.mutate({ id: selectedVenue.id, data: payload })
     else createMutation.mutate(payload)
   }
 
   const openEdit = (venue: any) => {
     setSelectedVenue(venue); setEditMode(true)
-    setForm({ name: venue.name||'', description: venue.description||'', location: venue.location||'', city: venue.city||'', category_id: venue.category_id||'', image_url: venue.image_url||'', price_morning: venue.price_morning||0, price_evening: venue.price_evening||0, price_full_day: venue.price_full_day||0, capacity: venue.capacity||0, area: venue.area||'', amenities: venue.amenities||[], images: venue.images||[], youtube_url: venue.youtube_url||'' })
+    setForm({ name: venue.name||'', description: venue.description||'', location: venue.location||'', city: venue.city||'', category_id: venue.category_id||'', image_url: venue.image_url||'', price_morning: venue.price_morning||0, price_evening: venue.price_evening||0, price_full_day: venue.price_full_day||0, capacity: venue.capacity||0, area: venue.area||'', amenities: venue.amenities||[], images: venue.images||[], youtube_url: venue.youtube_url||'', latitude: venue.latitude || null, longitude: venue.longitude || null })
     setDialogOpen(true)
   }
 
@@ -92,7 +93,7 @@ export function OwnerVenuesPage() {
       <Main className='flex flex-1 flex-col gap-4 sm:gap-6'>
         <div className='flex items-end justify-between'>
           <div><h2 className='text-2xl font-bold'>My Venues</h2><p className='text-muted-foreground'>Manage your venue listings</p></div>
-          <Button onClick={() => { setEditMode(false); setSelectedVenue(null); setForm({ name:'',description:'',location:'',city:'',category_id:'',image_url:'',price_morning:0,price_evening:0,price_full_day:0,capacity:0,area:'',amenities:[],images:[],youtube_url:'' }); setDialogOpen(true) }}><Plus className='mr-2 h-4 w-4' />Add Venue</Button>
+          <Button onClick={() => { setEditMode(false); setSelectedVenue(null); setForm({ name:'',description:'',location:'',city:'',category_id:'',image_url:'',price_morning:0,price_evening:0,price_full_day:0,capacity:0,area:'',amenities:[],images:[],youtube_url:'',latitude:null,longitude:null }); setDialogOpen(true) }}><Plus className='mr-2 h-4 w-4' />Add Venue</Button>
         </div>
 
         <Card><CardContent className='p-0'>
@@ -130,6 +131,17 @@ export function OwnerVenuesPage() {
               <div><Label>City *</Label><Input value={form.city} onChange={e=>setForm(p=>({...p,city:e.target.value}))}/></div>
             </div>
             <div><Label>Location</Label><Input value={form.location} onChange={e=>setForm(p=>({...p,location:e.target.value}))}/></div>
+            <div>
+              <MapLocationPicker
+                latitude={form.latitude}
+                longitude={form.longitude}
+                location={form.location}
+                city={form.city}
+                onCoordinatesChange={(lat, lng) => setForm(p => ({ ...p, latitude: lat, longitude: lng }))}
+                onLocationChange={(loc) => setForm(p => ({ ...p, location: loc }))}
+                onCityChange={(c) => setForm(p => ({ ...p, city: c }))}
+              />
+            </div>
             <div><Label>Category</Label>
               <Select value={form.category_id} onValueChange={val => setForm(p => ({ ...p, category_id: val }))}>
                 <SelectTrigger><SelectValue placeholder='Select category' /></SelectTrigger>

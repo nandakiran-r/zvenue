@@ -241,6 +241,8 @@ export const service_listings = pgTable('service_listings', {
   quantity_available: integer('quantity_available').notNull().default(0),
   city: varchar('city', { length: 255 }).notNull(),
   area: varchar('area', { length: 255 }),
+  latitude: real('latitude'),
+  longitude: real('longitude'),
   subscriber_discount_percent: integer('subscriber_discount_percent').default(0), // 0-50
   subscriber_benefits: jsonb('subscriber_benefits').default('[]'),
   rating: real('rating').default(0),

@@ -78,7 +78,7 @@ export function ServiceBookingsPage() {
               bookings.map((b: any) => (
                 <TableRow key={b.id}>
                   <TableCell className='font-mono text-xs'>{b.booking_id_display || b.id.slice(0, 8)}</TableCell>
-                  <TableCell><p className='text-sm font-medium'>{b.user?.full_name || '—'}</p><p className='text-xs text-muted-foreground'>{b.user?.email || ''}</p></TableCell>
+                  <TableCell><p className='text-sm font-medium'>{b.user?.full_name || '—'}</p>{b.user?.phone_number ? <a href={`https://wa.me/${b.user.phone_number.replace(/[^0-9]/g, '')}`} target='_blank' rel='noreferrer' className='text-xs text-green-600 hover:underline'>{b.user.phone_number}</a> : <p className='text-xs text-muted-foreground'>{b.user?.email || ''}</p>}</TableCell>
                   <TableCell><p className='text-sm'>{b.listing?.name || '—'}</p><p className='text-xs text-muted-foreground'>{b.listing?.category?.name || ''}</p></TableCell>
                   <TableCell>{b.quantity}</TableCell>
                   <TableCell className='font-medium'>{formatINR(b.total_amount)}</TableCell>

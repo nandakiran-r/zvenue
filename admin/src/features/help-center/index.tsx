@@ -145,7 +145,7 @@ export function HelpCenterPage() {
                   <Phone className='h-4 w-4 text-muted-foreground' />
                   <div>
                     <p className='text-sm font-medium'>Phone</p>
-                    <p className='text-sm text-muted-foreground'>+91 97876 54321</p>
+                    <p className='text-sm text-muted-foreground'>+91 72491 11100</p>
                   </div>
                 </div>
               </CardContent>

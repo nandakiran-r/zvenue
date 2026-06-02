@@ -2721,7 +2721,7 @@ fastify.get('/api/bookings', { onRequest: [fastify.authenticate] }, async (reque
       where: whereClause,
       with: {
         venue: { with: { category: true } },
-        user: { columns: { id: true, full_name: true, email: true, avatar_url: true } }
+        user: { columns: { id: true, full_name: true, email: true, avatar_url: true, phone_number: true } }
       },
       orderBy: [desc(bookings.created_at)]
     });
@@ -4898,6 +4898,73 @@ fastify.put('/api/config/:key', { onRequest: [fastify.authenticate] }, async (re
   } catch (err) {
     fastify.log.error(err);
     return reply.status(500).send({ error: 'Failed to update' });
+  }
+});
+
+// ─── MAPPLS GEOCODING PROXY ─────────────────────────────────────────────────
+// Proxies Mappls API requests to avoid CORS issues (Mappls blocks browser requests)
+
+let mapplsTokenCache = { token: '', expiresAt: 0 };
+
+async function getMapplsToken() {
+  if (mapplsTokenCache.token && Date.now() < mapplsTokenCache.expiresAt) return mapplsTokenCache.token;
+  
+  const clientId = process.env.MAPPLS_CLIENT_ID;
+  const clientSecret = process.env.MAPPLS_CLIENT_SECRET;
+  if (!clientId || !clientSecret) return null;
+
+  const res = await fetch('https://outpost.mappls.com/api/security/oauth/token', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+    body: new URLSearchParams({ grant_type: 'client_credentials', client_id: clientId, client_secret: clientSecret }),
+  });
+
+  if (!res.ok) return null;
+  const data = await res.json();
+  mapplsTokenCache = { token: data.access_token, expiresAt: Date.now() + (data.expires_in - 300) * 1000 };
+  return mapplsTokenCache.token;
+}
+
+// Search places via Mappls
+fastify.get('/api/geocode/search', { onRequest: [fastify.authenticate] }, async (request, reply) => {
+  try {
+    const { query } = request.query;
+    if (!query || query.length < 3) return [];
+
+    const token = await getMapplsToken();
+    if (!token) return reply.status(503).send({ error: 'Geocoding service unavailable' });
+
+    const params = new URLSearchParams({ query, region: 'IND', tokenizeAddress: 'true' });
+    const res = await fetch(`https://atlas.mappls.com/api/places/search/json?${params}`, {
+      headers: { 'Authorization': `bearer ${token}`, 'Accept': 'application/json' },
+    });
+
+    if (!res.ok) return reply.status(res.status).send({ error: 'Search failed' });
+    return await res.json();
+  } catch (err) {
+    fastify.log.error('Geocode search error:', err);
+    return reply.status(500).send({ error: 'Search failed' });
+  }
+});
+
+// Reverse geocode via Mappls
+fastify.get('/api/geocode/reverse', { onRequest: [fastify.authenticate] }, async (request, reply) => {
+  try {
+    const { lat, lng } = request.query;
+    if (!lat || !lng) return reply.status(400).send({ error: 'lat and lng required' });
+
+    const token = await getMapplsToken();
+    if (!token) return reply.status(503).send({ error: 'Geocoding service unavailable' });
+
+    const res = await fetch(`https://apis.mappls.com/advancedmaps/v1/${token}/rev_geocode?lat=${lat}&lng=${lng}`, {
+      headers: { 'Accept': 'application/json' },
+    });
+
+    if (!res.ok) return reply.status(res.status).send({ error: 'Reverse geocode failed' });
+    return await res.json();
+  } catch (err) {
+    fastify.log.error('Reverse geocode error:', err);
+    return reply.status(500).send({ error: 'Reverse geocode failed' });
   }
 });
 

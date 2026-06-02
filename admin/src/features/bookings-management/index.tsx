@@ -262,9 +262,15 @@ export function BookingsPage() {
                               <p className='text-sm font-medium'>
                                 {booking.user?.full_name || 'Unknown'}
                               </p>
-                              <p className='text-xs text-muted-foreground'>
-                                {booking.user?.email || ''}
-                              </p>
+                              {booking.user?.phone_number ? (
+                                <a href={`https://wa.me/${booking.user.phone_number.replace(/[^0-9]/g, '')}`} target='_blank' rel='noreferrer' className='text-xs text-green-600 hover:underline'>
+                                  {booking.user.phone_number}
+                                </a>
+                              ) : (
+                                <p className='text-xs text-muted-foreground'>
+                                  {booking.user?.email || ''}
+                                </p>
+                              )}
                             </div>
                           </div>
                         </TableCell>
@@ -400,6 +406,21 @@ export function BookingsPage() {
                 <div>
                   <p className='font-medium'>{selectedBooking.user?.full_name || 'Unknown'}</p>
                   <p className='text-sm text-muted-foreground'>{selectedBooking.booking_id_display || selectedBooking.user?.email}</p>
+                  {selectedBooking.user?.phone_number && (
+                    <div className='flex items-center gap-2 mt-1'>
+                      <a href={`tel:${selectedBooking.user.phone_number}`} className='text-sm text-primary hover:underline'>
+                        {selectedBooking.user.phone_number}
+                      </a>
+                      <a
+                        href={`https://wa.me/${selectedBooking.user.phone_number.replace(/[^0-9]/g, '')}`}
+                        target='_blank'
+                        rel='noreferrer'
+                        className='inline-flex items-center gap-1 px-2 py-0.5 rounded-full bg-green-100 text-green-700 text-xs font-medium hover:bg-green-200 transition-colors'
+                      >
+                        💬 WhatsApp
+                      </a>
+                    </div>
+                  )}
                 </div>
                 <Badge variant={statusVariant(selectedBooking.status)} className='ml-auto'>
                   {formatStatus(selectedBooking.status)}

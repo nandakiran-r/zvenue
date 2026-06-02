@@ -18,7 +18,7 @@ import { fetchServiceListings } from "@/lib/serviceApi";
 import type { DbServiceListing } from "@/lib/serviceTypes";
 
 export default function ServiceListingsScreen() {
-  const { categoryId, categoryName } = useLocalSearchParams<{ categoryId: string; categoryName: string }>();
+  const { categoryId, categoryName, sortBy } = useLocalSearchParams<{ categoryId: string; categoryName: string; sortBy?: string }>();
   const insets = useSafeAreaInsets();
 
   const [listings, setListings] = useState<DbServiceListing[]>([]);
@@ -30,7 +30,15 @@ export default function ServiceListingsScreen() {
   const loadListings = useCallback(async (pageNum = 1, append = false) => {
     try {
       if (pageNum === 1) setLoading(true);
-      const data = await fetchServiceListings({ category_id: categoryId, page: pageNum, limit: 20 });
+      let data = await fetchServiceListings({ category_id: categoryId, page: pageNum, limit: 20 });
+      
+      // Apply sort from home screen filter
+      if (sortBy && pageNum === 1 && !append) {
+        if (sortBy === 'price_low') data.sort((a: any, b: any) => (a.price ?? 0) - (b.price ?? 0));
+        else if (sortBy === 'price_high') data.sort((a: any, b: any) => (b.price ?? 0) - (a.price ?? 0));
+        else if (sortBy === 'rating') data.sort((a: any, b: any) => (b.rating ?? 0) - (a.rating ?? 0));
+      }
+
       if (append) {
         setListings(prev => [...prev, ...data]);
       } else {
@@ -44,7 +52,7 @@ export default function ServiceListingsScreen() {
       setLoading(false);
       setRefreshing(false);
     }
-  }, [categoryId]);
+  }, [categoryId, sortBy]);
 
   useEffect(() => { loadListings(); }, [loadListings]);
 

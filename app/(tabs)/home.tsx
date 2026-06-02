@@ -861,7 +861,7 @@ export default function HomeScreen() {
                 <TouchableOpacity
                   key={cat.id}
                   style={styles.serviceCategoryCard}
-                  onPress={() => router.push({ pathname: "/service-listings" as any, params: { categoryId: cat.id, categoryName: cat.name } })}
+                  onPress={() => router.push({ pathname: "/service-listings" as any, params: { categoryId: cat.id, categoryName: cat.name, sortBy: sortBy !== 'none' ? sortBy : undefined } })}
                   activeOpacity={0.7}
                 >
                   <View style={styles.serviceCategoryIcon}>

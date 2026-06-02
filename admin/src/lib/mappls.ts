@@ -1,14 +1,16 @@
 /**
- * Geocoding service client using OpenStreetMap Nominatim.
+ * Geocoding service using Photon (by Komoot).
  * 
- * Works well for Indian cities, areas, and known landmarks.
- * For specific venues/shrines, use the map click or pin drag feature.
- *
- * No API key required. Rate limit: 1 request per second.
+ * Free, no API key, no signup required. Much better fuzzy matching than Nominatim.
+ * Uses OpenStreetMap data with Elasticsearch for better search relevance.
+ * 
+ * Docs: https://photon.komoot.io/
+ * 
+ * For reverse geocoding, falls back to Nominatim (Photon doesn't support reverse).
  */
 
-const NOMINATIM_BASE_URL = 'https://nominatim.openstreetmap.org';
-const USER_AGENT = 'ZVenue-Admin/1.0';
+const PHOTON_URL = 'https://photon.komoot.io/api';
+const NOMINATIM_URL = 'https://nominatim.openstreetmap.org/reverse';
 
 export interface MapplsAutosuggestResult {
   eLoc: string;
@@ -35,88 +37,92 @@ export interface MapplsReverseResult {
   lng: string;
 }
 
-let lastRequestTime = 0;
+let lastReverseTime = 0;
 
-async function rateLimitWait(): Promise<void> {
+async function reverseRateLimitWait(): Promise<void> {
   const now = Date.now();
-  const elapsed = now - lastRequestTime;
+  const elapsed = now - lastReverseTime;
   if (elapsed < 1100) {
     await new Promise((resolve) => setTimeout(resolve, 1100 - elapsed));
   }
-  lastRequestTime = Date.now();
+  lastReverseTime = Date.now();
 }
 
 /**
- * Search for places/addresses in India.
- * Returns up to 5 results.
- * Tip: Search for area, city, or landmark names — not venue-specific names.
+ * Forward geocode using Photon (Komoot).
+ * Better fuzzy search than Nominatim — finds places, shrines, landmarks.
+ * No API key needed. No rate limiting for reasonable usage.
  */
 export async function searchAddress(query: string): Promise<MapplsAutosuggestResult[]> {
   if (!query || query.trim().length < 3) return [];
 
   try {
-    await rateLimitWait();
-
-    // Append "India" if not already present to improve results
+    // Append "india" for better relevance if not present
     let searchQuery = query.trim();
     if (!searchQuery.toLowerCase().includes('india')) {
-      searchQuery += ', India';
+      searchQuery += ' india';
     }
 
     const params = new URLSearchParams({
       q: searchQuery,
-      format: 'json',
       limit: '5',
-      countrycodes: 'in',
-      addressdetails: '1',
+      lang: 'en',
     });
 
-    const response = await fetch(`${NOMINATIM_BASE_URL}/search?${params.toString()}`, {
-      headers: {
-        'User-Agent': USER_AGENT,
-        Accept: 'application/json',
-      },
+    const response = await fetch(`${PHOTON_URL}?${params.toString()}`, {
+      headers: { 'Accept': 'application/json' },
     });
 
     if (!response.ok) {
-      console.error(`Geocoding search HTTP error: ${response.status}`);
+      console.error(`Photon search HTTP error: ${response.status}`);
       return [];
     }
 
-    const results = await response.json();
+    const data = await response.json();
+    const features = data.features || [];
 
-    return results.slice(0, 5).map((item: any, index: number) => {
-      // Build a clean place name from the display_name
-      const parts = (item.display_name || '').split(',').map((s: string) => s.trim());
-      const placeName = parts.slice(0, 2).join(', ');
-      const placeAddress = parts.slice(2).join(', ');
+    return features.slice(0, 5).map((feature: any, index: number) => {
+      const props = feature.properties || {};
+      const coords = feature.geometry?.coordinates || [0, 0];
+      // Photon coordinates are [lng, lat]
+      const lng = coords[0];
+      const lat = coords[1];
+
+      // Build place name and address
+      const placeName = props.name || props.street || '';
+      const addressParts: string[] = [];
+      if (props.street && props.street !== placeName) addressParts.push(props.street);
+      if (props.city) addressParts.push(props.city);
+      if (props.state) addressParts.push(props.state);
+      if (props.postcode) addressParts.push(props.postcode);
+      const placeAddress = addressParts.join(', ');
 
       return {
-        eLoc: String(item.place_id || ''),
-        placeName,
+        eLoc: String(props.osm_id || index),
+        placeName: placeName || placeAddress.split(',')[0] || 'Unknown',
         placeAddress,
-        latitude: parseFloat(item.lat || '0'),
-        longitude: parseFloat(item.lon || '0'),
-        type: item.type || '',
+        latitude: lat,
+        longitude: lng,
+        type: props.osm_value || props.type || '',
         orderIndex: index,
       };
     });
   } catch (error) {
-    console.error('Geocoding search error:', error);
+    console.error('Photon search error:', error);
     return [];
   }
 }
 
 /**
- * Reverse geocode: Get address from coordinates.
- * Returns address details or null on error.
+ * Reverse geocode using Nominatim (Photon doesn't support reverse geocoding).
+ * Rate limited to 1 req/sec per Nominatim policy.
  */
 export async function reverseGeocode(
   lat: number,
   lng: number
 ): Promise<MapplsReverseResult | null> {
   try {
-    await rateLimitWait();
+    await reverseRateLimitWait();
 
     const params = new URLSearchParams({
       lat: String(lat),
@@ -125,9 +131,9 @@ export async function reverseGeocode(
       addressdetails: '1',
     });
 
-    const response = await fetch(`${NOMINATIM_BASE_URL}/reverse?${params.toString()}`, {
+    const response = await fetch(`${NOMINATIM_URL}?${params.toString()}`, {
       headers: {
-        'User-Agent': USER_AGENT,
+        'User-Agent': 'ZVenue-Admin/1.0',
         Accept: 'application/json',
       },
     });

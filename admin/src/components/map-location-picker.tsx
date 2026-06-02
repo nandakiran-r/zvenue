@@ -164,7 +164,7 @@ function AddressSearch({
       <Input
         id="address-search"
         type="text"
-        placeholder="Type at least 3 characters to search..."
+        placeholder="Search area, city, or landmark (e.g. Miraj, Sangli)"
         value={query}
         onChange={(e) => setQuery(e.target.value)}
         disabled={disabled}
@@ -208,6 +208,7 @@ function AddressSearch({
 
 /**
  * Coordinate display and manual editing section.
+ * Always editable — supports pasting "lat, lng" format directly.
  */
 function CoordinateEditor({
   latitude,
@@ -220,31 +221,35 @@ function CoordinateEditor({
   onManualCoordinatesConfirm: (lat: number, lng: number) => void
   disabled?: boolean
 }) {
-  const [editing, setEditing] = useState(false)
   const [latInput, setLatInput] = useState('')
   const [lngInput, setLngInput] = useState('')
   const [error, setError] = useState<string | null>(null)
 
-  // Sync display values when coordinates change externally
+  // Sync display values when coordinates change externally (map click/drag/search)
   useEffect(() => {
-    if (!editing) {
-      setLatInput(latitude !== null ? String(latitude) : '')
-      setLngInput(longitude !== null ? String(longitude) : '')
-    }
-  }, [latitude, longitude, editing])
+    setLatInput(latitude !== null ? latitude.toFixed(6) : '')
+    setLngInput(longitude !== null ? longitude.toFixed(6) : '')
+    setError(null)
+  }, [latitude, longitude])
 
-  const handleToggleEdit = () => {
-    if (editing) {
-      // Exiting edit mode without confirming — reset values
-      setLatInput(latitude !== null ? String(latitude) : '')
-      setLngInput(longitude !== null ? String(longitude) : '')
-      setError(null)
-    } else {
-      // Entering edit mode — populate with current values
-      setLatInput(latitude !== null ? String(latitude) : '')
-      setLngInput(longitude !== null ? String(longitude) : '')
+  // Detect "lat, lng" paste format and auto-split
+  const handleLatChange = (value: string) => {
+    const trimmed = value.trim()
+    if (trimmed.includes(',')) {
+      const parts = trimmed.split(',').map(s => s.trim())
+      if (parts.length === 2) {
+        const lat = parseFloat(parts[0])
+        const lng = parseFloat(parts[1])
+        if (!isNaN(lat) && !isNaN(lng) && lat >= -90 && lat <= 90 && lng >= -180 && lng <= 180) {
+          setLatInput(parts[0])
+          setLngInput(parts[1])
+          setError(null)
+          onManualCoordinatesConfirm(lat, lng)
+          return
+        }
+      }
     }
-    setEditing(!editing)
+    setLatInput(value)
   }
 
   const handleConfirm = () => {
@@ -252,39 +257,33 @@ function CoordinateEditor({
     const lng = parseFloat(lngInput)
 
     if (isNaN(lat) || isNaN(lng)) {
-      setError('Please enter valid numeric values for latitude and longitude.')
+      setError('Enter valid numbers, or paste "lat, lng" (e.g. 16.820, 74.646)')
       return
     }
-
     if (lat < -90 || lat > 90) {
       setError('Latitude must be between -90 and 90.')
       return
     }
-
     if (lng < -180 || lng > 180) {
       setError('Longitude must be between -180 and 180.')
       return
     }
 
     setError(null)
-    setEditing(false)
     onManualCoordinatesConfirm(lat, lng)
+  }
+
+  const handleKeyDown = (e: React.KeyboardEvent) => {
+    if (e.key === 'Enter') {
+      e.preventDefault()
+      handleConfirm()
+    }
   }
 
   return (
     <div className="mt-2 space-y-2">
-      <div className="flex items-center justify-between">
-        <Label className="text-sm font-medium">Coordinates</Label>
-        <Button
-          type="button"
-          variant="outline"
-          size="sm"
-          onClick={handleToggleEdit}
-          disabled={disabled}
-        >
-          {editing ? 'Cancel' : 'Edit coordinates'}
-        </Button>
-      </div>
+      <Label className="text-sm font-medium">Coordinates</Label>
+      <p className="text-xs text-muted-foreground">Paste "lat, lng" or enter values and press Enter</p>
       <div className="grid grid-cols-2 gap-2">
         <div>
           <Label htmlFor="coord-lat" className="mb-1 text-xs text-muted-foreground">
@@ -294,10 +293,10 @@ function CoordinateEditor({
             id="coord-lat"
             type="text"
             value={latInput}
-            onChange={(e) => setLatInput(e.target.value)}
-            readOnly={!editing}
+            onChange={(e) => handleLatChange(e.target.value)}
+            onKeyDown={handleKeyDown}
             disabled={disabled}
-            placeholder="-90 to 90"
+            placeholder="e.g. 16.820"
           />
         </div>
         <div>
@@ -309,25 +308,24 @@ function CoordinateEditor({
             type="text"
             value={lngInput}
             onChange={(e) => setLngInput(e.target.value)}
-            readOnly={!editing}
+            onKeyDown={handleKeyDown}
             disabled={disabled}
-            placeholder="-180 to 180"
+            placeholder="e.g. 74.646"
           />
         </div>
       </div>
       {error && (
         <p className="text-xs text-destructive">{error}</p>
       )}
-      {editing && (
-        <Button
-          type="button"
-          size="sm"
-          onClick={handleConfirm}
-          disabled={disabled}
-        >
-          Confirm coordinates
-        </Button>
-      )}
+      <Button
+        type="button"
+        size="sm"
+        variant="outline"
+        onClick={handleConfirm}
+        disabled={disabled}
+      >
+        Go to coordinates
+      </Button>
     </div>
   )
 }

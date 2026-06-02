@@ -1,17 +1,17 @@
 /**
- * Mappls (MapmyIndia) geocoding service client for the admin panel.
+ * Geocoding service client using OpenStreetMap Nominatim.
+ * 
+ * Works well for Indian cities, areas, and known landmarks.
+ * For specific venues/shrines, use the map click or pin drag feature.
  *
- * Uses Mappls REST APIs for autosuggest (forward geocoding) and reverse geocoding.
- * Provides much better Indian address coverage than OpenStreetMap/Nominatim.
- *
- * API Key: Get from https://auth.mappls.com/console/
- * Docs: https://github.com/mappls-api/mappls-rest-apis
+ * No API key required. Rate limit: 1 request per second.
  */
 
-const MAPPLS_API_KEY = import.meta.env.VITE_MAPPLS_API_KEY || '';
+const NOMINATIM_BASE_URL = 'https://nominatim.openstreetmap.org';
+const USER_AGENT = 'ZVenue-Admin/1.0';
 
 export interface MapplsAutosuggestResult {
-  eLoc: string; // Mappls unique place ID
+  eLoc: string;
   placeName: string;
   placeAddress: string;
   latitude: number;
@@ -35,54 +35,74 @@ export interface MapplsReverseResult {
   lng: string;
 }
 
+let lastRequestTime = 0;
+
+async function rateLimitWait(): Promise<void> {
+  const now = Date.now();
+  const elapsed = now - lastRequestTime;
+  if (elapsed < 1100) {
+    await new Promise((resolve) => setTimeout(resolve, 1100 - elapsed));
+  }
+  lastRequestTime = Date.now();
+}
+
 /**
- * Autosuggest: Search for places/addresses in India.
+ * Search for places/addresses in India.
  * Returns up to 5 results.
+ * Tip: Search for area, city, or landmark names — not venue-specific names.
  */
 export async function searchAddress(query: string): Promise<MapplsAutosuggestResult[]> {
   if (!query || query.trim().length < 3) return [];
-  if (!MAPPLS_API_KEY) {
-    console.warn('Mappls API key not configured (VITE_MAPPLS_API_KEY). Falling back to empty results.');
-    return [];
-  }
 
   try {
+    await rateLimitWait();
+
+    // Append "India" if not already present to improve results
+    let searchQuery = query.trim();
+    if (!searchQuery.toLowerCase().includes('india')) {
+      searchQuery += ', India';
+    }
+
     const params = new URLSearchParams({
-      query: query.trim(),
-      location: '20.5937,78.9629', // Center of India for relevance bias
-      region: 'IND',
-      tokenizeAddress: 'true',
+      q: searchQuery,
+      format: 'json',
+      limit: '5',
+      countrycodes: 'in',
+      addressdetails: '1',
     });
 
-    const response = await fetch(
-      `https://atlas.mappls.com/api/places/search/json?${params.toString()}`,
-      {
-        headers: {
-          'Authorization': `bearer ${MAPPLS_API_KEY}`,
-          'Accept': 'application/json',
-        },
-      }
-    );
+    const response = await fetch(`${NOMINATIM_BASE_URL}/search?${params.toString()}`, {
+      headers: {
+        'User-Agent': USER_AGENT,
+        Accept: 'application/json',
+      },
+    });
 
     if (!response.ok) {
-      console.error(`Mappls autosuggest HTTP error: ${response.status}`);
+      console.error(`Geocoding search HTTP error: ${response.status}`);
       return [];
     }
 
-    const data = await response.json();
-    const results = data.suggestedLocations || data.results || [];
+    const results = await response.json();
 
-    return results.slice(0, 5).map((item: any, index: number) => ({
-      eLoc: item.eLoc || item.place_id || '',
-      placeName: item.placeName || item.place_name || '',
-      placeAddress: item.placeAddress || item.formatted_address || item.description || '',
-      latitude: parseFloat(item.latitude || item.lat || '0'),
-      longitude: parseFloat(item.longitude || item.lng || '0'),
-      type: item.type || '',
-      orderIndex: index,
-    }));
+    return results.slice(0, 5).map((item: any, index: number) => {
+      // Build a clean place name from the display_name
+      const parts = (item.display_name || '').split(',').map((s: string) => s.trim());
+      const placeName = parts.slice(0, 2).join(', ');
+      const placeAddress = parts.slice(2).join(', ');
+
+      return {
+        eLoc: String(item.place_id || ''),
+        placeName,
+        placeAddress,
+        latitude: parseFloat(item.lat || '0'),
+        longitude: parseFloat(item.lon || '0'),
+        type: item.type || '',
+        orderIndex: index,
+      };
+    });
   } catch (error) {
-    console.error('Mappls autosuggest error:', error);
+    console.error('Geocoding search error:', error);
     return [];
   }
 }
@@ -95,48 +115,48 @@ export async function reverseGeocode(
   lat: number,
   lng: number
 ): Promise<MapplsReverseResult | null> {
-  if (!MAPPLS_API_KEY) {
-    console.warn('Mappls API key not configured (VITE_MAPPLS_API_KEY).');
-    return null;
-  }
-
   try {
-    const response = await fetch(
-      `https://apis.mappls.com/advancedmaps/v1/${MAPPLS_API_KEY}/rev_geocode?lat=${lat}&lng=${lng}`,
-      {
-        headers: {
-          'Accept': 'application/json',
-        },
-      }
-    );
+    await rateLimitWait();
+
+    const params = new URLSearchParams({
+      lat: String(lat),
+      lon: String(lng),
+      format: 'json',
+      addressdetails: '1',
+    });
+
+    const response = await fetch(`${NOMINATIM_BASE_URL}/reverse?${params.toString()}`, {
+      headers: {
+        'User-Agent': USER_AGENT,
+        Accept: 'application/json',
+      },
+    });
 
     if (!response.ok) {
-      console.error(`Mappls reverse geocode HTTP error: ${response.status}`);
+      console.error(`Reverse geocoding HTTP error: ${response.status}`);
       return null;
     }
 
-    const data = await response.json();
-    const results = data.results || [];
+    const result = await response.json();
+    if (!result || result.error) return null;
 
-    if (results.length === 0) return null;
-
-    const result = results[0];
+    const addr = result.address || {};
     return {
-      formatted_address: result.formatted_address || '',
-      area: result.area || '',
-      city: result.city || result.district || '',
-      district: result.district || '',
-      state: result.state || '',
-      pincode: result.pincode || '',
-      locality: result.locality || '',
-      subLocality: result.subLocality || result.sub_locality || '',
-      street: result.street || '',
-      houseNumber: result.houseNumber || result.house_number || '',
+      formatted_address: result.display_name || '',
+      area: addr.suburb || addr.neighbourhood || '',
+      city: addr.city || addr.town || addr.village || addr.county || '',
+      district: addr.county || addr.state_district || '',
+      state: addr.state || '',
+      pincode: addr.postcode || '',
+      locality: addr.suburb || addr.neighbourhood || '',
+      subLocality: addr.neighbourhood || '',
+      street: addr.road || '',
+      houseNumber: addr.house_number || '',
       lat: String(lat),
       lng: String(lng),
     };
   } catch (error) {
-    console.error('Mappls reverse geocoding error:', error);
+    console.error('Reverse geocoding error:', error);
     return null;
   }
 }

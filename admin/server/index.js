@@ -1415,15 +1415,17 @@ fastify.post('/api/venues/:id/reject', { onRequest: [fastify.authenticate] }, as
 // Admin: deactivate/activate owner
 fastify.put('/api/owners/:id', { onRequest: [fastify.authenticate] }, async (request, reply) => {
   try {
-    const { is_active, full_name, email, phone_number } = request.body;
+    const { is_active, full_name, email, phone_number, password } = request.body;
     const updates = {};
     if (is_active !== undefined) updates.is_active = is_active;
     if (full_name) updates.full_name = full_name;
     if (email) updates.email = email;
     if (phone_number) updates.phone_number = phone_number;
+    if (password && password.length >= 6) updates.password = await argon2.hash(password);
     const [updated] = await db.update(owners).set(updates).where(eq(owners.id, request.params.id)).returning();
     return { ...updated, password: undefined };
   } catch (err) {
+    if (err.code === '23505') return reply.status(400).send({ error: 'Email or phone already exists' });
     fastify.log.error(err);
     return reply.status(500).send({ error: 'Internal Server Error' });
   }

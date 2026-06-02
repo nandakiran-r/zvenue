@@ -5,6 +5,7 @@ import {
   UserPlus,
   Building2,
   Trash2,
+  Pencil,
   CheckCircle,
   XCircle,
   Shield,
@@ -32,9 +33,11 @@ import { fetchOwners, createOwner, updateOwner, deleteOwner, fetchVenues, approv
 export function OwnersPage() {
   const queryClient = useQueryClient()
   const [createDialogOpen, setCreateDialogOpen] = useState(false)
+  const [editDialogOpen, setEditDialogOpen] = useState(false)
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false)
   const [selectedOwner, setSelectedOwner] = useState<any>(null)
   const [form, setForm] = useState({ full_name: '', email: '', phone_number: '', password: '' })
+  const [editForm, setEditForm] = useState({ full_name: '', email: '', phone_number: '', password: '' })
 
   const { data: ownersList, isLoading } = useQuery({
     queryKey: ['admin-owners'],
@@ -75,6 +78,29 @@ export function OwnersPage() {
       toast.success('Owner deleted')
     },
   })
+
+  const editMutation = useMutation({
+    mutationFn: ({ id, data }: { id: string; data: Record<string, unknown> }) => updateOwner(id, data),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['admin-owners'] })
+      setEditDialogOpen(false)
+      toast.success('Owner updated!')
+    },
+    onError: (err: any) => toast.error(err.response?.data?.error || 'Failed to update owner'),
+  })
+
+  const openEdit = (owner: any) => {
+    setSelectedOwner(owner)
+    setEditForm({ full_name: owner.full_name || '', email: owner.email || '', phone_number: owner.phone_number || '', password: '' })
+    setEditDialogOpen(true)
+  }
+
+  const handleEditSubmit = () => {
+    if (!selectedOwner) return
+    const data: Record<string, unknown> = { full_name: editForm.full_name, email: editForm.email, phone_number: editForm.phone_number }
+    if (editForm.password.trim().length >= 6) data.password = editForm.password
+    editMutation.mutate({ id: selectedOwner.id, data })
+  }
 
   const approveMutation = useMutation({
     mutationFn: (id: string) => approveVenue(id),
@@ -196,6 +222,9 @@ export function OwnersPage() {
                     </TableCell>
                     <TableCell>
                       <div className='flex items-center justify-end gap-1'>
+                        <Button variant='ghost' size='icon' onClick={() => openEdit(owner)} title='Edit'>
+                          <Pencil className='h-4 w-4' />
+                        </Button>
                         <Button variant='ghost' size='icon' onClick={() => toggleActiveMutation.mutate({ id: owner.id, is_active: !owner.is_active })}>
                           {owner.is_active ? <ShieldOff className='h-4 w-4 text-amber-600' /> : <Shield className='h-4 w-4 text-emerald-600' />}
                         </Button>
@@ -248,6 +277,28 @@ export function OwnersPage() {
             <Button variant='outline' onClick={() => setDeleteDialogOpen(false)}>Cancel</Button>
             <Button variant='destructive' onClick={() => selectedOwner && deleteMutation.mutate(selectedOwner.id)} disabled={deleteMutation.isPending}>
               {deleteMutation.isPending ? 'Deleting...' : 'Delete'}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* Edit Owner Dialog */}
+      <Dialog open={editDialogOpen} onOpenChange={setEditDialogOpen}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Edit Owner</DialogTitle>
+            <DialogDescription>Update owner details. Leave password empty to keep the current one.</DialogDescription>
+          </DialogHeader>
+          <div className='space-y-3'>
+            <Input placeholder='Full Name' value={editForm.full_name} onChange={e => setEditForm(f => ({ ...f, full_name: e.target.value }))} />
+            <Input placeholder='Email' type='email' value={editForm.email} onChange={e => setEditForm(f => ({ ...f, email: e.target.value }))} />
+            <Input placeholder='Phone Number' value={editForm.phone_number} onChange={e => setEditForm(f => ({ ...f, phone_number: e.target.value }))} />
+            <Input placeholder='New Password (leave empty to keep current)' type='password' value={editForm.password} onChange={e => setEditForm(f => ({ ...f, password: e.target.value }))} />
+          </div>
+          <DialogFooter>
+            <Button variant='outline' onClick={() => setEditDialogOpen(false)}>Cancel</Button>
+            <Button onClick={handleEditSubmit} disabled={editMutation.isPending || !editForm.full_name.trim() || !editForm.email.trim() || !editForm.phone_number.trim()}>
+              {editMutation.isPending ? 'Saving...' : 'Save Changes'}
             </Button>
           </DialogFooter>
         </DialogContent>

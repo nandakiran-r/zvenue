@@ -5,7 +5,7 @@ import markerIcon2x from 'leaflet/dist/images/marker-icon-2x.png'
 import markerIcon from 'leaflet/dist/images/marker-icon.png'
 import markerShadow from 'leaflet/dist/images/marker-shadow.png'
 import 'leaflet/dist/leaflet.css'
-import { reverseGeocode, searchAddress, type NominatimSearchResult } from '@/lib/nominatim'
+import { reverseGeocode, searchAddress, type MapplsAutosuggestResult } from '@/lib/mappls'
 import { Input } from '@/components/ui/input'
 import { Button } from '@/components/ui/button'
 import { Label } from '@/components/ui/label'
@@ -96,17 +96,17 @@ class MapErrorBoundary extends Component<
 }
 
 /**
- * Address search input with debounced Nominatim forward geocoding.
+ * Address search input with debounced Mappls autosuggest.
  */
 function AddressSearch({
   onResultSelect,
   disabled,
 }: {
-  onResultSelect: (result: NominatimSearchResult) => void
+  onResultSelect: (result: MapplsAutosuggestResult) => void
   disabled?: boolean
 }) {
   const [query, setQuery] = useState('')
-  const [results, setResults] = useState<NominatimSearchResult[]>([])
+  const [results, setResults] = useState<MapplsAutosuggestResult[]>([])
   const [isSearching, setIsSearching] = useState(false)
   const [showDropdown, setShowDropdown] = useState(false)
   const [noResults, setNoResults] = useState(false)
@@ -148,8 +148,8 @@ function AddressSearch({
     }
   }, [query])
 
-  const handleSelect = (result: NominatimSearchResult) => {
-    setQuery(result.display_name)
+  const handleSelect = (result: MapplsAutosuggestResult) => {
+    setQuery(result.placeName + (result.placeAddress ? ', ' + result.placeAddress : ''))
     setShowDropdown(false)
     setResults([])
     setNoResults(false)
@@ -186,15 +186,18 @@ function AddressSearch({
               No results found
             </p>
           )}
-          {results.slice(0, 5).map((result) => (
+          {results.slice(0, 5).map((result, idx) => (
             <button
-              key={result.place_id}
+              key={result.eLoc || idx}
               type="button"
               className="w-full cursor-pointer px-3 py-2 text-left text-sm hover:bg-accent"
               onMouseDown={(e) => e.preventDefault()}
               onClick={() => handleSelect(result)}
             >
-              {result.display_name}
+              <span className="font-medium">{result.placeName}</span>
+              {result.placeAddress && (
+                <span className="text-muted-foreground ml-1 text-xs">— {result.placeAddress}</span>
+              )}
             </button>
           ))}
         </div>
@@ -347,20 +350,20 @@ export default function MapLocationPicker({
     async (lat: number, lng: number) => {
       onCoordinatesChange(lat, lng)
 
-      // Trigger reverse geocoding
+      // Trigger reverse geocoding via Mappls
       const result = await reverseGeocode(lat, lng)
       if (result) {
-        const { address } = result
         // Build street address from available parts
         const parts: string[] = []
-        if (address.house_number) parts.push(address.house_number)
-        if (address.road) parts.push(address.road)
-        if (address.suburb) parts.push(address.suburb)
-        const streetAddress = parts.join(', ') || result.display_name
+        if (result.houseNumber) parts.push(result.houseNumber)
+        if (result.street) parts.push(result.street)
+        if (result.locality) parts.push(result.locality)
+        if (result.subLocality) parts.push(result.subLocality)
+        const streetAddress = parts.join(', ') || result.area || result.formatted_address
         onLocationChange(streetAddress)
 
-        // City from first available: city, town, village
-        const cityValue = address.city || address.town || address.village || ''
+        // City from result
+        const cityValue = result.city || result.district || ''
         onCityChange(cityValue)
       }
     },
@@ -377,26 +380,16 @@ export default function MapLocationPicker({
   )
 
   const handleSearchResultSelect = useCallback(
-    (result: NominatimSearchResult) => {
-      const lat = parseFloat(result.lat)
-      const lng = parseFloat(result.lon)
-      if (!isNaN(lat) && !isNaN(lng)) {
+    (result: MapplsAutosuggestResult) => {
+      const lat = result.latitude
+      const lng = result.longitude
+      if (!isNaN(lat) && !isNaN(lng) && lat !== 0 && lng !== 0) {
         onCoordinatesChange(lat, lng)
-
-        // Update location/city from search result address if available
-        if (result.address) {
-          const parts: string[] = []
-          if (result.address.house_number) parts.push(result.address.house_number)
-          if (result.address.road) parts.push(result.address.road)
-          if (result.address.suburb) parts.push(result.address.suburb)
-          const streetAddress = parts.join(', ') || result.display_name
-          onLocationChange(streetAddress)
-
-          const cityValue = result.address.city || result.address.town || result.address.village || ''
-          onCityChange(cityValue)
-        } else {
-          onLocationChange(result.display_name)
-        }
+        onLocationChange(result.placeAddress || result.placeName)
+        // Try to extract city from placeAddress (often format: "Place, Area, City, State")
+        const addressParts = (result.placeAddress || '').split(',').map(s => s.trim())
+        const cityGuess = addressParts.length >= 3 ? addressParts[addressParts.length - 2] : ''
+        onCityChange(cityGuess)
       }
     },
     [onCoordinatesChange, onLocationChange, onCityChange]

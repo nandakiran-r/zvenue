@@ -4,27 +4,37 @@ import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { ScrollArea } from '@/components/ui/scroll-area'
 
-// Curated list of commonly useful icons for categories
+// Curated list of commonly useful icons for categories — organized by type
 const POPULAR_ICONS = [
-  'star', 'heart', 'home', 'music', 'camera', 'scissors', 'car', 'plane',
-  'utensils', 'coffee', 'wine', 'beer', 'cake', 'pizza', 'apple',
-  'flower-2', 'trees', 'mountain', 'sun', 'moon', 'cloud',
-  'palette', 'brush', 'pen-tool', 'sparkles', 'gem', 'crown',
-  'gift', 'party-popper', 'trophy', 'medal', 'award',
-  'dumbbell', 'bike', 'football', 'tennis-ball',
-  'building-2', 'church', 'school', 'store', 'warehouse', 'hotel',
-  'mic', 'headphones', 'speaker', 'tv', 'monitor', 'gamepad-2',
-  'shirt', 'glasses', 'watch', 'ring',
+  // Food & Drink
+  'utensils', 'drumstick', 'beef', 'ham', 'egg', 'egg-fried', 'sandwich', 'hamburger',
+  'pizza', 'soup', 'salad', 'popcorn', 'croissant', 'cookie', 'cake', 'cake-slice',
+  'donut', 'candy', 'ice-cream-cone', 'ice-cream-bowl',
+  'carrot', 'banana', 'cherry', 'grape', 'citrus', 'apple', 'wheat', 'leafy-green', 'bean', 'nut',
+  'coffee', 'cup-soda', 'glass-water', 'milk', 'wine', 'beer', 'bottle-wine',
+  // Services & Beauty
+  'scissors', 'brush', 'paintbrush', 'paint-bucket', 'paint-roller', 'spray-can',
+  'palette', 'hand', 'hand-platter', 'hand-heart', 'hand-coins',
+  'washing-machine', 'shirt', 'iron',
+  'gem', 'ring', 'crown', 'sparkles',
   'stethoscope', 'syringe', 'pill', 'baby',
-  'book-open', 'graduation-cap', 'briefcase', 'hammer',
-  'wrench', 'zap', 'flame', 'droplets', 'leaf',
-  'dog', 'cat', 'fish', 'bird',
-  'truck', 'ship', 'rocket', 'train',
-  'map-pin', 'compass', 'globe', 'flag',
-  'users', 'user', 'hand-helping', 'handshake',
-  'phone', 'mail', 'message-circle', 'bell',
-  'shield', 'lock', 'key', 'eye',
-  'calendar', 'clock', 'timer', 'alarm-clock',
+  // Transport & Travel
+  'car', 'bus', 'train-front', 'truck', 'bike', 'motorbike', 'ambulance', 'tractor',
+  'plane', 'ship', 'rocket', 'cable-car',
+  // Venues & Buildings
+  'building-2', 'hotel', 'church', 'school', 'store', 'warehouse',
+  'home', 'tent', 'castle', 'landmark',
+  // Events & Entertainment
+  'party-popper', 'gift', 'music', 'mic', 'headphones', 'speaker', 'tv', 'gamepad-2',
+  'camera', 'clapperboard', 'drama', 'trophy', 'medal', 'award',
+  'heart', 'star', 'sun', 'moon', 'flower-2', 'trees',
+  // Sports & Fitness
+  'dumbbell', 'football', 'tennis-ball',
+  // Tools & Work
+  'wrench', 'hammer', 'drill', 'briefcase', 'graduation-cap', 'book-open',
+  // General
+  'users', 'phone', 'map-pin', 'globe', 'package', 'shopping-cart',
+  'leaf', 'droplets', 'flame', 'zap', 'shield', 'clock',
 ]
 
 interface IconPickerProps {

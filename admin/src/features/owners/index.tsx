@@ -177,7 +177,13 @@ export function OwnersPage() {
                       </div>
                     </TableCell>
                     <TableCell className='text-sm'>{owner.email}</TableCell>
-                    <TableCell className='text-sm'>{owner.phone_number}</TableCell>
+                    <TableCell className='text-sm'>
+                      {owner.phone_number ? (
+                        <a href={`https://wa.me/${owner.phone_number.replace(/[^0-9]/g, '')}`} target='_blank' rel='noreferrer' className='text-green-600 hover:underline'>
+                          {owner.phone_number}
+                        </a>
+                      ) : '—'}
+                    </TableCell>
                     <TableCell className='text-center'>
                       <Badge variant='secondary'>{owner.venues?.length || 0}</Badge>
                     </TableCell>

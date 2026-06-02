@@ -65,7 +65,7 @@ export async function searchAddress(query: string): Promise<MapplsAutosuggestRes
 
     const params = new URLSearchParams({
       q: searchQuery,
-      limit: '5',
+      limit: '20',
       lang: 'en',
     });
 
@@ -81,7 +81,7 @@ export async function searchAddress(query: string): Promise<MapplsAutosuggestRes
     const data = await response.json();
     const features = data.features || [];
 
-    return features.slice(0, 5).map((feature: any, index: number) => {
+    return features.slice(0, 20).map((feature: any, index: number) => {
       const props = feature.properties || {};
       const coords = feature.geometry?.coordinates || [0, 0];
       // Photon coordinates are [lng, lat]

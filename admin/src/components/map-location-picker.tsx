@@ -111,6 +111,18 @@ function AddressSearch({
   const [showDropdown, setShowDropdown] = useState(false)
   const [noResults, setNoResults] = useState(false)
   const debounceRef = useRef<ReturnType<typeof setTimeout> | null>(null)
+  const containerRef = useRef<HTMLDivElement>(null)
+
+  // Close dropdown when clicking outside
+  useEffect(() => {
+    const handleClickOutside = (e: MouseEvent) => {
+      if (containerRef.current && !containerRef.current.contains(e.target as Node)) {
+        setShowDropdown(false)
+      }
+    }
+    document.addEventListener('mousedown', handleClickOutside)
+    return () => document.removeEventListener('mousedown', handleClickOutside)
+  }, [])
 
   useEffect(() => {
     if (debounceRef.current) {
@@ -178,7 +190,7 @@ function AddressSearch({
   }
 
   return (
-    <div className="relative mb-2">
+    <div className="relative mb-2" ref={containerRef}>
       <Label htmlFor="address-search" className="mb-1">
         Search address
       </Label>
@@ -192,22 +204,21 @@ function AddressSearch({
         onFocus={() => {
           if (results.length > 0 || noResults) setShowDropdown(true)
         }}
-        onBlur={() => {
-          // Delay to allow click on dropdown items
-          setTimeout(() => setShowDropdown(false), 200)
-        }}
       />
       {isSearching && (
         <p className="mt-1 text-xs text-muted-foreground">Searching...</p>
       )}
       {showDropdown && (
-        <div className="absolute z-[1000] mt-1 w-full rounded-md border bg-background shadow-md max-h-[200px] overflow-y-auto">
+        <div
+          className="absolute z-[1000] mt-1 w-full rounded-md border bg-background shadow-md max-h-[250px] overflow-y-auto"
+          onMouseDown={(e) => e.preventDefault()}
+        >
           {noResults && results.length === 0 && (
             <p className="px-3 py-2 text-sm text-muted-foreground">
               No results found
             </p>
           )}
-          {results.slice(0, 5).map((result, idx) => (
+          {results.map((result, idx) => (
             <button
               key={result.eLoc || idx}
               type="button"

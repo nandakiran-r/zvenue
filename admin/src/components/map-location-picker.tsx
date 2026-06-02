@@ -1,5 +1,5 @@
 import { Component, type ErrorInfo, type ReactNode, useCallback, useEffect, useRef, useState } from 'react'
-import { MapContainer, TileLayer, Marker, useMapEvents, useMap } from 'react-leaflet'
+import { MapContainer, TileLayer, Marker, useMapEvents, useMap, ZoomControl } from 'react-leaflet'
 import L from 'leaflet'
 import markerIcon2x from 'leaflet/dist/images/marker-icon-2x.png'
 import markerIcon from 'leaflet/dist/images/marker-icon.png'
@@ -124,6 +124,27 @@ function AddressSearch({
       return
     }
 
+    // Detect coordinate format: "lat, lng" (e.g., "16.820, 74.646")
+    const coordMatch = query.trim().match(/^(-?\d+\.?\d*)\s*,\s*(-?\d+\.?\d*)$/)
+    if (coordMatch) {
+      const lat = parseFloat(coordMatch[1])
+      const lng = parseFloat(coordMatch[2])
+      if (!isNaN(lat) && !isNaN(lng) && lat >= -90 && lat <= 90 && lng >= -180 && lng <= 180) {
+        setResults([{
+          eLoc: 'coords',
+          placeName: `📍 Go to ${lat.toFixed(4)}, ${lng.toFixed(4)}`,
+          placeAddress: '',
+          latitude: lat,
+          longitude: lng,
+          type: 'coordinate',
+          orderIndex: 0,
+        }])
+        setShowDropdown(true)
+        setNoResults(false)
+        return
+      }
+    }
+
     debounceRef.current = setTimeout(async () => {
       setIsSearching(true)
       setNoResults(false)
@@ -164,7 +185,7 @@ function AddressSearch({
       <Input
         id="address-search"
         type="text"
-        placeholder="Search area, city, or landmark (e.g. Miraj, Sangli)"
+        placeholder="Search city/area or paste coordinates (16.820, 74.646)"
         value={query}
         onChange={(e) => setQuery(e.target.value)}
         disabled={disabled}
@@ -416,7 +437,9 @@ export default function MapLocationPicker({
             zoom={zoom}
             style={{ height: '300px', width: '100%' }}
             scrollWheelZoom={true}
+            zoomControl={false}
           >
+            <ZoomControl position="bottomright" />
             <TileLayer
               attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors'
               url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"

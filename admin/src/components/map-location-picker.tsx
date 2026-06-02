@@ -201,7 +201,7 @@ function AddressSearch({
         <p className="mt-1 text-xs text-muted-foreground">Searching...</p>
       )}
       {showDropdown && (
-        <div className="absolute z-[1000] mt-1 w-full rounded-md border bg-background shadow-md">
+        <div className="absolute z-[1000] mt-1 w-full rounded-md border bg-background shadow-md max-h-[200px] overflow-y-auto">
           {noResults && results.length === 0 && (
             <p className="px-3 py-2 text-sm text-muted-foreground">
               No results found

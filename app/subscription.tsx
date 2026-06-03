@@ -19,9 +19,9 @@ import { useToast } from "@/context/ToastContext";
 
 // Plan configuration — swap plan IDs when Razorpay plans are created
 const PLANS = [
-  { id: 'plan_SvGo8rbDqfx0q3', key: 'monthly', label: 'Monthly', price: '₹9', period: '/month', totalCount: 12, perMonth: '₹9/mo' },
-  { id: 'plan_SvGp6d5YEO6Cch', key: 'halfyearly', label: '6 Months', price: '₹29', period: '/6 months', totalCount: 2, perMonth: '~₹5/mo', badge: 'Popular' },
-  { id: 'plan_SvGpYM5pa5FSJU', key: 'yearly', label: 'Yearly', price: '₹59', period: '/year', totalCount: 1, perMonth: '~₹5/mo', badge: 'Best Value' },
+  { id: 'plan_SvGo8rbDqfx0q3', key: 'monthly',    label: 'Monthly',   price: '₹9',  period: '/month',     totalCount: 12, perMonth: '₹9/mo',   disclosure: 'Billed ₹9/month. Renews automatically. Cancel anytime.' },
+  { id: 'plan_SvGp6d5YEO6Cch', key: 'halfyearly', label: '6 Months',  price: '₹29', period: '/6 months',  totalCount: 2,  perMonth: '~₹5/mo',  disclosure: 'Billed ₹29 every 6 months. Renews automatically. Cancel anytime.', badge: 'Popular' },
+  { id: 'plan_SvGpYM5pa5FSJU', key: 'yearly',     label: 'Yearly',    price: '₹59', period: '/year',      totalCount: 1,  perMonth: '~₹5/mo',  disclosure: 'Billed ₹59/year. Renews automatically. Cancel anytime.', badge: 'Best Value' },
 ];
 
 export default function SubscriptionScreen() {
@@ -99,9 +99,36 @@ export default function SubscriptionScreen() {
         message: "You now have access to premium benefits with every booking.",
         actions: [{ text: "Let's Go!", style: "default", onPress: () => navigateBack() }],
       });
-    } catch (err) {
-      await refreshSubscriptionInfo();
-      navigateBack();
+    } catch (err: any) {
+      // The confirm endpoint now returns 402 when Razorpay hasn't settled yet,
+      // and 502 if Razorpay was unreachable. In both cases the webhook will sync
+      // the correct status shortly — so we still refresh and let the user proceed.
+      const status = err?.response?.status;
+      const serverMessage = err?.response?.data?.message;
+
+      if (status === 402) {
+        // Payment not yet confirmed on Razorpay's side — webhook will fix it soon
+        await refreshSubscriptionInfo();
+        showAlert({
+          type: "info",
+          title: "Payment Processing",
+          message: serverMessage || "Your payment is being processed. Your subscription will activate shortly — you'll receive a notification once it's confirmed.",
+          actions: [{ text: "OK", style: "default", onPress: () => navigateBack() }],
+        });
+      } else if (status === 502) {
+        // Razorpay unreachable — webhook is still reliable
+        await refreshSubscriptionInfo();
+        showAlert({
+          type: "info",
+          title: "Verification Delayed",
+          message: serverMessage || "We couldn't verify your payment right now, but your subscription will be activated automatically once confirmed. Check back in a minute.",
+          actions: [{ text: "OK", style: "default", onPress: () => navigateBack() }],
+        });
+      } else {
+        // Unexpected error — still refresh in case webhook already updated things
+        await refreshSubscriptionInfo();
+        navigateBack();
+      }
     }
   };
 
@@ -208,6 +235,9 @@ export default function SubscriptionScreen() {
 
         {/* Subscribe Button */}
         <View style={styles.subscribeSection}>
+          {/* Billing disclosure — shown above subscribe button */}
+          <Text style={styles.billingDisclosure}>{selectedPlan.disclosure}</Text>
+
           <TouchableOpacity
             style={[styles.subscribeButton, loading && { opacity: 0.6 }]}
             onPress={handleSubscribe}
@@ -279,6 +309,14 @@ const styles = StyleSheet.create({
   featureText: { fontSize: 14, color: Colors.text, flex: 1 },
   // Subscribe
   subscribeSection: { paddingHorizontal: 24 },
+  billingDisclosure: {
+    fontSize: 12,
+    color: Colors.textSecondary,
+    textAlign: "center",
+    marginBottom: 14,
+    lineHeight: 18,
+    paddingHorizontal: 8,
+  },
   subscribeButton: {
     backgroundColor: Colors.primary, borderRadius: 14, paddingVertical: 16,
     flexDirection: "row", alignItems: "center", justifyContent: "center", gap: 8,

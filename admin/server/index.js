@@ -724,38 +724,47 @@ fastify.post('/api/subscriptions/confirm', { onRequest: [fastify.authenticate] }
       return reply.status(404).send({ error: 'No subscription found' });
     }
 
-    // Fetch subscription from Razorpay to verify it's actually paid
+    // Fetch subscription from Razorpay and verify it is actually in a paid state.
+    // The Razorpay webhook is the authoritative source — this endpoint is a
+    // secondary check only. We never grant access on verification failure.
+    let subscription;
     try {
-      const subscription = await razorpay.subscriptions.fetch(user.subscription_id);
-      
-      // Razorpay subscription statuses: created, authenticated, active, pending, halted, cancelled, completed, expired
-      const activeStatuses = ['authenticated', 'active'];
-      
-      if (activeStatuses.includes(subscription.status)) {
-        const nextBillingAt = subscription.current_end ? new Date(subscription.current_end * 1000).toISOString() : (subscription.charge_at ? new Date(subscription.charge_at * 1000).toISOString() : (subscription.start_at ? new Date((subscription.start_at + 30*24*60*60) * 1000).toISOString() : null));
-        await db.update(users)
-          .set({ subscription_status: subscription.status, ...(nextBillingAt ? { next_billing_at: nextBillingAt } : {}) })
-          .where(eq(users.id, user_id));
-        
-        return { success: true, subscription_status: subscription.status, has_access: true };
-      } else {
-        // Even if Razorpay says 'created' or 'pending', the payment might still be processing
-        // Mark as active if the client says payment succeeded (trust the client for now, webhook will correct later)
-        await db.update(users)
-          .set({ subscription_status: 'active' })
-          .where(eq(users.id, user_id));
-        
-        return { success: true, subscription_status: 'active', has_access: true };
-      }
+      subscription = await razorpay.subscriptions.fetch(user.subscription_id);
     } catch (rzpErr) {
-      // If Razorpay fetch fails, still mark as active (payment was confirmed by client)
-      fastify.log.warn('Could not verify subscription with Razorpay, marking as active:', rzpErr.message);
-      await db.update(users)
-        .set({ subscription_status: 'active' })
-        .where(eq(users.id, user_id));
-      
-      return { success: true, subscription_status: 'active', has_access: true };
+      fastify.log.error('Could not reach Razorpay to verify subscription:', rzpErr.message);
+      return reply.status(502).send({
+        error: 'Verification failed',
+        message: 'Could not verify your subscription with Razorpay. Please wait a moment — your subscription status will be updated automatically. If this persists, contact support.',
+      });
     }
+
+    // Razorpay subscription statuses: created, authenticated, active, pending, halted, cancelled, completed, expired
+    const activeStatuses = ['authenticated', 'active'];
+
+    if (activeStatuses.includes(subscription.status)) {
+      const nextBillingAt = subscription.current_end
+        ? new Date(subscription.current_end * 1000).toISOString()
+        : subscription.charge_at
+          ? new Date(subscription.charge_at * 1000).toISOString()
+          : subscription.start_at
+            ? new Date((subscription.start_at + 30 * 24 * 60 * 60) * 1000).toISOString()
+            : null;
+
+      await db.update(users)
+        .set({ subscription_status: subscription.status, ...(nextBillingAt ? { next_billing_at: nextBillingAt } : {}) })
+        .where(eq(users.id, user_id));
+
+      return { success: true, subscription_status: subscription.status, has_access: true };
+    }
+
+    // Razorpay returned a non-active status (created, pending, halted, cancelled, etc.)
+    // Do NOT grant access. The webhook will update the DB when the payment settles.
+    fastify.log.warn(`Subscription ${user.subscription_id} has status '${subscription.status}' — access not granted`);
+    return reply.status(402).send({
+      error: 'Payment not confirmed',
+      message: `Your subscription is currently in '${subscription.status}' state. Please complete the payment and try again, or wait a moment for the status to update.`,
+      subscription_status: subscription.status,
+    });
   } catch (err) {
     fastify.log.error(err);
     return reply.status(500).send({ error: 'Failed to confirm subscription' });

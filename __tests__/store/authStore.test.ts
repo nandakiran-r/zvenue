@@ -27,7 +27,7 @@ describe('authStore', () => {
 
   describe('login', () => {
     it('sets isSignedIn, userId, and dbUser', async () => {
-      const mockUser = { id: 'user-1', full_name: 'Test User', email: 'test@test.com', phone_number: '+911234567890', avatar_url: null, subscription_id: null, subscription_status: null, next_billing_at: null, first_name: 'Test', last_name: 'User', created_at: '2024-01-01' };
+      const mockUser = { id: 'user-1', full_name: 'Test User', email: 'test@test.com', phone_number: '+911234567890', avatar_url: null, subscription_id: null, subscription_status: null, subscription_source: null, next_billing_at: null, first_name: 'Test', last_name: 'User', address: null, pincode: null, created_at: '2024-01-01' };
 
       await useAuthStore.getState().login('test-token-123', mockUser);
 
@@ -38,7 +38,7 @@ describe('authStore', () => {
     });
 
     it('persists token to AsyncStorage', async () => {
-      const mockUser = { id: 'user-1', full_name: 'Test', email: null, phone_number: '+911234567890', avatar_url: null, subscription_id: null, subscription_status: null, next_billing_at: null, first_name: 'Test', last_name: '', created_at: '2024-01-01' };
+      const mockUser = { id: 'user-1', full_name: 'Test', email: null, phone_number: '+911234567890', avatar_url: null, subscription_id: null, subscription_status: null, subscription_source: null, next_billing_at: null, first_name: 'Test', last_name: '', address: null, pincode: null, created_at: '2024-01-01' };
 
       await useAuthStore.getState().login('my-jwt-token', mockUser);
 
@@ -49,7 +49,7 @@ describe('authStore', () => {
   describe('signOut', () => {
     it('clears state and removes token', async () => {
       // First login
-      const mockUser = { id: 'user-1', full_name: 'Test', email: null, phone_number: '+911234567890', avatar_url: null, subscription_id: null, subscription_status: null, next_billing_at: null, first_name: 'Test', last_name: '', created_at: '2024-01-01' };
+      const mockUser = { id: 'user-1', full_name: 'Test', email: null, phone_number: '+911234567890', avatar_url: null, subscription_id: null, subscription_status: null, subscription_source: null, next_billing_at: null, first_name: 'Test', last_name: '', address: null, pincode: null, created_at: '2024-01-01' };
       await useAuthStore.getState().login('token', mockUser);
 
       // Then sign out
@@ -67,7 +67,7 @@ describe('authStore', () => {
 
   describe('initialize', () => {
     it('restores session when token exists', async () => {
-      const mockUser = { id: 'user-2', full_name: 'Restored User', email: 'r@test.com', phone_number: '+919876543210', avatar_url: null, subscription_id: null, subscription_status: null, next_billing_at: null, first_name: 'Restored', last_name: 'User', created_at: '2024-01-01' };
+      const mockUser = { id: 'user-2', full_name: 'Restored User', email: 'r@test.com', phone_number: '+919876543210', avatar_url: null, subscription_id: null, subscription_status: null, subscription_source: null, next_billing_at: null, first_name: 'Restored', last_name: 'User', address: null, pincode: null, created_at: '2024-01-01' };
 
       (AsyncStorage.getItem as jest.Mock).mockResolvedValueOnce('stored-token');
       mockGet.mockResolvedValueOnce({ data: mockUser });

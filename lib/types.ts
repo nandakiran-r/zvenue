@@ -137,6 +137,7 @@ export interface VerifyPaymentInput {
 }
 
 export interface RazorpayOrderResponse {
+  razorpay_key_id?: string;
   order: {
     id: string;
     amount: number;

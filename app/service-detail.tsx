@@ -1,6 +1,6 @@
 import { router, useLocalSearchParams, useFocusEffect } from "expo-router";
 import { safeBack } from "@/constants/navigation";
-import { ChevronLeft, ChevronRight, Heart, MapPin, Share2, Star, ShoppingBag } from "lucide-react-native";
+import { ChevronLeft, ChevronRight, Heart, MapPin, MessageCircle, Phone, Share2, Star, ShoppingBag } from "lucide-react-native";
 import React, { useCallback, useEffect, useRef, useState } from "react";
 import {
   ActivityIndicator,
@@ -23,6 +23,10 @@ import { shareService } from "@/lib/share";
 import type { DbServiceListing, DbServiceReview } from "@/lib/serviceTypes";
 
 const screenWidth = Dimensions.get("window").width;
+
+// Customer care contact details — update if the number changes
+const SUPPORT_PHONE = '+917249111100';
+const SUPPORT_WHATSAPP = 'https://wa.me/917249111100';
 
 export default function ServiceDetailScreen() {
   const { id } = useLocalSearchParams<{ id: string }>();
@@ -111,6 +115,27 @@ export default function ServiceDetailScreen() {
     }
     if (!listing) return;
     router.push({ pathname: "/service-booking-detail" as any, params: { id: listing.id } });
+  };
+
+  const handleEnquiry = () => {
+    showAlert({
+      type: "confirm",
+      title: "Contact Customer Care",
+      message: `Need help with "${listing?.name}"? Our support team is available to verify details, check availability, or answer any questions before you book.`,
+      actions: [
+        { text: "Cancel", style: "cancel" },
+        {
+          text: "📞  Call Us",
+          style: "default",
+          onPress: () => Linking.openURL(`tel:${SUPPORT_PHONE}`),
+        },
+        {
+          text: "💬  WhatsApp",
+          style: "default",
+          onPress: () => Linking.openURL(SUPPORT_WHATSAPP),
+        },
+      ],
+    });
   };
 
   const formatPrice = (amount: number) => `₹${amount.toLocaleString("en-IN")}`;
@@ -293,6 +318,10 @@ export default function ServiceDetailScreen() {
           <Text style={styles.bottomTotal}>{formatPrice(unitPrice)}</Text>
           <Text style={styles.bottomLabel}>/unit</Text>
         </View>
+        <TouchableOpacity style={styles.enquiryButton} onPress={handleEnquiry} activeOpacity={0.8}>
+          <MessageCircle size={16} color={Colors.primary} />
+          <Text style={styles.enquiryButtonText}>Enquiry</Text>
+        </TouchableOpacity>
         <TouchableOpacity style={styles.buyButton} onPress={handleBookNow} activeOpacity={0.8}>
           <Text style={styles.buyButtonText}>Book Now</Text>
         </TouchableOpacity>
@@ -354,9 +383,16 @@ const styles = StyleSheet.create({
   noReviews: { fontSize: 14, color: Colors.textTertiary, fontStyle: "italic" },
   // Bottom bar
   bottomBar: { position: "absolute", bottom: 0, left: 0, right: 0, paddingHorizontal: 20, paddingTop: 12, backgroundColor: Colors.white, borderTopWidth: 1, borderTopColor: Colors.border, flexDirection: "row", alignItems: "center", justifyContent: "space-between" },
-  bottomPricing: { flexDirection: "row", alignItems: "baseline", gap: 4 },
+  bottomPricing: { flexDirection: "row", alignItems: "baseline", gap: 4, flex: 1 },
   bottomTotal: { fontSize: 20, fontWeight: "800", color: Colors.primary },
   bottomLabel: { fontSize: 14, color: Colors.textSecondary },
-  buyButton: { backgroundColor: Colors.primary, borderRadius: 14, paddingVertical: 16, paddingHorizontal: 32 },
+  enquiryButton: {
+    flexDirection: "row", alignItems: "center", gap: 6,
+    borderWidth: 1.5, borderColor: Colors.primary,
+    borderRadius: 14, paddingVertical: 14, paddingHorizontal: 16,
+    marginRight: 10,
+  },
+  enquiryButtonText: { color: Colors.primary, fontSize: 14, fontWeight: "700" },
+  buyButton: { backgroundColor: Colors.primary, borderRadius: 14, paddingVertical: 16, paddingHorizontal: 28 },
   buyButtonText: { color: Colors.white, fontSize: 16, fontWeight: "700" },
 });

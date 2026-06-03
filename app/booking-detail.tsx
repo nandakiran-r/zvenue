@@ -267,9 +267,9 @@ export default function BookingDetailScreen() {
                             description: "Booking for ${venue!.name.replace(/"/g, '\\"')}",
                             order_id: "${order.id}",
                             prefill: {
-                                email: "${dbUser.email || ''}",
-                                contact: "${dbUser.phone_number || ''}",
-                                name: "${dbUser.full_name || ''}"
+                                email: "${dbUser?.email || ''}",
+                                contact: "${dbUser?.phone_number || ''}",
+                                name: "${dbUser?.full_name || ''}"
                             },
                             theme: { color: "#7a3317" },
                             handler: function(response) {

@@ -209,6 +209,9 @@ export default function ServiceBookingDetailScreen() {
         end_time: slotSelection!.endTime,
       });
       const { order, booking } = orderResponse;
+      // Use the razorpay_key_id from the server response (test user gets test key,
+      // all other users get the production key via env var fallback)
+      const rzpKey = (orderResponse as any).razorpay_key_id || process.env.EXPO_PUBLIC_RAZORPAY_KEY || '';
       setPendingBookingId(booking.id);
 
       const html = `
@@ -219,7 +222,7 @@ export default function ServiceBookingDetailScreen() {
           <div style="text-align:center;"><h3 style="color:#333;">Loading payment...</h3><p style="color:#666;font-size:14px;">Please do not close this window.</p></div>
           <script>
             var options = {
-              key: "${process.env.EXPO_PUBLIC_RAZORPAY_KEY}",
+              key: "${rzpKey}",
               amount: ${order.amount},
               currency: "INR",
               name: "Zvenue",

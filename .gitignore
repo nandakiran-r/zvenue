@@ -76,3 +76,5 @@ admin/*.njsproj
 admin/*.sln
 admin/*.sw?
 .idea/
+backups/
+admin/server/backups/

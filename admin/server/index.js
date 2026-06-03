@@ -129,6 +129,20 @@ const razorpay = new Razorpay({
   key_secret: process.env.RAZORPAY_KEY_SECRET,
 });
 
+// ─── TEST USER CONSTANTS ──────────────────────────────────────────────────
+// This test user bypasses real OTP sending and uses dedicated Razorpay test keys.
+const TEST_USER_PHONE = '+919999900000';
+const TEST_USER_OTP   = '123456';
+const TEST_RAZORPAY_KEY_ID     = 'rzp_test_Sx1fRFfPteNSvX';
+const TEST_RAZORPAY_KEY_SECRET = 'QC9qtJ4yGqB3jXfLjp98DRUR';
+
+// Separate Razorpay client using test credentials (only for the test user)
+const razorpayTest = new Razorpay({
+  key_id: TEST_RAZORPAY_KEY_ID,
+  key_secret: TEST_RAZORPAY_KEY_SECRET,
+});
+// ─── END TEST USER CONSTANTS ──────────────────────────────────────────────
+
 // ─── SUBSCRIPTION & RAZORPAY ────────────────────────────────────────────────────
 
 // Create a subscription (user clicks "Subscribe")
@@ -1542,8 +1556,13 @@ fastify.post('/api/bookings/create-order', { onRequest: [fastify.authenticate] }
     const registrationFee = venue.registration_fee && venue.registration_fee > 0 ? venue.registration_fee : null;
     const paymentAmount = registrationFee || total;
 
+    // ─── Determine whether to use test or live Razorpay for this user ───
+    const isTestUser = user.phone_number === TEST_USER_PHONE;
+    const activeRazorpay = isTestUser ? razorpayTest : razorpay;
+    const razorpayKeyId  = isTestUser ? TEST_RAZORPAY_KEY_ID : process.env.RAZORPAY_KEY_ID;
+
     // Create Razorpay order
-    const order = await razorpay.orders.create({
+    const order = await activeRazorpay.orders.create({
       amount: Math.round(paymentAmount * 100), // Convert to paise
       currency: 'INR',
       receipt: `booking_${Date.now()}`,
@@ -1587,6 +1606,8 @@ fastify.post('/api/bookings/create-order', { onRequest: [fastify.authenticate] }
       registration_fee: registrationFee,
       payment_amount: paymentAmount,
       balance_remaining: registrationFee ? total - registrationFee : 0,
+      // Provide the correct Razorpay key for the client to open checkout
+      razorpay_key_id: razorpayKeyId,
     };
   } catch (err) {
     fastify.log.error('Create order error:', err);
@@ -1619,9 +1640,16 @@ fastify.post('/api/bookings/verify-payment', { onRequest: [fastify.authenticate]
       return reply.status(404).send({ error: 'Booking not found' });
     }
 
+    // Determine whether to use test or live Razorpay keys for this user
+    const bookingUser = await db.query.users.findFirst({
+      where: eq(users.id, user_id),
+      columns: { phone_number: true },
+    });
+    const isTestUser = bookingUser?.phone_number === TEST_USER_PHONE;
+
     // Verify signature with Razorpay
     const crypto = await import('crypto');
-    const keySecret = process.env.RAZORPAY_KEY_SECRET;
+    const keySecret = isTestUser ? TEST_RAZORPAY_KEY_SECRET : process.env.RAZORPAY_KEY_SECRET;
     const expectedSignature = crypto.createHmac('sha256', keySecret)
       .update(order_id + '|' + payment_id)
       .digest('hex');
@@ -1632,7 +1660,8 @@ fastify.post('/api/bookings/verify-payment', { onRequest: [fastify.authenticate]
     }
 
     // Fetch payment details from Razorpay to ensure it's successful
-    const payment = await razorpay.payments.fetch(payment_id);
+    const activeRazorpayVerify = isTestUser ? razorpayTest : razorpay;
+    const payment = await activeRazorpayVerify.payments.fetch(payment_id);
     
     if (payment.status !== 'captured') {
       return reply.status(400).send({ error: 'Payment not captured' });
@@ -2085,32 +2114,33 @@ fastify.post('/api/auth/send-otp', async (request, reply) => {
   if (!phone_number) return reply.status(400).send({ error: 'Phone number is required' });
 
   try {
-    // ─── TEST USER BYPASS (non-production only) ───
-    // Allows E2E tests to use a known phone number without sending real OTP
-    const TEST_PHONE = '+919999999999';
-    const TEST_OTP = '123456';
-    if (phone_number === TEST_PHONE) {
-      // Check if test user exists, if not create one
+    // ─── TEST USER BYPASS ───────────────────────────────────────────────────
+    // Phone: +919999900000 | OTP: 123456 (no real SMS/WhatsApp is triggered)
+    // This test user also gets dedicated Razorpay test keys assigned automatically.
+    if (phone_number === TEST_USER_PHONE) {
+      // Ensure test user exists in the database
       let user = await db.query.users.findFirst({
-        where: eq(users.phone_number, TEST_PHONE)
+        where: eq(users.phone_number, TEST_USER_PHONE)
       });
       if (!user) {
         const [newUser] = await db.insert(users).values({
-          phone_number: TEST_PHONE,
+          phone_number: TEST_USER_PHONE,
           first_name: 'Test',
           last_name: 'User',
           full_name: 'Test User',
-          email: 'testuser@zvenue.com',
+          email: 'testuser_new@zvenue.com',
           phone_verified: true,
         }).returning();
         user = newUser;
+        fastify.log.info(`Test user created with id: ${user.id}`);
       }
-      // Insert a known OTP for the test user
+      // Insert the fixed OTP (always 123456) — no real OTP channel is triggered
       const expires_at = new Date(Date.now() + 10 * 60000);
-      await db.insert(otps).values({ phone_number: TEST_PHONE, otp: TEST_OTP, expires_at });
-      return { success: true, message: 'OTP sent via Test Bypass' };
+      await db.insert(otps).values({ phone_number: TEST_USER_PHONE, otp: TEST_USER_OTP, expires_at });
+      fastify.log.info(`Test OTP inserted for ${TEST_USER_PHONE}`);
+      return { success: true, message: 'OTP sent (Test Bypass — use 123456)' };
     }
-    // ─── END TEST USER BYPASS ───
+    // ─── END TEST USER BYPASS ───────────────────────────────────────────────
 
     // Rate limiting check
     const rateCheck = checkOtpRateLimit(phone_number);
@@ -3933,8 +3963,13 @@ fastify.post('/api/service-bookings/create-order', { onRequest: [fastify.authent
       totalAmount = totalAmount - discountApplied;
     }
 
+    // ─── Determine whether to use test or live Razorpay for this user ───
+    const isTestUser = user.phone_number === TEST_USER_PHONE;
+    const activeRazorpay = isTestUser ? razorpayTest : razorpay;
+    const razorpayKeyId  = isTestUser ? TEST_RAZORPAY_KEY_ID : process.env.RAZORPAY_KEY_ID;
+
     // Create Razorpay order
-    const order = await razorpay.orders.create({
+    const order = await activeRazorpay.orders.create({
       amount: Math.round(totalAmount * 100), // paise
       currency: 'INR',
       receipt: `service_${Date.now()}`,
@@ -3958,7 +3993,13 @@ fastify.post('/api/service-bookings/create-order', { onRequest: [fastify.authent
       status: 'pending',
     }).returning();
 
-    return { order, booking, listing: { name: listing.name, city: listing.city, images: listing.images } };
+    return {
+      order,
+      booking,
+      listing: { name: listing.name, city: listing.city, images: listing.images },
+      // Provide the correct Razorpay key for the client to open checkout
+      razorpay_key_id: razorpayKeyId,
+    };
   } catch (err) {
     fastify.log.error('Service create-order error:', err);
     return reply.status(500).send({ error: 'Failed to create payment order' });
@@ -3980,9 +4021,17 @@ fastify.post('/api/service-bookings/verify-payment', { onRequest: [fastify.authe
     });
     if (!booking) return reply.status(404).send({ error: 'Booking not found' });
 
+    // Determine which secret to use for signature verification
+    const bookingUser = await db.query.users.findFirst({
+      where: eq(users.id, user_id),
+      columns: { phone_number: true },
+    });
+    const isTestUser = bookingUser?.phone_number === TEST_USER_PHONE;
+    const keySecret = isTestUser ? TEST_RAZORPAY_KEY_SECRET : process.env.RAZORPAY_KEY_SECRET;
+
     // Verify signature
     const crypto = await import('crypto');
-    const expectedSignature = crypto.createHmac('sha256', process.env.RAZORPAY_KEY_SECRET)
+    const expectedSignature = crypto.createHmac('sha256', keySecret)
       .update(order_id + '|' + payment_id)
       .digest('hex');
 

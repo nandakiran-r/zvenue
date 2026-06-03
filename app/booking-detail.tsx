@@ -240,6 +240,9 @@ export default function BookingDetailScreen() {
 
             const orderResponse = await createBookingOrder(orderData);
             const { order, booking } = orderResponse;
+            // Use the razorpay_key_id from the server response (test user gets test key,
+            // all other users get the production key via env var fallback)
+            const rzpKey = orderResponse.razorpay_key_id || process.env.EXPO_PUBLIC_RAZORPAY_KEY || '';
 
             setPendingBookingId(booking.id);
 
@@ -257,7 +260,7 @@ export default function BookingDetailScreen() {
                     </div>
                     <script>
                         var options = {
-                            key: "${process.env.EXPO_PUBLIC_RAZORPAY_KEY}",
+                            key: "${rzpKey}",
                             amount: ${order.amount},
                             currency: "INR",
                             name: "Zvenue",

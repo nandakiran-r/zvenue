@@ -4,6 +4,13 @@ import cors from '@fastify/cors';
 import jwt from '@fastify/jwt';
 import argon2 from 'argon2';
 import Razorpay from 'razorpay';
+import { sendSmsMSG2Z } from './utils/sms.js';
+import { sendWhatsAppOTP } from './utils/whatsapp.js';
+import { Resend } from 'resend';
+
+// Initialize email client
+const resend = new Resend(process.env.RESEND_API_KEY);
+
 import { db } from './db/index.js';
 import { users, venues, categories, bookings, notifications, otps, owners, support_tickets, reviews, service_categories, service_listings, service_bookings, service_reviews, service_favorites } from './db/schema.js';
 import { eq, and, ilike, or, desc, asc, count, sum, sql, gte, lte, ne, avg } from 'drizzle-orm';
@@ -856,25 +863,25 @@ fastify.post('/api/owners/request-password-reset', async (request, reply) => {
 
     if (!owner) return reply.status(404).send({ error: 'Account not found' });
 
-    // Generate OTP and send via dual-channel
+    // Generate OTP and save to db using their phone number as the key
     const otp = Math.floor(100000 + Math.random() * 900000).toString();
     const expires_at = new Date(Date.now() + 10 * 60000);
     await db.insert(otps).values({ phone_number: owner.phone_number, otp, expires_at });
 
-    const rawPhone = owner.phone_number.replace(/^\+91/, '');
-    const [smsResult, waResult] = await Promise.allSettled([
-      sendSmsMSG2Z(rawPhone, otp),
-      sendWhatsAppOTP(owner.phone_number, otp),
-    ]);
-
-    const smsSent = smsResult.status === 'fulfilled' && smsResult.value;
-    const waSent = waResult.status === 'fulfilled' && waResult.value;
-
-    if (!smsSent && !waSent) {
-      return reply.status(500).send({ error: 'Failed to send OTP. Please try again.' });
+    // Send OTP via Email using Resend
+    try {
+      await resend.emails.send({
+        from: 'Zvenue Admin <onboarding@resend.dev>', // Update this when you have a verified domain
+        to: owner.email,
+        subject: 'Zvenue Owner - Password Reset OTP',
+        html: `<p>Your password reset OTP is: <strong>${otp}</strong></p><p>This OTP will expire in 10 minutes.</p>`,
+      });
+    } catch (emailErr) {
+      fastify.log.error('Email send failed:', emailErr);
+      return reply.status(500).send({ error: 'Failed to send OTP email. Please try again.' });
     }
 
-    return { success: true, phone_number: owner.phone_number, message: 'OTP sent to registered phone number' };
+    return { success: true, phone_number: owner.phone_number, message: 'OTP sent to your email address' };
   } catch (err) {
     fastify.log.error(err);
     return reply.status(500).send({ error: 'Internal Server Error' });
@@ -955,27 +962,25 @@ fastify.post('/api/admin/request-password-reset', async (request, reply) => {
     if (!user) return reply.status(404).send({ error: 'Account not found' });
     if (!user.phone_number) return reply.status(400).send({ error: 'No phone number associated with this account' });
 
-    // Generate OTP and send
+    // Generate OTP and save to db using their phone number as the key
     const otp = Math.floor(100000 + Math.random() * 900000).toString();
     const expires_at = new Date(Date.now() + 10 * 60000);
     await db.insert(otps).values({ phone_number: user.phone_number, otp, expires_at });
 
-    const rawPhone = user.phone_number.replace(/^\+91/, '');
-    const [smsResult, waResult] = await Promise.allSettled([
-      sendSmsMSG2Z(rawPhone, otp),
-      sendWhatsAppOTP(user.phone_number, otp),
-    ]);
-
-    const smsSent = smsResult.status === 'fulfilled' && smsResult.value;
-    const waSent = waResult.status === 'fulfilled' && waResult.value;
-
-    if (!smsSent && !waSent) {
-      return reply.status(500).send({ error: 'Failed to send OTP. Please try again.' });
+    // Send OTP via Email using Resend
+    try {
+      await resend.emails.send({
+        from: 'Zvenue Admin <onboarding@resend.dev>', // Update this when you have a verified domain
+        to: user.email,
+        subject: 'Zvenue Admin - Password Reset OTP',
+        html: `<p>Your password reset OTP is: <strong>${otp}</strong></p><p>This OTP will expire in 10 minutes.</p>`,
+      });
+    } catch (emailErr) {
+      fastify.log.error('Email send failed:', emailErr);
+      return reply.status(500).send({ error: 'Failed to send OTP email. Please try again.' });
     }
 
-    // Return masked phone for UI display
-    const maskedPhone = user.phone_number.replace(/(\+91)(\d{2})(\d+)(\d{2})/, '$1$2****$4');
-    return { success: true, phone_hint: maskedPhone, message: 'OTP sent to registered phone number' };
+    return { success: true, message: 'OTP sent to your email address' };
   } catch (err) {
     fastify.log.error(err);
     return reply.status(500).send({ error: 'Internal Server Error' });

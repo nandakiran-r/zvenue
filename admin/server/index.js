@@ -4,8 +4,6 @@ import cors from '@fastify/cors';
 import jwt from '@fastify/jwt';
 import argon2 from 'argon2';
 import Razorpay from 'razorpay';
-import { sendSmsMSG2Z } from './utils/sms.js';
-import { sendWhatsAppOTP } from './utils/whatsapp.js';
 import { Resend } from 'resend';
 
 // Initialize email client

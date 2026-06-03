@@ -2,7 +2,7 @@ import { useState } from 'react';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
-import { useNavigate } from '@tanstack/react-router';
+import { useNavigate, Link } from '@tanstack/react-router';
 import { toast } from 'sonner';
 import { useAuth } from '@/context/auth-provider';
 import { api } from '@/lib/api';
@@ -96,7 +96,12 @@ export function SignIn() {
             )}
           </div>
           <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">Password</label>
+            <div className="flex items-center justify-between mb-1">
+              <label className="block text-sm font-medium text-gray-700">Password</label>
+              <Link to="/forgot-password" className="text-xs font-medium text-[#7a3317] hover:underline">
+                Forgot password?
+              </Link>
+            </div>
             <input
               type="password"
               {...form.register('password')}

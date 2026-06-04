@@ -119,20 +119,19 @@ export default function ServiceDetailScreen() {
 
   const handleEnquiry = () => {
     showAlert({
-      type: "confirm",
+      type: "info",
       title: "Contact Customer Care",
-      message: `Need help with "${listing?.name}"? Our support team is available to verify details, check availability, or answer any questions before you book.`,
+      message: `Have questions about "${listing?.name}"? Reach out to verify details or check availability.`,
       actions: [
-        { text: "Cancel", style: "cancel" },
         {
-          text: "📞  Call Us",
+          text: "📞 Call",
           style: "default",
           onPress: () => Linking.openURL(`tel:${SUPPORT_PHONE}`),
         },
         {
-          text: "💬  WhatsApp",
+          text: "💬 WhatsApp",
           style: "default",
-          onPress: () => Linking.openURL(SUPPORT_WHATSAPP),
+          onPress: () => Linking.openURL(`${SUPPORT_WHATSAPP}?text=${encodeURIComponent(`Hi, I have a query about "${listing?.name}" on ZVenue.`)}`),
         },
       ],
     });

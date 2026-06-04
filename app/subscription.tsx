@@ -19,7 +19,7 @@ import { useToast } from "@/context/ToastContext";
 
 // Plan configuration — swap plan IDs when Razorpay plans are created
 const PLANS = [
-  { id: 'plan_SxQM0ZZ59s95Wo', key: 'monthly',    label: 'Monthly',   price: '₹9',  period: '/month',     totalCount: 12, perMonth: '₹9/mo',   disclosure: 'Billed ₹9/month. Renews automatically. Cancel anytime.' },
+  { id: 'plan_SxQMOZZ59s95Wo', key: 'monthly',    label: 'Monthly',   price: '₹9',  period: '/month',     totalCount: 12, perMonth: '₹9/mo',   disclosure: 'Billed ₹9/month. Renews automatically. Cancel anytime.' },
   { id: 'plan_SxQNCZucvmQCsg', key: 'halfyearly', label: '6 Months',  price: '₹29', period: '/6 months',  totalCount: 2,  perMonth: '~₹5/mo',  disclosure: 'Billed ₹29 every 6 months. Renews automatically. Cancel anytime.', badge: 'Popular' },
   { id: 'plan_SxQNpAK4YZ0Cv1', key: 'yearly',     label: 'Yearly',    price: '₹59', period: '/year',      totalCount: 1,  perMonth: '~₹5/mo',  disclosure: 'Billed ₹59/year. Renews automatically. Cancel anytime.', badge: 'Best Value' },
 ];

@@ -25,6 +25,14 @@ services:
         sync: false
       - key: RAZORPAY_WEBHOOK_SECRET
         sync: false
+      - key: TEST_RAZORPAY_KEY_ID
+        sync: false
+      - key: TEST_RAZORPAY_KEY_SECRET
+        sync: false
+      # Enables the +919999900000/123456 review login. Keep "true" while Google
+      # Play review is in progress, set to "false" afterwards.
+      - key: ENABLE_TEST_USER
+        value: "true"
       - key: ALLOWED_ORIGINS
         sync: false
       - key: AOC_API_KEY
@@ -48,6 +56,12 @@ services:
       - key: BETTER_AUTH_SECRET
         sync: false
       - key: BETTER_AUTH_URL
+        sync: false
+      - key: GOOGLE_PLAY_PACKAGE_NAME
+        value: com.zvenue.app
+      - key: GOOGLE_PLAY_SERVICE_ACCOUNT_JSON
+        sync: false
+      - key: GOOGLE_PLAY_PUBSUB_AUDIENCE
         sync: false
     healthCheckPath: /health
     autoDeploy: true

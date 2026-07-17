@@ -4,6 +4,7 @@ import { ArrowRight, Check, ChevronLeft, Crown, Shield, XCircle } from "lucide-r
 import React, { useEffect, useState } from "react";
 import {
   ActivityIndicator,
+  Platform,
   ScrollView,
   StyleSheet,
   Text,
@@ -15,6 +16,7 @@ import Colors from "@/constants/colors";
 import { useAuth } from "@/context/AuthContext";
 import { useToast } from "@/context/ToastContext";
 import { cancelSubscription, fetchSubscriptionBenefits } from "@/lib/api";
+import { openPlayManageSubscriptions } from "@/lib/googleIap";
 
 export default function MySubscriptionScreen() {
   const insets = useSafeAreaInsets();
@@ -33,8 +35,19 @@ export default function MySubscriptionScreen() {
   const nextBillingAt = subscriptionInfo?.next_billing_at || dbUser?.next_billing_at;
   const isActive = status === 'active' || status === 'authenticated';
   const isCancelled = status === 'cancelled';
+  const isGooglePlay = (subscriptionInfo?.subscription_platform || dbUser?.subscription_platform) === 'google_play';
 
   const handleUnsubscribe = () => {
+    // Google Play subscriptions must be cancelled through Play's own
+    // subscription center — Play policy doesn't allow an app-side cancel
+    // button to bypass it for Play-billed subscriptions.
+    if (Platform.OS === 'android' && isGooglePlay) {
+      openPlayManageSubscriptions().catch(() => {
+        showError("Error", "Couldn't open Google Play subscriptions. Please manage it from the Play Store app.");
+      });
+      return;
+    }
+
     showAlert({
       type: "confirm",
       title: "Unsubscribe from Pro?",
@@ -180,7 +193,7 @@ export default function MySubscriptionScreen() {
             activeOpacity={0.7}
           >
             <Text style={styles.unsubscribeText}>
-              {cancelling ? "Cancelling..." : "Unsubscribe"}
+              {cancelling ? "Cancelling..." : Platform.OS === 'android' && isGooglePlay ? "Manage in Google Play" : "Unsubscribe"}
             </Text>
           </TouchableOpacity>
         )}

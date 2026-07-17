@@ -15,6 +15,8 @@ import { eq, and, ilike, or, desc, asc, count, sum, sql, gte, lte, ne, avg } fro
 import { geocodeAddress, buildAddress } from './lib/geocode.js';
 import { generateVenueInvoiceData, generateServiceInvoiceData, sendWhatsAppInvoice, sendOwnerBookingAlert } from './lib/invoice.js';
 import { generateVenueReceipt, generateServiceReceipt, uploadReceiptToCloudinary } from './lib/receipt.js';
+import { getSubscriptionPurchase, acknowledgePurchase, mapPlayStateToStatus, extractExpiryTime } from './lib/googlePlay.js';
+import { OAuth2Client } from 'google-auth-library';
 
 // Simple XSS sanitization — strip HTML tags from user input
 function sanitizeText(text) {
@@ -37,6 +39,21 @@ function haversineDistance(lat1, lon1, lat2, lon2) {
 const fastify = Fastify({
   logger: true,
   bodyLimit: 10 * 1024 * 1024, // 10MB max (needed for base64 profile images)
+});
+
+// Store raw body for webhook signature verification
+fastify.addHook('preParsing', async (request, reply, payload) => {
+  const chunks = [];
+  for await (const chunk of payload) {
+    chunks.push(chunk);
+  }
+  const rawBody = Buffer.concat(chunks).toString('utf-8');
+  request.rawBody = rawBody;
+  // Return a new readable stream for Fastify to parse
+  const { Readable } = await import('stream');
+  const stream = Readable.from([rawBody]);
+  stream.headers = payload.headers;
+  return stream;
 });
 
 // Generate unique Booking ID in format ZBID-XXXXXXXX (8 random digits)
@@ -136,10 +153,15 @@ const razorpay = new Razorpay({
 
 // ─── TEST USER CONSTANTS ──────────────────────────────────────────────────
 // This test user bypasses real OTP sending and uses dedicated Razorpay test keys.
+// Backdoor login only works when ENABLE_TEST_USER=true (needed for Play Store
+// review); set it to false/unset once review is done.
+const TEST_USER_ENABLED = process.env.ENABLE_TEST_USER === 'true';
 const TEST_USER_PHONE = '+919999900000';
 const TEST_USER_OTP   = '123456';
-const TEST_RAZORPAY_KEY_ID     = 'rzp_test_Sx1fRFfPteNSvX';
-const TEST_RAZORPAY_KEY_SECRET = 'QC9qtJ4yGqB3jXfLjp98DRUR';
+// Test Razorpay keys come from env (TEST_RAZORPAY_KEY_ID / TEST_RAZORPAY_KEY_SECRET).
+// If unset, the test user falls back to the live Razorpay credentials.
+const TEST_RAZORPAY_KEY_ID     = process.env.TEST_RAZORPAY_KEY_ID     || process.env.RAZORPAY_KEY_ID;
+const TEST_RAZORPAY_KEY_SECRET = process.env.TEST_RAZORPAY_KEY_SECRET || process.env.RAZORPAY_KEY_SECRET;
 
 // Separate Razorpay client using test credentials (only for the test user)
 const razorpayTest = new Razorpay({
@@ -166,8 +188,12 @@ fastify.post('/api/subscriptions/create', { onRequest: [fastify.authenticate] },
       return reply.status(404).send({ error: 'User not found' });
     }
 
+    // Determine whether to use test or live Razorpay for this user
+    const isTestUser = user.phone_number === TEST_USER_PHONE;
+    const activeRazorpay = isTestUser ? razorpayTest : razorpay;
+
     // Create Razorpay subscription
-    const subscription = await razorpay.subscriptions.create({
+    const subscription = await activeRazorpay.subscriptions.create({
       plan_id,
       quantity,
       total_count,
@@ -205,12 +231,17 @@ fastify.post('/api/subscriptions/checkout', { onRequest: [fastify.authenticate] 
       return reply.status(400).send({ error: 'No subscription found. Please create a subscription first.' });
     }
 
+    // Determine whether to use test or live Razorpay for this user
+    const isTestUser = user.phone_number === TEST_USER_PHONE;
+    const activeRazorpay = isTestUser ? razorpayTest : razorpay;
+    const razorpayKeyId = isTestUser ? TEST_RAZORPAY_KEY_ID : process.env.RAZORPAY_KEY_ID;
+
     // Fetch subscription details from Razorpay
-    const subscription = await razorpay.subscriptions.fetch(user.subscription_id);
+    const subscription = await activeRazorpay.subscriptions.fetch(user.subscription_id);
 
     // Generate checkout options for Razorpay
     const checkoutOptions = {
-      key: process.env.RAZORPAY_KEY_ID,
+      key: razorpayKeyId,
       subscription_id: subscription.id,
       name: "Zvenue",
       description: "Venue Pro Monthly Subscription",
@@ -239,7 +270,7 @@ fastify.post('/api/subscriptions/checkout', { onRequest: [fastify.authenticate] 
 fastify.post('/api/webhooks/razorpay', async (request, reply) => {
   try {
     const signature = request.headers['x-razorpay-signature'];
-    const body = JSON.stringify(request.body);
+    const body = request.rawBody || JSON.stringify(request.body);
 
     // Verify webhook signature
     const crypto = await import('crypto');
@@ -253,7 +284,9 @@ fastify.post('/api/webhooks/razorpay', async (request, reply) => {
     }
 
     const event = request.body;
+    fastify.log.info('Webhook body type: ' + typeof event + ', keys: ' + (event ? Object.keys(event).join(',') : 'null'));
     const { event: eventType, payload } = event;
+    fastify.log.info('Webhook event: ' + eventType);
 
     // Handle different webhook events (subscriptions + payments)
     switch (eventType) {
@@ -307,7 +340,7 @@ fastify.post('/api/webhooks/razorpay', async (request, reply) => {
 
     reply.status(200).send({ status: 'ok' });
   } catch (err) {
-    fastify.log.error('Webhook error:', err);
+    fastify.log.error({ err }, 'Webhook error with stack');
     reply.status(500).send({ error: 'Webhook processing failed' });
   }
 });
@@ -636,7 +669,7 @@ async function handleSubscriptionAuthenticated(payload) {
     await db.update(users)
       .set({
         subscription_status: 'authenticated',
-        next_billing_at: new Date(Number(payload.subscription.entity.start_at) * 1000).toISOString()
+        next_billing_at: new Date(Number(payload.subscription.entity.start_at) * 1000)
       })
       .where(eq(users.subscription_id, subscription_id));
   }
@@ -648,7 +681,7 @@ async function handleSubscriptionActivated(payload) {
   await db.update(users)
     .set({
       subscription_status: 'active',
-      next_billing_at: new Date(Number(payload.subscription.entity.next_bill_at) * 1000).toISOString()
+      next_billing_at: new Date(Number(payload.subscription.entity.next_bill_at) * 1000)
     })
     .where(eq(users.subscription_id, subscription_id));
 }
@@ -658,7 +691,7 @@ async function handleSubscriptionCharged(payload) {
   
   await db.update(users)
     .set({
-      next_billing_at: new Date(Number(payload.subscription.entity.next_bill_at) * 1000).toISOString()
+      next_billing_at: new Date(Number(payload.subscription.entity.next_bill_at) * 1000)
     })
     .where(eq(users.subscription_id, subscription_id));
 }
@@ -726,7 +759,11 @@ fastify.post('/api/subscriptions/confirm', { onRequest: [fastify.authenticate] }
 
     // Fetch subscription from Razorpay to verify it's actually paid
     try {
-      const subscription = await razorpay.subscriptions.fetch(user.subscription_id);
+      // Use test Razorpay for test user
+      const confirmUser = await db.query.users.findFirst({ where: eq(users.id, user_id), columns: { phone_number: true } });
+      const isTestUserConfirm = confirmUser?.phone_number === TEST_USER_PHONE;
+      const confirmRazorpay = isTestUserConfirm ? razorpayTest : razorpay;
+      const subscription = await confirmRazorpay.subscriptions.fetch(user.subscription_id);
       
       // Razorpay subscription statuses: created, authenticated, active, pending, halted, cancelled, completed, expired
       const activeStatuses = ['authenticated', 'active'];
@@ -767,15 +804,28 @@ fastify.post('/api/subscriptions/cancel', { onRequest: [fastify.authenticate] },
   try {
     const user = await db.query.users.findFirst({
       where: eq(users.id, request.user.id),
-      columns: { subscription_id: true },
+      columns: { subscription_id: true, subscription_platform: true },
     });
 
     if (!user || !user.subscription_id) {
       return reply.status(404).send({ error: 'No subscription found' });
     }
 
-    // Cancel in Razorpay
-    await razorpay.subscriptions.cancel(user.subscription_id);
+    // Google Play subscriptions are cancelled through Play's own subscription
+    // center (the app deep-links there) — never through the Razorpay API.
+    if (user.subscription_platform === 'google_play') {
+      return reply.status(400).send({ error: 'Google Play subscriptions must be cancelled from the Play Store' });
+    }
+
+    // Cancel in Razorpay (use test client for test user)
+    const cancelUser = await db.query.users.findFirst({ where: eq(users.id, request.user.id), columns: { phone_number: true } });
+    const isTestUserCancel = cancelUser?.phone_number === TEST_USER_PHONE;
+    const cancelRazorpay = isTestUserCancel ? razorpayTest : razorpay;
+    try {
+      await cancelRazorpay.subscriptions.cancel(user.subscription_id);
+    } catch (rzpErr) {
+      fastify.log.warn('Razorpay cancel failed (may already be cancelled):', rzpErr.message);
+    }
 
     // Update local DB
     await db.update(users)
@@ -789,6 +839,103 @@ fastify.post('/api/subscriptions/cancel', { onRequest: [fastify.authenticate] },
   }
 });
 
+// ─── GOOGLE PLAY BILLING (Android subscriptions) ───────────────────────────────
+
+// Client calls this right after a successful Play Billing purchase.
+fastify.post('/api/subscriptions/google/verify', { onRequest: [fastify.authenticate] }, async (request, reply) => {
+  try {
+    const { purchaseToken } = request.body;
+    if (!purchaseToken) {
+      return reply.status(400).send({ error: 'purchaseToken is required' });
+    }
+
+    const purchase = await getSubscriptionPurchase(purchaseToken);
+    const subscriptionId = purchase.lineItems?.[0]?.productId;
+
+    if (purchase.acknowledgementState !== 'ACKNOWLEDGEMENT_STATE_ACKNOWLEDGED' && subscriptionId) {
+      try {
+        await acknowledgePurchase(subscriptionId, purchaseToken);
+      } catch (ackErr) {
+        fastify.log.warn('Google Play acknowledge failed (may already be acknowledged):', ackErr.message);
+      }
+    }
+
+    const subscription_status = mapPlayStateToStatus(purchase.subscriptionState);
+    const next_billing_at = extractExpiryTime(purchase);
+
+    await db.update(users)
+      .set({
+        subscription_status,
+        subscription_platform: 'google_play',
+        google_purchase_token: purchaseToken,
+        // postgres-js driver requires Date objects for timestamp columns
+        ...(next_billing_at ? { next_billing_at: new Date(next_billing_at) } : {}),
+      })
+      .where(eq(users.id, request.user.id));
+
+    return {
+      subscription_id: null,
+      subscription_status,
+      is_subscribed: subscription_status === 'active' || subscription_status === 'authenticated',
+      next_billing_at,
+    };
+  } catch (err) {
+    fastify.log.error(err);
+    return reply.status(500).send({ error: 'Failed to verify Google Play purchase' });
+  }
+});
+
+// Real-time Developer Notifications push endpoint (Pub/Sub → this URL).
+fastify.post('/api/webhooks/google-play', async (request, reply) => {
+  try {
+    const authHeader = request.headers['authorization'] || '';
+    const token = authHeader.startsWith('Bearer ') ? authHeader.slice(7) : null;
+    const audience = process.env.GOOGLE_PLAY_PUBSUB_AUDIENCE;
+
+    if (!token || !audience) {
+      fastify.log.warn('Google Play webhook: missing bearer token or audience config');
+      return reply.status(401).send({ error: 'Unauthorized' });
+    }
+
+    try {
+      const oidcClient = new OAuth2Client();
+      await oidcClient.verifyIdToken({ idToken: token, audience });
+    } catch (verifyErr) {
+      fastify.log.warn('Google Play webhook: invalid Pub/Sub token:', verifyErr.message);
+      return reply.status(401).send({ error: 'Unauthorized' });
+    }
+
+    const messageData = request.body?.message?.data;
+    if (!messageData) {
+      return reply.status(200).send({ status: 'ignored' });
+    }
+
+    const decoded = JSON.parse(Buffer.from(messageData, 'base64').toString('utf-8'));
+    const purchaseToken = decoded.subscriptionNotification?.purchaseToken;
+
+    if (!purchaseToken) {
+      return reply.status(200).send({ status: 'ignored' });
+    }
+
+    // Never trust the notification payload for state — it's only a signal to re-check.
+    const purchase = await getSubscriptionPurchase(purchaseToken);
+    const subscription_status = mapPlayStateToStatus(purchase.subscriptionState);
+    const next_billing_at = extractExpiryTime(purchase);
+
+    await db.update(users)
+      .set({
+        subscription_status,
+        ...(next_billing_at ? { next_billing_at: new Date(next_billing_at) } : {}),
+      })
+      .where(eq(users.google_purchase_token, purchaseToken));
+
+    return reply.status(200).send({ status: 'ok' });
+  } catch (err) {
+    fastify.log.error(err);
+    // Still ack so Pub/Sub doesn't retry-storm on a bug we've already logged.
+    return reply.status(200).send({ status: 'error-logged' });
+  }
+});
 
 // ─── OWNER AUTHENTICATION & MANAGEMENT ─────────────────────────────────────────
 
@@ -956,20 +1103,13 @@ fastify.post('/api/admin/request-password-reset', async (request, reply) => {
     const { email } = request.body;
     if (!email) return reply.status(400).send({ error: 'Email is required' });
 
-    const user = await db.query.users.findFirst({ where: eq(users.email, email) });
-    if (!user) return reply.status(404).send({ error: 'Account not found' });
-    if (!user.phone_number) return reply.status(400).send({ error: 'No phone number associated with this account' });
-
-    // Generate OTP and save to db using their phone number as the key
-    const otp = Math.floor(100000 + Math.random() * 900000).toString();
-    const expires_at = new Date(Date.now() + 10 * 60000);
-    await db.insert(otps).values({ phone_number: user.phone_number, otp, expires_at });
+// Check admins table for admin password reset    const adminResult = await db.execute(sql`SELECT id, email, full_name FROM admins WHERE email = ${email}`);    const admin = adminResult.rows ? adminResult.rows[0] : adminResult[0];    // Generate OTP and save to db using admin email as the key    const otp = Math.floor(100000 + Math.random() * 900000).toString();    const expires_at = new Date(Date.now() + 10 * 60000);    await db.insert(otps).values({ phone_number: admin.email, otp, expires_at });
 
     // Send OTP via Email using Resend
     try {
       await resend.emails.send({
         from: 'Zvenue Admin <onboarding@resend.dev>', // Update this when you have a verified domain
-        to: user.email,
+        to: admin.email,
         subject: 'Zvenue Admin - Password Reset OTP',
         html: `<p>Your password reset OTP is: <strong>${otp}</strong></p><p>This OTP will expire in 10 minutes.</p>`,
       });
@@ -997,12 +1137,14 @@ fastify.post('/api/admin/verify-reset-otp', async (request, reply) => {
     }
 
     // Find user by email to get phone
-    const user = await db.query.users.findFirst({ where: eq(users.email, email) });
-    if (!user) return reply.status(404).send({ error: 'Account not found' });
+    // Check admins table
+    const adminVerifyResult = await db.execute(sql`SELECT id, email FROM admins WHERE email = ${email}`);
+    const adminUser = adminVerifyResult.rows ? adminVerifyResult.rows[0] : adminVerifyResult[0];
+    if (!adminUser) return reply.status(404).send({ error: 'Account not found' });
 
     // Verify OTP against user's phone
     const otpRecord = await db.query.otps.findFirst({
-      where: eq(otps.phone_number, user.phone_number),
+      where: eq(otps.phone_number, adminUser.email),
       orderBy: [desc(otps.created_at)],
     });
 
@@ -1012,10 +1154,10 @@ fastify.post('/api/admin/verify-reset-otp', async (request, reply) => {
 
     // Update password
     const hashedPassword = await argon2.hash(new_password);
-    await db.update(users).set({ password: hashedPassword }).where(eq(users.id, user.id));
+    await db.execute(sql`UPDATE admins SET password = ${hashedPassword} WHERE email = ${email}`);
 
     // Cleanup OTPs
-    await db.delete(otps).where(eq(otps.phone_number, user.phone_number));
+    await db.delete(otps).where(eq(otps.phone_number, adminUser.email));
 
     return { success: true, message: 'Password updated successfully' };
   } catch (err) {
@@ -1038,7 +1180,7 @@ fastify.post('/api/admin/change-password', { onRequest: [fastify.authenticate] }
     if (!valid) return reply.status(401).send({ error: 'Current password is incorrect' });
 
     const hashedPassword = await argon2.hash(new_password);
-    await db.update(users).set({ password: hashedPassword }).where(eq(users.id, user.id));
+    await db.execute(sql`UPDATE admins SET password = ${hashedPassword} WHERE id = ${request.user.id}`);
 
     return { success: true, message: 'Password changed successfully' };
   } catch (err) {
@@ -2089,11 +2231,37 @@ fastify.post('/api/auth/sign-in', async (request, reply) => {
   const { email, password, role: loginRole } = request.body;
 
   try {
+    // Admin login: check the separate admins table
+    if (loginRole === 'admin') {
+      const adminResult = await db.execute(sql`SELECT id, email, password, full_name FROM admins WHERE email = ${email}`);
+      const admin = adminResult.rows ? adminResult.rows[0] : adminResult[0];
+      if (!admin || !admin.password) {
+        return reply.status(401).send({ error: 'Invalid credentials' });
+      }
+      const isMatch = await argon2.verify(admin.password, password);
+      if (!isMatch) {
+        return reply.status(401).send({ error: 'Invalid credentials' });
+      }
+      const token = fastify.jwt.sign({ id: admin.id, email: admin.email, role: 'admin' });
+      return { token, user: { id: admin.id, full_name: admin.full_name, email: admin.email, avatar_url: null, role: 'admin' } };
+    }
+
+    // Non-admin sign-in: check users table first, then admins table as fallback
     const user = await db.query.users.findFirst({
       where: eq(users.email, email)
     });
 
     if (!user || !user.password) {
+      // Fallback: check admins table (admin panel may not send role field)
+      const adminResult = await db.execute(sql`SELECT id, email, password, full_name FROM admins WHERE email = ${email}`);
+      const admin = adminResult.rows ? adminResult.rows[0] : adminResult[0];
+      if (admin && admin.password) {
+        const adminMatch = await argon2.verify(admin.password, password);
+        if (adminMatch) {
+          const token = fastify.jwt.sign({ id: admin.id, email: admin.email, role: 'admin' });
+          return { token, user: { id: admin.id, full_name: admin.full_name, email: admin.email, avatar_url: null, role: 'admin' } };
+        }
+      }
       return reply.status(401).send({ error: 'Invalid credentials' });
     }
 
@@ -2102,10 +2270,8 @@ fastify.post('/api/auth/sign-in', async (request, reply) => {
       return reply.status(401).send({ error: 'Invalid credentials' });
     }
 
-    // Include role in JWT (admin panel sends role: 'admin')
-    const tokenRole = loginRole === 'admin' ? 'admin' : 'user';
-    const token = fastify.jwt.sign({ id: user.id, email: user.email, role: tokenRole });
-    return { token, user: { id: user.id, full_name: user.full_name, email: user.email, avatar_url: user.avatar_url, role: tokenRole } };
+    const token = fastify.jwt.sign({ id: user.id, email: user.email, role: 'user' });
+    return { token, user: { id: user.id, full_name: user.full_name, email: user.email, avatar_url: user.avatar_url, role: 'user' } };
   } catch (err) {
     fastify.log.error(err);
     return reply.status(500).send({ error: 'Internal Server Error' });
@@ -2120,7 +2286,8 @@ fastify.post('/api/auth/send-otp', async (request, reply) => {
     // ─── TEST USER BYPASS ───────────────────────────────────────────────────
     // Phone: +919999900000 | OTP: 123456 (no real SMS/WhatsApp is triggered)
     // This test user also gets dedicated Razorpay test keys assigned automatically.
-    if (phone_number === TEST_USER_PHONE) {
+    // Only active when ENABLE_TEST_USER=true (e.g. during Play Store review).
+    if (TEST_USER_ENABLED && phone_number === TEST_USER_PHONE) {
       // Ensure test user exists in the database
       let user = await db.query.users.findFirst({
         where: eq(users.phone_number, TEST_USER_PHONE)
@@ -2332,14 +2499,23 @@ fastify.post('/api/auth/verify-otp', async (request, reply) => {
 
 fastify.get('/api/auth/me', { onRequest: [fastify.authenticate] }, async (request, reply) => {
   try {
+    // Check users table first
     const user = await db.query.users.findFirst({
       where: eq(users.id, request.user.id),
       columns: { id: true, first_name: true, last_name: true, full_name: true, email: true, phone_number: true, avatar_url: true }
     });
-    if (!user) {
-      return reply.status(404).send({ error: 'User not found' });
+    if (user) return user;
+
+    // Fallback: check admins table (for admin panel sessions)
+    if (request.user.role === 'admin') {
+      const adminResult = await db.execute(sql`SELECT id, email, full_name FROM admins WHERE id = ${request.user.id}`);
+      const admin = adminResult.rows ? adminResult.rows[0] : adminResult[0];
+      if (admin) {
+        return { id: admin.id, full_name: admin.full_name, email: admin.email, first_name: 'ZVenue', last_name: 'Admin', phone_number: null, avatar_url: null, role: 'admin' };
+      }
     }
-    return user;
+
+    return reply.status(404).send({ error: 'User not found' });
   } catch (err) {
     return reply.status(500).send({ error: 'Internal Server Error' });
   }
@@ -3126,6 +3302,7 @@ fastify.get('/api/subscribers', { onRequest: [fastify.authenticate] }, async (re
         avatar_url: true,
         subscription_id: true,
         subscription_status: true,
+        subscription_platform: true,
         next_billing_at: true,
         created_at: true,
       },
@@ -3172,15 +3349,16 @@ fastify.post('/api/subscribers/:id/cancel', { onRequest: [fastify.authenticate] 
     const userId = request.params.id;
     const user = await db.query.users.findFirst({
       where: eq(users.id, userId),
-      columns: { subscription_id: true, subscription_status: true },
+      columns: { subscription_id: true, subscription_status: true, subscription_platform: true },
     });
 
     if (!user) {
       return reply.status(404).send({ error: 'User not found' });
     }
 
-    // Cancel in Razorpay if subscription exists
-    if (user.subscription_id) {
+    // Cancel in Razorpay if subscription exists (Google Play subscriptions are
+    // cancelled by the user through Play's own subscription center, not this API)
+    if (user.subscription_id && user.subscription_platform !== 'google_play') {
       try {
         await razorpay.subscriptions.cancel(user.subscription_id);
       } catch (err) {
@@ -4953,6 +5131,92 @@ fastify.put('/api/config/:key', { onRequest: [fastify.authenticate] }, async (re
     fastify.log.error(err);
     return reply.status(500).send({ error: 'Failed to update' });
   }
+});
+
+// ─── PUBLIC LEGAL PAGES (required by Google Play store listing) ─────────────
+// Play Console needs hosted URLs for the privacy policy and an account-deletion
+// page. These render the same content the app shows, as simple public HTML.
+
+function escapeHtml(text) {
+  return String(text)
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;');
+}
+
+function renderLegalPage(title, bodyHtml) {
+  return `<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>${escapeHtml(title)} — ZVenue</title>
+<style>
+  body { font-family: -apple-system, Segoe UI, Roboto, sans-serif; margin: 0; background: #faf7f5; color: #2b2b2b; }
+  .wrap { max-width: 760px; margin: 0 auto; padding: 32px 20px 64px; }
+  h1 { color: #7a3317; font-size: 28px; }
+  .content { background: #fff; border-radius: 12px; padding: 24px; line-height: 1.7; white-space: pre-wrap; }
+  a { color: #7a3317; }
+  footer { margin-top: 24px; font-size: 13px; color: #8a8a8a; }
+</style>
+</head>
+<body>
+<div class="wrap">
+<h1>${escapeHtml(title)}</h1>
+<div class="content">${bodyHtml}</div>
+<footer>ZVenue — venue &amp; service bookings</footer>
+</div>
+</body>
+</html>`;
+}
+
+async function fetchLegalContent(key) {
+  const result = await db.execute(sql`SELECT value FROM app_config WHERE key = ${key}`);
+  const rows = result.rows || result;
+  const raw = rows?.[0]?.value || '';
+  return typeof raw === 'string' ? raw : JSON.stringify(raw);
+}
+
+fastify.get('/privacy', async (request, reply) => {
+  try {
+    const content = await fetchLegalContent('privacy_policy');
+    const body = content ? escapeHtml(content) : 'Privacy policy is being updated. Please check back soon.';
+    return reply.type('text/html').send(renderLegalPage('Privacy Policy', body));
+  } catch (err) {
+    fastify.log.error(err);
+    return reply.status(500).type('text/html').send(renderLegalPage('Privacy Policy', 'Temporarily unavailable.'));
+  }
+});
+
+fastify.get('/terms', async (request, reply) => {
+  try {
+    const content = await fetchLegalContent('terms_and_conditions');
+    const body = content ? escapeHtml(content) : 'Terms and conditions are being updated. Please check back soon.';
+    return reply.type('text/html').send(renderLegalPage('Terms & Conditions', body));
+  } catch (err) {
+    fastify.log.error(err);
+    return reply.status(500).type('text/html').send(renderLegalPage('Terms & Conditions', 'Temporarily unavailable.'));
+  }
+});
+
+fastify.get('/account-deletion', async (request, reply) => {
+  const body = `ZVenue lets you permanently delete your account and all associated data at any time.
+
+<strong>Delete from within the app (recommended):</strong>
+1. Open the ZVenue app and sign in.
+2. Go to the <strong>Profile</strong> tab.
+3. Scroll down and tap <strong>Delete Account</strong>.
+4. Type DELETE to confirm.
+
+This immediately and permanently removes your account, bookings, notifications, reviews, and personal data. Active subscriptions are cancelled. This cannot be undone.
+
+<strong>Can't access the app?</strong>
+Email us at <a href="mailto:support@zvenue.in?subject=Account%20Deletion%20Request">support@zvenue.in</a> from the email address linked to your account with the subject "Account Deletion Request". We will process the deletion within 7 days and confirm by reply.
+
+<strong>What is deleted:</strong> profile (name, email, phone number, photo), booking history, reviews, favorites, notifications, and push tokens.
+<strong>What may be retained:</strong> payment transaction records required for legal/tax compliance, retained only as long as the law requires.`;
+  return reply.type('text/html').send(renderLegalPage('Delete Your Account', body));
 });
 
 // ─── MAPPLS GEOCODING PROXY ─────────────────────────────────────────────────

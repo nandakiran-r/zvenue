@@ -213,6 +213,7 @@ export function SubscribersPage() {
                   <TableHead>Contact</TableHead>
                   <TableHead className='text-center'>Bookings</TableHead>
                   <TableHead className='text-center'>Status</TableHead>
+                  <TableHead>Platform</TableHead>
                   <TableHead>Subscription ID</TableHead>
                   <TableHead>Joined</TableHead>
                   <TableHead className='text-right'>Actions</TableHead>
@@ -222,7 +223,7 @@ export function SubscribersPage() {
                 {isLoading
                   ? Array.from({ length: 5 }).map((_, i) => (
                       <TableRow key={i}>
-                        {Array.from({ length: 7 }).map((_, j) => (
+                        {Array.from({ length: 8 }).map((_, j) => (
                           <TableCell key={j}><Skeleton className='h-4 w-20' /></TableCell>
                         ))}
                       </TableRow>
@@ -262,6 +263,15 @@ export function SubscribersPage() {
                           )}
                         </TableCell>
                         <TableCell>
+                          {user.is_subscribed ? (
+                            <Badge variant='outline'>
+                              {user.subscription_platform === 'google_play' ? 'Google Play' : 'Razorpay'}
+                            </Badge>
+                          ) : (
+                            <span className='text-xs text-muted-foreground'>—</span>
+                          )}
+                        </TableCell>
+                        <TableCell>
                           <span className='text-xs font-mono text-muted-foreground'>
                             {user.subscription_id ? user.subscription_id.slice(0, 16) + '...' : '—'}
                           </span>
@@ -298,7 +308,7 @@ export function SubscribersPage() {
                     ))}
                 {!isLoading && (subscribers || []).length === 0 && (
                   <TableRow>
-                    <TableCell colSpan={7} className='h-24 text-center text-muted-foreground'>
+                    <TableCell colSpan={8} className='h-24 text-center text-muted-foreground'>
                       No users found
                     </TableCell>
                   </TableRow>

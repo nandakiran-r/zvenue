@@ -1,8 +1,10 @@
 import { router, useLocalSearchParams } from "expo-router";
 import { Check, X, Shield, ArrowRight, Crown } from "lucide-react-native";
+import { ErrorCode } from "react-native-iap";
 import React, { useEffect, useState } from "react";
 import {
   ActivityIndicator,
+  Platform,
   ScrollView,
   StyleSheet,
   Text,
@@ -13,7 +15,17 @@ import {
 import { SafeAreaView } from "react-native-safe-area-context";
 import { WebView } from "react-native-webview";
 import { useAuth } from "@/context/AuthContext";
-import { createSubscription, getCheckoutOptions, confirmSubscription, fetchSubscriptionBenefits } from "@/lib/api";
+import { createSubscription, getCheckoutOptions, confirmSubscription, fetchSubscriptionBenefits, verifyGooglePurchase } from "@/lib/api";
+import {
+  initGoogleIAP,
+  fetchAndroidOffers,
+  purchaseAndroidSubscription,
+  onPurchaseUpdated,
+  onPurchaseError,
+  finishAndroidPurchase,
+  BASE_PLAN_IDS,
+  type AndroidSubscriptionOffer,
+} from "@/lib/googleIap";
 import Colors from "@/constants/colors";
 import { useToast } from "@/context/ToastContext";
 
@@ -32,6 +44,7 @@ export default function SubscriptionScreen() {
   const [checkoutModalVisible, setCheckoutModalVisible] = useState(false);
   const [checkoutHtml, setCheckoutHtml] = useState<string | null>(null);
   const [benefits, setBenefits] = useState<string[]>([]);
+  const [androidOffers, setAndroidOffers] = useState<AndroidSubscriptionOffer[]>([]);
   const { error: showError, showAlert } = useToast();
 
   const isFromSignup = fromSignup === 'true';
@@ -46,6 +59,57 @@ export default function SubscriptionScreen() {
     fetchSubscriptionBenefits().then(setBenefits).catch(() => {});
   }, []);
 
+  // Android buys through Google Play Billing — Play policy requires it for
+  // digital subscriptions, unlike physical venue/service bookings.
+  useEffect(() => {
+    if (Platform.OS !== 'android') return;
+
+    initGoogleIAP()
+      .then(() => fetchAndroidOffers())
+      .then(setAndroidOffers)
+      .catch(() => {});
+
+    const updatedSub = onPurchaseUpdated(async (purchase) => {
+      try {
+        if (!purchase.purchaseToken) return;
+        await verifyGooglePurchase(purchase.purchaseToken);
+        await finishAndroidPurchase(purchase);
+        await refreshSubscriptionInfo();
+        showAlert({
+          type: "success",
+          title: "Subscribed!",
+          message: "You now have access to premium benefits with every booking.",
+          actions: [{ text: "Let's Go!", style: "default", onPress: () => navigateBack() }],
+        });
+      } catch (err) {
+        showError("Error", "Could not verify your purchase. Contact support if you were charged.");
+      } finally {
+        setLoading(false);
+      }
+    });
+
+    const errorSub = onPurchaseError((error) => {
+      setLoading(false);
+      if (error.code !== ErrorCode.UserCancelled) {
+        showError("Payment Failed", error.message || "Please try again.");
+      }
+    });
+
+    return () => {
+      updatedSub.remove();
+      errorSub.remove();
+    };
+  }, []);
+
+  // Play requires showing the price it will actually charge — falls back to
+  // the hardcoded price only until the store offer has loaded.
+  const getDisplayPrice = (plan: typeof PLANS[number]) => {
+    if (Platform.OS !== 'android') return plan.price;
+    const basePlanId = BASE_PLAN_IDS[plan.key as keyof typeof BASE_PLAN_IDS];
+    const offer = androidOffers.find((o) => o.basePlanId === basePlanId);
+    return offer?.formattedPrice || plan.price;
+  };
+
   const navigateBack = () => {
     if (returnTo) {
       router.replace(returnTo as any);
@@ -55,6 +119,10 @@ export default function SubscriptionScreen() {
   };
 
   const handleSubscribe = async () => {
+    if (Platform.OS === 'android') {
+      return handleAndroidSubscribe();
+    }
+
     setLoading(true);
     try {
       await createSubscription(selectedPlan.id, 1, selectedPlan.totalCount);
@@ -83,6 +151,23 @@ export default function SubscriptionScreen() {
     } catch (err: any) {
       showError("Error", err.response?.data?.error || err.message || "Failed to initiate subscription");
     } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleAndroidSubscribe = async () => {
+    setLoading(true);
+    try {
+      const basePlanId = BASE_PLAN_IDS[selectedPlan.key as keyof typeof BASE_PLAN_IDS];
+      const offer = androidOffers.find((o) => o.basePlanId === basePlanId);
+      if (!offer) {
+        throw new Error("This plan isn't available right now. Please try again shortly.");
+      }
+      await purchaseAndroidSubscription(offer.offerToken);
+      // Result arrives via the purchaseUpdatedListener/purchaseErrorListener
+      // registered above — they own showing success/error and clearing loading.
+    } catch (err: any) {
+      showError("Error", err.message || "Failed to start purchase");
       setLoading(false);
     }
   };
@@ -177,7 +262,7 @@ export default function SubscriptionScreen() {
                   </View>
                 )}
                 <Text style={[styles.planLabel, isSelected && styles.planLabelSelected]}>{plan.label}</Text>
-                <Text style={[styles.planPrice, isSelected && styles.planPriceSelected]}>{plan.price}</Text>
+                <Text style={[styles.planPrice, isSelected && styles.planPriceSelected]}>{getDisplayPrice(plan)}</Text>
                 <Text style={[styles.planPeriod, isSelected && styles.planPeriodSelected]}>{plan.period}</Text>
                 {plan.perMonth && plan.key !== 'monthly' && (
                   <Text style={[styles.planPerMonth, isSelected && styles.planPerMonthSelected]}>{plan.perMonth}</Text>
@@ -215,13 +300,15 @@ export default function SubscriptionScreen() {
           >
             {loading ? <ActivityIndicator color={Colors.white} /> : (
               <>
-                <Text style={styles.subscribeButtonText}>Subscribe — {selectedPlan.price}</Text>
+                <Text style={styles.subscribeButtonText}>Subscribe — {getDisplayPrice(selectedPlan)}</Text>
                 <ArrowRight size={20} color={Colors.white} />
               </>
             )}
           </TouchableOpacity>
 
-          <Text style={styles.secureBadge}>🔒 Secure payment powered by Razorpay</Text>
+          <Text style={styles.secureBadge}>
+            {Platform.OS === 'android' ? '🔒 Secure payment via Google Play' : '🔒 Secure payment powered by Razorpay'}
+          </Text>
         </View>
 
         {isFromSignup && (

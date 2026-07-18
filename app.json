@@ -24,8 +24,13 @@
         "backgroundColor": "#ffffff"
       },
       "package": "com.zvenue.app",
-      "usesCleartextTraffic": false,
-      "googleServicesFile": "./google-services.json"
+      "usesCleartextTraffic": true,
+      "googleServicesFile": "./google-services.json",
+      "permissions": [
+        "android.permission.RECORD_AUDIO",
+        "android.permission.ACCESS_COARSE_LOCATION",
+        "android.permission.ACCESS_FINE_LOCATION"
+      ]
     },
     "web": {
       "favicon": "./assets/images/favicon.png"
@@ -70,8 +75,9 @@
         "origin": "https://zvenue.pages.dev/"
       },
       "eas": {
-        "projectId": "83fe9185-ee6b-455b-86de-efd452a83c6b"
+        "projectId": "0f55f161-54f5-49ec-a868-02b7c710c922"
       }
-    }
+    },
+    "owner": "zvenue_nasir"
   }
 }

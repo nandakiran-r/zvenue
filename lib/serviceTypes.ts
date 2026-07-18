@@ -140,6 +140,6 @@ export interface ServiceReviewsResponse {
 }
 
 export interface SearchResults {
-  venues: Array<{ id: string; name: string; city: string; image_url: string | null; rating: number; price_per_day: number; type: 'venue' }>;
-  services: Array<{ id: string; name: string; city: string; image_url: string | null; images?: string[]; rating: number; price: number; type: 'service'; category?: { name: string } }>;
+  venues: Array<{ id: string; name: string; city: string; image_url: string | null; rating: number; price_per_day: number; price_full_day: number; review_count: number; type: 'venue' }>;
+  services: Array<{ id: string; name: string; city: string; image_url: string | null; images?: string[]; rating: number; review_count: number; price: number; type: 'service'; category?: { name: string } }>;
 }

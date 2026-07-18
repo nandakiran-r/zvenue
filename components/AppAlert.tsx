@@ -83,6 +83,7 @@ export function AppAlert({ config, onHide }: AppAlertProps) {
   return (
     <Modal transparent visible={!!config} animationType="none" statusBarTranslucent>
       <View style={styles.overlay}>
+        <TouchableOpacity style={StyleSheet.absoluteFill} activeOpacity={1} onPress={() => dismiss()} />
         <Animated.View style={[styles.card, { transform: [{ scale: scaleAnim }], opacity: opacityAnim }]}>
           {/* Icon */}
           <View style={[styles.iconCircle, { backgroundColor: iconColors.bg }]}>

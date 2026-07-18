@@ -12,6 +12,7 @@ export interface DbUser {
   pincode: string | null;
   subscription_id: string | null;
   subscription_status: string | null;
+  subscription_platform?: SubscriptionPlatform | null;
   next_billing_at: string | null;
   created_at: string;
 }
@@ -163,10 +164,12 @@ export interface VerifyPaymentResponse {
 }
 
 export type SubscriptionStatus = 'none' | 'authenticated' | 'active' | 'pending' | 'cancelled' | 'halted';
+export type SubscriptionPlatform = 'razorpay' | 'google_play';
 
 export interface UserSubscriptionInfo {
   subscription_id: string | null;
   subscription_status: SubscriptionStatus | null;
+  subscription_platform?: SubscriptionPlatform | null;
   is_subscribed: boolean;
   next_billing_at: string | null;
 }

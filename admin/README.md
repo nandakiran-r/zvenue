@@ -1,119 +1,448 @@
-# Shadcn Admin Dashboard
+# ZVenue Admin Dashboard
 
-Admin Dashboard UI crafted with Shadcn and Vite. Built with responsiveness and accessibility in mind.
+A comprehensive web-based management portal for venue owners and administrators to manage venues, bookings, services, and view analytics.
 
-![alt text](public/images/shadcn-admin.png)
+## 🎯 Overview
 
-[![Sponsored by Clerk](https://img.shields.io/badge/Sponsored%20by-Clerk-5b6ee1?logo=clerk)](https://go.clerk.com/GttUAaK)
+The ZVenue Admin Dashboard is a full-featured web application built with React, Vite, and modern tooling. It provides administrators and venue owners with complete control over their venues, bookings, services, and customer interactions.
 
-I've been creating dashboard UIs at work and for my personal projects. I always wanted to make a reusable collection of dashboard UI for future projects; and here it is now. While I've created a few custom components, some of the code is directly adapted from ShadcnUI examples.
+## ✨ Features
 
-> This is not a starter project (template) though. I'll probably make one in the future.
+### Venue Management
+- Create, edit, and delete venues
+- Upload and manage venue images
+- Configure amenities and features
+- Set pricing and availability
+- Manage venue categories
+- View venue statistics
 
-## Features
+### Booking Management
+- View all venue bookings
+- Manage booking status (confirmed, cancelled, completed)
+- Track booking history
+- Generate booking reports
+- Handle customer inquiries
 
-- Light/dark mode
-- Responsive
-- Accessible
-- With built-in Sidebar component
-- Global search command
-- 10+ pages
-- Extra custom components
-- RTL support
+### Service Management
+- Create and manage services
+- Configure service pricing
+- Set service availability
+- Manage service bookings
+- Track service performance
 
-<details>
-<summary>Customized Components (click to expand)</summary>
+### Review & Ratings Management
+- Monitor customer reviews
+- Respond to reviews
+- Manage review visibility
+- Track rating trends
+- Identify improvement areas
 
-This project uses Shadcn UI components, but some have been slightly modified for better RTL (Right-to-Left) support and other improvements. These customized components differ from the original Shadcn UI versions.
+### User Management
+- View user profiles
+- Manage user access
+- Track user activity
+- Handle user complaints
+- Send user notifications
 
-If you want to update components using the Shadcn CLI (e.g., `npx shadcn@latest add <component>`), it's generally safe for non-customized components. For the listed customized ones, you may need to manually merge changes to preserve the project's modifications and avoid overwriting RTL support or other updates.
+### Analytics & Reporting
+- Dashboard with key metrics
+- Booking trends and statistics
+- Revenue analytics
+- Customer insights
+- Performance reports
+- Export data for analysis
 
-> If you don't require RTL support, you can safely update the 'RTL Updated Components' via the Shadcn CLI, as these changes are primarily for RTL compatibility. The 'Modified Components' may have other customizations to consider.
+### Admin Settings
+- System configuration
+- Role management
+- Notification settings
+- Content management (FAQs, Help Center, Legal)
+- Integration settings
+- Appearance & theme
 
-### Modified Components
+### Additional Features
+- **Dark/Light Mode**: Theme switching for better usability
+- **Responsive Design**: Works on desktop, tablet, and mobile
+- **RTL Support**: Full right-to-left language support (Arabic, Hebrew, etc.)
+- **Real-time Notifications**: Live updates for bookings and events
+- **Advanced Search**: Filter and search across all data
+- **Data Export**: Export reports to CSV/Excel
+- **Accessibility**: WCAG compliant interface
 
-- scroll-area
-- sonner
-- separator
+## 🛠️ Tech Stack
 
-### RTL Updated Components
+| Layer | Technology |
+|-------|-----------|
+| **Framework** | React 19 |
+| **Build Tool** | Vite 6 |
+| **Routing** | TanStack Router 1 |
+| **Language** | TypeScript 5.9 |
+| **UI Components** | ShadcnUI (TailwindCSS + RadixUI) |
+| **State Management** | Zustand 5 |
+| **Server State** | React Query (TanStack Query) 5 |
+| **Data Tables** | TanStack React Table 8 |
+| **Forms** | React Hook Form 7 + Zod 4 |
+| **Charts** | Recharts 3 |
+| **Icons** | Lucide Icons 1 |
+| **Styling** | TailwindCSS 4 |
+| **HTTP Client** | Axios 1 |
+| **Validation** | Zod 4 |
+| **Code Quality** | ESLint 10 + Prettier |
+| **Testing** | Vitest + Playwright |
 
-- alert-dialog
-- calendar
-- command
-- dialog
-- dropdown-menu
-- select
-- table
-- sheet
-- sidebar
-- switch
+### Backend Server
+The admin dashboard connects to a Node.js backend:
+- **Runtime**: Node.js
+- **Framework**: Fastify 5
+- **Database**: PostgreSQL (Neon)
+- **ORM**: Drizzle ORM
+- **Authentication**: JWT + better-auth
 
-**Notes:**
+## 📁 Project Structure
 
-- **Modified Components**: These have general updates, potentially including RTL adjustments.
-- **RTL Updated Components**: These have specific changes for RTL language support (e.g., layout, positioning).
-- For implementation details, check the source files in `src/components/ui/`.
-- All other Shadcn UI components in the project are standard and can be safely updated via the CLI.
-
-</details>
-
-## Tech Stack
-
-**UI:** [ShadcnUI](https://ui.shadcn.com) (TailwindCSS + RadixUI)
-
-**Build Tool:** [Vite](https://vitejs.dev/)
-
-**Routing:** [TanStack Router](https://tanstack.com/router/latest)
-
-**Type Checking:** [TypeScript](https://www.typescriptlang.org/)
-
-**Linting/Formatting:** [ESLint](https://eslint.org/) & [Prettier](https://prettier.io/)
-
-**Icons:** [Lucide Icons](https://lucide.dev/icons/), [Tabler Icons](https://tabler.io/icons) (Brand icons only)
-
-**Auth (partial):** [Clerk](https://go.clerk.com/GttUAaK)
-
-## Run Locally
-
-Clone the project
-
-```bash
-  git clone https://github.com/satnaing/shadcn-admin.git
+```
+admin/
+├── src/
+│   ├── routes/                    # Page routes (file-based routing)
+│   │   ├── (auth)/               # Authentication pages
+│   │   │   ├── sign-in.tsx      # Login page
+│   │   │   ├── sign-up.tsx      # Registration page
+│   │   │   └── forgot-password.tsx
+│   │   └── _authenticated/       # Protected routes (require auth)
+│   │       ├── venues/           # Venue management
+│   │       ├── bookings/         # Booking management
+│   │       ├── services/         # Service management
+│   │       ├── service-bookings/ # Service bookings
+│   │       ├── reviews/          # Review management
+│   │       ├── users/            # User management
+│   │       ├── categories/       # Category management
+│   │       ├── analytics/        # Analytics dashboard
+│   │       ├── dashboard/        # Main dashboard
+│   │       ├── notifications/    # Notification management
+│   │       ├── app-content/      # Content management
+│   │       ├── help-center/      # Help center
+│   │       ├── settings/         # Admin settings
+│   │       └── errors/           # Error pages
+│   │
+│   ├── features/                 # Feature modules (grouped by domain)
+│   │   ├── venues/              # Venue feature logic
+│   │   ├── bookings-management/ # Booking business logic
+│   │   ├── services/            # Service management
+│   │   ├── reviews/             # Review management
+│   │   ├── users/               # User management
+│   │   ├── categories/          # Category management
+│   │   ├── analytics/           # Analytics feature
+│   │   ├── dashboard/           # Dashboard logic
+│   │   ├── auth/                # Authentication
+│   │   ├── notifications-management/ # Notifications
+│   │   ├── app-content/         # Content management
+│   │   ├── help-center/         # Help center
+│   │   ├── settings/            # Settings
+│   │   └── owners/              # Venue owner management
+│   │
+│   ├── components/
+│   │   ├── ui/                  # ShadcnUI components
+│   │   ├── data-table/          # Data table component
+│   │   ├── layout/              # Layout components
+│   │   │   ├── Sidebar.tsx
+│   │   │   ├── Header.tsx
+│   │   │   └── Footer.tsx
+│   │   └── ...
+│   │
+│   ├── hooks/                   # Custom React hooks
+│   ├── stores/                  # Zustand state stores
+│   ├── context/                 # React context
+│   ├── lib/                     # Utility functions
+│   │   ├── api.ts              # API client
+│   │   └── utils.ts            # Helper functions
+│   ├── config/                  # Configuration
+│   ├── assets/                  # Images, icons, fonts
+│   ├── styles/                  # Global styles
+│   ├── test-utils/             # Testing utilities
+│   └── App.tsx                 # Root component
+│
+├── server/                       # Backend API
+│   ├── index.js                # Fastify server entry
+│   ├── db/                     # Database configuration
+│   │   ├── index.js           # DB client
+│   │   └── schema.js          # Drizzle schema
+│   ├── drizzle/               # ORM migrations
+│   ├── lib/                   # Server utilities
+│   ├── tests/                 # Server tests
+│   ├── package.json
+│   └── .env.local
+│
+├── public/                      # Static assets
+│   └── images/
+│
+├── vite.config.ts              # Vite configuration
+├── tailwind.config.ts          # TailwindCSS config
+├── tsconfig.json               # TypeScript config
+├── eslint.config.js            # ESLint config
+├── prettier.config.js          # Prettier config
+└── package.json
 ```
 
-Go to the project directory
+## 🚀 Getting Started
+
+### Prerequisites
+- Node.js 16+ ([install with nvm](https://github.com/nvm-sh/nvm))
+- Bun ([install](https://bun.sh/docs/installation))
+
+### Installation
 
 ```bash
-  cd shadcn-admin
+# Install dependencies
+bun install
+
+# Install server dependencies
+cd server && bun install && cd ..
 ```
 
-Install dependencies
+### Environment Setup
 
 ```bash
-  pnpm install
+# Copy environment template
+cp .env.example .env.local
+
+# Copy server environment
+cp server/.env.production.example server/.env.local
 ```
 
-Start the server
+**Required Environment Variables** (`.env.local`):
+```env
+VITE_API_URL=http://localhost:3000
+VITE_RAZORPAY_KEY_ID=your_razorpay_key_id
+```
+
+**Server Environment** (`server/.env.local`):
+```env
+DATABASE_URL=postgresql://user:password@localhost:5432/zvenue
+JWT_SECRET=your_jwt_secret
+RAZORPAY_KEY_ID=your_razorpay_id
+RAZORPAY_KEY_SECRET=your_razorpay_secret
+NEON_API_KEY=your_neon_api_key
+PORT=3000
+NODE_ENV=development
+```
+
+### Database Setup
 
 ```bash
-  pnpm run dev
+cd server
+
+# Run migrations
+npm run migrate
+
+# Seed demo data (optional)
+node seed-demo-venues.js
+
+# Create admin user
+node create-admin.js
 ```
 
-## Sponsoring this project ❤️
+### Development
 
-If you find this project helpful or use this in your own work, consider [sponsoring me](https://github.com/sponsors/satnaing) to support development and maintenance. You can [buy me a coffee](https://buymeacoffee.com/satnaing) as well. Don’t worry, every penny helps. Thank you! 🙏
+```bash
+# Terminal 1: Start backend server
+cd server
+bun run dev
 
-For questions or sponsorship inquiries, feel free to reach out at [satnaingdev@gmail.com](mailto:satnaingdev@gmail.com).
+# Terminal 2: Start frontend dev server (different terminal)
+bun run dev
+```
 
-### Current Sponsor
+Visit `http://localhost:5173` in your browser.
 
-- [Clerk](https://go.clerk.com/GttUAaK) - authentication and user management for the modern web
+## 🧪 Testing
 
-## Author
+```bash
+# Run all tests
+bun test
 
-Crafted with 🤍 by [@satnaing](https://github.com/satnaing)
+# Watch mode
+bun test:watch
 
-## License
+# Coverage report
+bun test:coverage
 
-Licensed under the [MIT License](https://choosealicense.com/licenses/mit/)
+# UI mode
+bun test:ui
+
+# Browser testing
+bun test:browser
+```
+
+## 🔧 Configuration
+
+### TailwindCSS
+Custom configuration in `tailwind.config.ts` includes:
+- Dark mode support
+- Custom color schemes
+- RTL layout support
+- Custom spacing and typography
+
+### TypeScript
+Strict mode enabled with path aliases:
+- `@/*` - Maps to `src/*`
+- `@components/*` - Maps to `src/components/*`
+- etc.
+
+### ESLint & Prettier
+Code quality tools configured for:
+- React best practices
+- Import sorting
+- Code formatting
+- Accessibility checks
+
+## 🎨 UI Customization
+
+### Components
+ShadcnUI components can be added/updated:
+```bash
+# Add a new ShadcnUI component
+npx shadcn-ui@latest add button
+```
+
+### Colors & Theming
+Customize colors in `tailwind.config.ts`:
+```ts
+colors: {
+  primary: '#your-color',
+  secondary: '#your-color',
+  // ...
+}
+```
+
+### RTL Support
+RTL is automatically applied based on browser language:
+- Components use logical CSS properties
+- Layout directives handle text direction
+- Form inputs support RTL text
+
+## 🔐 Security
+
+- **Authentication**: JWT tokens stored securely
+- **Authorization**: Role-based access control (RBAC)
+- **Input Validation**: Zod schema validation
+- **HTTPS**: All production traffic encrypted
+- **CORS**: Configured for allowed origins
+- **Rate Limiting**: Backend rate limiting enabled
+- **Secure Headers**: Helmet middleware on backend
+
+## 📊 API Integration
+
+The dashboard connects to the backend API at the URL specified in `VITE_API_URL`.
+
+### Key Endpoints
+- `POST /auth/signin` - Login
+- `POST /auth/signup` - Register
+- `GET /venues` - List venues
+- `POST /venues` - Create venue
+- `GET /bookings` - List bookings
+- `POST /bookings` - Create booking
+- `GET /services` - List services
+- `GET /reviews` - List reviews
+- `GET /analytics` - Analytics data
+
+## 🚀 Build & Deployment
+
+### Build for Production
+```bash
+bun run build
+
+# Output in ./dist
+```
+
+### Deploy Options
+
+#### Vercel (Recommended)
+```bash
+# Install Vercel CLI
+npm i -g vercel
+
+# Deploy
+vercel
+```
+
+#### Netlify
+```bash
+# Connect GitHub repo and deploy through Netlify UI
+# Or use Netlify CLI
+netlify deploy
+```
+
+#### Docker
+```bash
+docker build -t zvenue-admin .
+docker run -p 3000:3000 zvenue-admin
+```
+
+#### Traditional Hosting
+```bash
+# Upload dist/ folder to your server
+# Configure web server to serve index.html for all routes
+```
+
+## 🐛 Troubleshooting
+
+### Port Already in Use
+```bash
+# Change port in vite.config.ts or use environment variable
+VITE_PORT=5174 bun run dev
+```
+
+### API Connection Error
+```bash
+# Verify backend is running
+curl http://localhost:3000/health
+
+# Check VITE_API_URL environment variable
+echo $VITE_API_URL
+```
+
+### Database Connection Issue
+```bash
+cd server
+node check_db.js
+```
+
+## 📚 Resources
+
+- [React Docs](https://react.dev)
+- [Vite Guide](https://vitejs.dev/)
+- [TanStack Router](https://tanstack.com/router/latest)
+- [ShadcnUI Components](https://ui.shadcn.com/)
+- [TailwindCSS](https://tailwindcss.com/)
+- [React Query](https://tanstack.com/query/latest)
+- [Zod Validation](https://zod.dev)
+
+## 📝 Code Standards
+
+- Write clean, readable code
+- Use TypeScript for type safety
+- Follow ESLint/Prettier rules
+- Write tests for features
+- Document complex logic
+- Use meaningful variable names
+
+## 🤝 Contributing
+
+1. Create a feature branch: `git checkout -b feature/your-feature`
+2. Make changes and commit: `git commit -am 'Add feature'`
+3. Push to branch: `git push origin feature/your-feature`
+4. Submit pull request
+
+## 📄 License
+
+Private and proprietary. All rights reserved.
+
+## 📧 Contact
+
+For questions or support, contact the development team.
+
+---
+
+**Last Updated**: June 2024
+**Version**: 1.0.0
+**Status**: In Active Development

@@ -16,9 +16,6 @@
     "ios": {
       "supportsTablet": false,
       "bundleIdentifier": "com.zvenue.app",
-      "config": {
-        "usesCleartextTraffic": true
-      },
       "googleServicesFile": "./GoogleService-Info.plist"
     },
     "android": {

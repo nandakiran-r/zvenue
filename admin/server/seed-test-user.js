@@ -75,7 +75,7 @@ async function seedTestUser() {
   console.log('\n--- Test credentials ---');
   console.log(`  Phone  : ${TEST_USER_PHONE}`);
   console.log(`  OTP    : ${TEST_USER_OTP}`);
-  console.log(`  Razorpay key: rzp_test_Sx1fRFfPteNSvX  (auto-assigned during payments)`);
+  console.log(`  Razorpay: test keys from TEST_RAZORPAY_KEY_ID env (auto-assigned during payments)`);
   console.log('\nDone.');
 }
 

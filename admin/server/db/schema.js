@@ -14,6 +14,8 @@ export const users = pgTable('users', {
   // Subscription fields
   subscription_id: varchar('subscription_id', { length: 255 }),
   subscription_status: varchar('subscription_status', { length: 50 }).default('none'),
+  subscription_platform: varchar('subscription_platform', { length: 20 }).default('razorpay'),
+  google_purchase_token: text('google_purchase_token'),
   next_billing_at: timestamp('next_billing_at'),
   push_token: varchar('push_token', { length: 255 }),
   address: text('address'),

@@ -204,6 +204,11 @@ export async function getCheckoutOptions(): Promise<{ checkoutOptions: any; subs
   return data;
 }
 
+export async function verifyGooglePurchase(purchaseToken: string): Promise<UserSubscriptionInfo> {
+  const { data } = await api.post('/api/subscriptions/google/verify', { purchaseToken });
+  return data;
+}
+
 // activateTrial removed — no backend endpoint exists for this feature
 
 // ─── Invoices ──────────────────────────────────────────────────────────────
